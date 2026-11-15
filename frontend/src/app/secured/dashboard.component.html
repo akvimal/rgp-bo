@@ -164,17 +164,23 @@
     <div class="col-12 col-xl-8"><app-owner-insights part="sales-month" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
     <div class="col-12 col-xl-4"><app-owner-insights part="categories" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
   </div>
+  <ng-container *appInView="'18rem'">
   <div class="row g-3 mb-3">
     <div class="col-12"><app-owner-insights part="hours" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
     <div class="col-12" *ngIf="showWidget('patterns')"><app-sales-patterns [storeid]="selectedStoreId"></app-sales-patterns></div>
-    <div class="col-12" *ngIf="showWidget('money-matrix')"><app-filter-bar></app-filter-bar><app-finance-matrix [storeid]="selectedStoreId"></app-finance-matrix></div>
-    <div class="col-12" *ngIf="showWidget('stock-value')"><app-stock-value [storeid]="selectedStoreId"></app-stock-value></div>
-    <div class="col-12" *ngIf="showWidget('gst-position')"><app-gst-position [storeid]="selectedStoreId"></app-gst-position></div>
+    <div class="col-12" *ngIf="showWidget('money-matrix')">
+      <a class="card card-body flex-row align-items-center justify-content-between text-decoration-none" [routerLink]="['/secure/financials']" data-testid="dash-financials-link">
+        <span><strong>Financial dashboard</strong> <span class="text-muted small">money by category and month, costs against sales, cash, stock on the shelf and GST</span></span>
+        <span class="small">Open</span>
+      </a>
+    </div>
   </div>
+  </ng-container>
 </section>
 
 <!-- 3. Customers and the service they get -->
 <section id="sec-customers" *isAuth="'customers'">
+<ng-container *appInView="'24rem'">
   <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Customers and service</h2>
   <div class="row g-3 mb-3">
     <div class="col-12 col-xl-4"><app-owner-insights part="customers" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
@@ -203,10 +209,12 @@
   </div>
     <div class="col-12 col-xl-4"><app-owner-insights part="deliveries" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
   </div>
+</ng-container>
 </section>
 
 <!-- 4. Products and stock -->
 <section id="sec-products" *isAuth="'products'">
+<ng-container *appInView="'24rem'">
   <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Products and stock</h2>
   <div class="row g-3 mb-3">
   <div class="col-12 col-xl-6">
@@ -258,10 +266,12 @@
     </div>
   </div>
   </div>
+</ng-container>
 </section>
 
 <!-- 5. What we buy and what we owe -->
 <section id="sec-purchasing" *isAuth="'purchaseorders'">
+<ng-container *appInView="'24rem'">
   <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Purchasing and payables</h2>
   <div class="row g-3 mb-3">
   <div class="col-12 col-md-4 col-xl-2" *isAuth="'purchaseorders'">
@@ -371,10 +381,12 @@
     </div>
   </div>
   </div>
+</ng-container>
 </section>
 
 <!-- 6. Cash, expenses and the shifts that hold them -->
 <section id="sec-cash" *isAuth="'store'">
+<ng-container *appInView="'24rem'">
   <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Cash and shifts</h2>
   <div class="row g-3 mb-3">
   <div class="col-12 col-md-4 col-xl-3" *isAuth="'store'">
@@ -457,12 +469,15 @@
       </div>
     </div>
   </div>
+</ng-container>
 </section>
 
 <!-- 7. The people -->
 <section id="sec-team">
+<ng-container *appInView="'24rem'">
   <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Team</h2>
   <app-team-recognition></app-team-recognition>
+</ng-container>
 </section>
 
 </ng-container>

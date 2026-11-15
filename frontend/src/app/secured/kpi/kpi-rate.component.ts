@@ -30,14 +30,15 @@ import { KpiApi } from "./kpi.service";
               <ng-container *ngIf="i.source === 'MANUAL'">
                 <td style="width:20%">
                   <select class="form-select form-select-sm" [disabled]="r.locked || r.self" [ngModel]="i.rating" (ngModelChange)="save(r, i, $event, i.note)" [attr.data-testid]="'kpi-rating-' + i.metric_id">
-                    <option [ngValue]="null">Not rated</option>
-                    <option *ngFor="let n of scale(i)" [ngValue]="n">{{n}} of {{i.scale}}</option>
+                    <option [ngValue]="null">{{i.gate ? 'Not confirmed' : 'Not rated'}}</option>
+                    <ng-container *ngIf="i.gate"><option [ngValue]="1">Not met</option><option [ngValue]="2">Met</option></ng-container>
+                    <ng-container *ngIf="!i.gate"><option *ngFor="let n of scale(i)" [ngValue]="n">{{n}} of {{i.scale}}</option></ng-container>
                   </select>
                 </td>
                 <td><input class="form-control form-control-sm" maxlength="200" placeholder="Note (optional)" [disabled]="r.locked || r.self" [(ngModel)]="i.note" (change)="save(r, i, i.rating, i.note)" [attr.data-testid]="'kpi-note-' + i.metric_id"></td>
               </ng-container>
               <ng-container *ngIf="i.source === 'SYSTEM'">
-                <td colspan="2" class="small text-muted">Measured by the system: {{i.state === 'SCORED' ? (i.evidence + ' (' + i.final_points + ' of ' + i.max + ' points)') : i.na_reason}}</td>
+                <td colspan="2" class="small text-muted">Measured by the system: {{i.state === 'SCORED' ? (i.gate ? (i.evidence + ' (' + (i.passed ? 'gate met' : 'gate not met') + ')') : (i.evidence + ' (' + i.final_points + ' of ' + i.max + ' points)')) : i.na_reason}}</td>
               </ng-container>
             </tr>
           </tbody>

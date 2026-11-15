@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { MANAGER_ROLES } from 'src/core/roles';
+import { TtlCache, cacheKey, heavy } from 'src/core/heavy-query';
 import { DashboardService } from './dashboard.service';
 import { StockGroup, bucketOf, stockValue } from './stock-value';
 
@@ -15,6 +16,9 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
  */
 @Injectable()
 export class DashboardStockService {
+  /** two minutes: stock moves with every bill, but a dashboard does not need it to the second, and it is the heaviest read of the page */
+  private readonly cache = new TtlCache(120_000);
+
   constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly dash: DashboardService) {}
 
   private num(v: any): number | null {
@@ -32,7 +36,11 @@ export class DashboardStockService {
   /** What is on the shelf now, at cost and at MRP, by expiry, category and store. ?storeid narrows it to one store. */
   async value(user: any, storeid?: any) {
     const sc = await this.guard(user, storeid);
-    const rows = await this.manager.query(
+    return this.cache.get(cacheKey('stock', sc.businessId, sc.owner, sc.stores, sc.requested), () => this.valueNow(sc));
+  }
+
+  private async valueNow(sc: { stores: number[] | null; owner: boolean; requested: number | null }) {
+    const rows = await heavy(this.manager, 30_000, (tx) => tx.query(
       `with items as (
          select pii.id as item_id, pii.product_id, pii.exp_date, pii.ptr_value, pii.mrp_cost, pii.qty, pii.free_qty, pi.store_id as home,
                 coalesce(nullif(p.pack, 0), 1) as pack, coalesce(nullif(btrim(p.category), ''), 'Uncategorised') as cat
@@ -66,12 +74,12 @@ export class DashboardStockService {
        select b.store_id, b.cat as category,
               case when b.exp_date is null then null else (public.expiry_end(b.exp_date) - current_date) end as days_left,
               (r.product_id is null) as dead,
-              sum(b.units / b.pack * coalesce(b.ptr_value, 0))::float8 as cost,
-              sum(b.units / b.pack * coalesce(b.mrp_cost, 0))::float8 as mrp,
+              sum(b.units::float8 / b.pack * coalesce(b.ptr_value, 0))::float8 as cost,
+              sum(b.units::float8 / b.pack * coalesce(b.mrp_cost, 0))::float8 as mrp,
               count(*)::int as batches
          from bal b left join recent r on r.store_id = b.store_id and r.product_id = b.product_id
         where b.units > 0
-        group by 1, 2, 3, 4`, [sc.stores]);
+        group by 1, 2, 3, 4`, [sc.stores]));
     // the same bucket and flag in one group: rows with the same days_left collapse here
     const merged = new Map<string, StockGroup>();
     for (const r of rows) {
@@ -87,7 +95,7 @@ export class DashboardStockService {
          join purchase_invoice_item pii on pii.id = si.purchase_item_id join product p on p.id = si.product_id
         where s.status = 'COMPLETE' and s.active and not s.archive and si.active and not si.archive and s.bill_date >= current_date - interval '90 days'
           and ($1::int[] is null or s.store_id = any($1::int[]))`, [sc.stores]);
-    const names = new Map<number, string>((await this.manager.query(`select id, name from stores`)).map((s: any) => [+s.id, String(s.name)]));
+    const names = new Map<number, string>((await this.manager.query(`select id, trim(location) as name from stores`)).map((s: any) => [+s.id, String(s.name)]));
     const out = stockValue(Array.from(merged.values()), names, Number(cos?.cost) || 0, { showStores: sc.owner && sc.requested === null && (sc.stores || []).length > 1 });
     return { ...out, asOf: new Date().toISOString(), basis: 'Purchase rate before GST, for stock on the shelf now' };
   }
@@ -100,6 +108,7 @@ export class DashboardStockService {
     const sc = await this.guard(user, q.storeid);
     if (!sc.owner) throw new ForbiddenException('The GST position is shown to the owner only.');
     const month = q.month && MONTH.test(q.month) ? q.month : new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 7);
+    return this.cache.get(cacheKey('gst', sc.businessId, sc.stores, sc.requested, month), async () => {
     const rows = await this.manager.query(
       `select flow_class as cls, coalesce(sum(gst), 0)::float8 as gst, coalesce(sum(amount), 0)::float8 as amount
          from money_flow
@@ -113,5 +122,6 @@ export class DashboardStockService {
       month, output, input, net: r2(output - input),
       notes: ['An estimate from your bills, purchase invoices and expenses. It is not the return: eligibility of input credit, reverse charge and the match with GSTR-2B are not applied.'],
     };
+    });
   }
 }

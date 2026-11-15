@@ -19,8 +19,8 @@ describe('widget contract', () => {
     expect(financeWidgetsFor('manager')).toContain('money-matrix');
   });
   it('is part of each view list the page renders, after the older cards', () => {
-    // cost ratios and cash by place live on the Financial dashboard page, not on the dashboard
-    const pageOnly = ['cost-ratios', 'cash-position'];
+    // the financial cards live on the Financial dashboard page; the dashboard holds a link (money-matrix), health and patterns
+    const pageOnly = ['cost-ratios', 'cash-position', 'stock-value', 'gst-position'];
     expect(widgetsFor('owner')).toEqual(expect.arrayContaining(financeWidgetsFor('owner').filter((k) => !pageOnly.includes(k))));
     expect(widgetsFor('manager')).toEqual(expect.arrayContaining(financeWidgetsFor('manager').filter((k) => !pageOnly.includes(k))));
     for (const v of ['staff', 'counter', 'personal', 'platform'] as const) expect(widgetsFor(v).filter((k) => widgetDef(k))).toEqual([]);

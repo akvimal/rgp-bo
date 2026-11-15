@@ -4,6 +4,7 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { HrKpiEngine, checkRule, roleList } from './hr-kpi-engine.service';
 import { bandFor, BandRow, pickBands } from './hr-link';
+import { KPI_TEMPLATES, SCORECARD_ONLY, TemplateMetric, templateTotals } from './hr-kpi-templates';
 
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -16,22 +17,26 @@ export class HrKpiService {
   metrics() {
     return this.manager.query(
       `select id, name, description, max_points::float as max_points, display_order, active, source, system_key, rule, min_activity, rating_scale,
-              applies_types, applies_designations, applies_roles, applies_positions from hr_kpi_metric order by display_order, name`);
+              applies_types, applies_designations, applies_roles, applies_positions, is_gate from hr_kpi_metric order by display_order, name`);
   }
 
   async saveMetric(id: number | null, b: any, by: any) {
     const name = String(b?.name || '').trim().slice(0, 60);
     if (!name) throw new BadRequestException('Give the measure a name.');
-    const max = Number(b?.max_points);
-    if (!Number.isFinite(max) || max <= 0 || max > 1000) throw new BadRequestException('Maximum points must be above 0.');
+    // a gate carries no points: if it is not met the month's incentive is nil (docs: KPI gates)
+    const isGate = b?.is_gate === true;
+    const max = isGate ? 0 : Number(b?.max_points);
+    if (!isGate && (!Number.isFinite(max) || max <= 0 || max > 1000)) throw new BadRequestException('Maximum points must be above 0.');
     const desc = String(b?.description || '').trim().slice(0, 200) || null;
     const source = b?.source === 'SYSTEM' ? 'SYSTEM' : 'MANUAL';
     let systemKey: string | null = null, rule: any = null;
     if (source === 'SYSTEM') {
       systemKey = String(b?.system_key || '');
-      rule = checkRule(systemKey, b?.rule);
+      if (!isGate && b?.rule?.kind === 'gate') throw new BadRequestException('A rule with a limit and no points is a gate: mark the measure as a gate.');
+      rule = checkRule(systemKey, isGate ? { kind: 'gate', limit: b?.rule?.limit } : b?.rule);
     }
-    const scale = Number(b?.rating_scale ?? 5);
+    // a manual gate is confirmed pass or fail: a scale of two, the top rating is a pass
+    const scale = isGate && source === 'MANUAL' ? 2 : Number(b?.rating_scale ?? 5);
     if (!Number.isInteger(scale) || scale < 2 || scale > 10) throw new BadRequestException('A rating scale is from 2 to 10.');
     const minActivity = Math.max(0, Math.min(100000, Math.floor(Number(b?.min_activity) || 0)));
     const list = (v: any, upper = false) => {
@@ -44,21 +49,80 @@ export class HrKpiService {
     await this.checkRoles(roles);
     const designations = list(b?.applies_designations);
     const positions = await this.checkPositions(b?.applies_positions);
-    const cols = [name, desc, max, Number(b.display_order) || 10, source, systemKey, rule ? JSON.stringify(rule) : null, minActivity, scale, types, designations, roles, positions];
+    const cols = [name, desc, max, Number(b.display_order) || 10, source, systemKey, rule ? JSON.stringify(rule) : null, minActivity, scale, types, designations, roles, positions, isGate];
     if (id) {
       const [cur] = await this.manager.query(`select 1 from hr_kpi_metric where id = $1`, [id]);
       if (!cur) throw new NotFoundException('Measure not found.');
       await this.manager.query(
         `update hr_kpi_metric set name = $2, description = $3, max_points = $4, display_order = $5, source = $6, system_key = $7, rule = $8::jsonb, min_activity = $9, rating_scale = $10,
-                applies_types = $11, applies_designations = $12, applies_roles = $13, applies_positions = $14, active = $15 where id = $1`, [id, ...cols, b.active !== false]);
+                applies_types = $11, applies_designations = $12, applies_roles = $13, applies_positions = $14, is_gate = $15, active = $16 where id = $1`, [id, ...cols, b.active !== false]);
     } else {
       const [r] = await this.manager.query(
-        `insert into hr_kpi_metric (name, description, max_points, display_order, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions)
-         values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13) returning id`, cols);
+        `insert into hr_kpi_metric (name, description, max_points, display_order, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions, is_gate)
+         values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13,$14) returning id`, cols);
       id = r.id;
     }
-    await this.audit.record({ userId: by.id, action: 'hr.kpi_metric_saved', entityType: 'hr_kpi_metric', entityId: id, summary: `KPI measure ${name} (${max} points, ${source.toLowerCase()})`, details: {} });
+    await this.audit.record({ userId: by.id, action: 'hr.kpi_metric_saved', entityType: 'hr_kpi_metric', entityId: id, summary: `KPI ${isGate ? 'gate' : 'measure'} ${name} (${isGate ? 'no points' : max + ' points'}, ${source.toLowerCase()})`, details: {} });
     return { id };
+  }
+
+  // ------------------------------------------------------------------ starter sets for a pharmacy
+
+  /** the starter sets as they stand, with their totals (nothing is written) */
+  templates() {
+    return {
+      sets: KPI_TEMPLATES.map((t) => ({ position: t.position, summary: t.summary, loginRole: t.loginRole, ...templateTotals(t), metrics: t.metrics })),
+      scorecardOnly: SCORECARD_ONLY,
+    };
+  }
+
+  private sameMetric(cur: any, m: TemplateMetric): boolean {
+    return Number(cur.max_points) === m.max && cur.source === m.source && (cur.system_key || null) === (m.system_key || null)
+      && JSON.stringify(cur.rule || null) === JSON.stringify(m.rule || null) && Number(cur.min_activity) === (m.min_activity || 0)
+      && Number(cur.rating_scale) === (m.rating_scale || 5) && !!cur.is_gate === !!m.gate && (cur.description || '') === m.description && cur.active;
+  }
+
+  /**
+   * Previews or loads the starter sets. A job role is matched by name (any capitals) or created; a measure is matched by name within that job role and
+   * updated, or added. Nothing else of the job role's is touched, so measures it already has are listed and count with these (the total may then go
+   * above 100). Preview is the default; pass `confirm: true` to write. Business Head only (the HR guard).
+   */
+  async applyTemplates(b: any, by: any) {
+    const only: string[] | null = Array.isArray(b?.positions) && b.positions.length ? b.positions.map((x: any) => String(x).toLowerCase()) : null;
+    const write = b?.confirm === true;
+    const result: any[] = [];
+    for (const t of KPI_TEMPLATES) {
+      if (only && !only.includes(t.position.toLowerCase())) continue;
+      let [pos] = await this.manager.query(`select id, name from hr_position where lower(name) = lower($1)`, [t.position]);
+      const existed = !!pos;
+      if (!pos && write) {
+        [pos] = await this.manager.query(`insert into hr_position (name, login_role, created_by) values ($1, $2, $3) returning id, name`, [t.position, t.loginRole, by?.id ?? null]);
+      }
+      const have: any[] = pos
+        ? await this.manager.query(`select id, name, description, max_points, source, system_key, rule, min_activity, rating_scale, is_gate, active from hr_kpi_metric where applies_positions = array[$1]::int[]`, [pos.id])
+        : [];
+      const metrics: any[] = [];
+      let order = 10;
+      for (const m of t.metrics) {
+        const cur = have.find((h) => String(h.name).toLowerCase() === m.name.toLowerCase());
+        const action = !cur ? 'add' : this.sameMetric(cur, m) ? 'same' : 'update';
+        metrics.push({ name: m.name, gate: !!m.gate, points: m.max, action });
+        if (write && pos && action !== 'same') {
+          await this.saveMetric(cur ? cur.id : null, {
+            name: m.name, description: m.description, max_points: m.max, source: m.source, system_key: m.system_key, rule: m.rule, min_activity: m.min_activity || 0,
+            rating_scale: m.rating_scale || 5, is_gate: !!m.gate, applies_positions: [pos.id], display_order: order, active: true,
+          }, by);
+        }
+        order += 10;
+      }
+      const names = new Set(t.metrics.map((m) => m.name.toLowerCase()));
+      result.push({ position: t.position, exists: existed, position_id: pos?.id ?? null, points: templateTotals(t).points, metrics, others: have.filter((h) => h.active && !names.has(String(h.name).toLowerCase())).map((h) => h.name) });
+    }
+    if (write) {
+      await this.audit.record({ userId: by?.id, action: 'hr.kpi_templates_applied', entityType: 'hr_kpi_metric', entityId: null,
+        summary: `KPI starter sets loaded for ${result.map((r) => r.position).join(', ')}`, details: { result: result.map((r) => ({ position: r.position, added: r.metrics.filter((m: any) => m.action === 'add').length, updated: r.metrics.filter((m: any) => m.action === 'update').length })) } });
+    }
+    return { written: write, sets: result };
   }
 
   /**

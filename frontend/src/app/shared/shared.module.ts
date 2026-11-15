@@ -9,6 +9,7 @@ import { PeekComponent } from "./components/peek.component";
 import { SectionComponent } from "./components/section.component";
 import { DialogStandardDirective } from "./dialog-standard.directive";
 import { RowActionsComponent } from "./components/row-actions.component";
+import { InViewDirective } from "./in-view.directive";
 import { CustomerSelectComponent } from "./components/customer-select.component";
 import { DenominationGridComponent } from "./components/denomination-grid.component";
 import { PageHeaderComponent } from "./components/page-header.component";
@@ -45,7 +46,8 @@ import { TermPipe } from "./label.service";
       PeekComponent,
       SectionComponent,
       DialogStandardDirective,
-      RowActionsComponent
+      RowActionsComponent,
+      InViewDirective
     ],
     imports: [
         FormsModule,
@@ -72,7 +74,8 @@ import { TermPipe } from "./label.service";
       PeekComponent,
       SectionComponent,
       DialogStandardDirective,
-      RowActionsComponent
+      RowActionsComponent,
+      InViewDirective
     ]
   })
 export class SharedModule{}

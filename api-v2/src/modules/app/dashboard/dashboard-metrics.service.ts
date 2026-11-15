@@ -4,6 +4,7 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { ConfigService } from 'src/core/config/config.service';
 import { MANAGER_ROLES } from 'src/core/roles';
+import { TtlCache, cacheKey, heavy } from 'src/core/heavy-query';
 import { DashboardService } from './dashboard.service';
 import { compareOf, deltaOf, marginOf, periodsFor } from './dashboard-tiles';
 import { patterns } from './sales-patterns';
@@ -20,6 +21,9 @@ const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
  */
 @Injectable()
 export class DashboardMetricsService {
+  /** patterns change slowly: worked out once in five minutes per view */
+  private readonly patternCache = new TtlCache(300_000);
+
   constructor(
     @InjectEntityManager() private readonly manager: EntityManager,
     private readonly dash: DashboardService,
@@ -477,8 +481,10 @@ export class DashboardMetricsService {
       : `select extract(hour from s.bill_date)::int as h, count(*)::int as bills, coalesce(sum(s.total), 0)::float8 as value
            from sale s where s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= current_date - interval '365 days'
             and ($1::int[] is null or s.store_id = any($1::int[])) and $2::text is not null group by 1`;
-    const [days, hours] = await Promise.all([this.manager.query(dayQ, [sc.stores, cat || '-']), this.manager.query(hourQ, [sc.stores, cat || '-'])]);
-    return { ...patterns(days, hours, todayIst), category: cat || null, asOf: new Date().toISOString() };
+    return this.patternCache.get(cacheKey('patterns', sc.businessId, sc.stores, cat), async () => {
+      const [days, hours] = await Promise.all([heavy(this.manager, 25_000, (tx) => tx.query(dayQ, [sc.stores, cat || '-'])), heavy(this.manager, 25_000, (tx) => tx.query(hourQ, [sc.stores, cat || '-']))]);
+      return { ...patterns(days, hours, todayIst), category: cat || null, asOf: new Date().toISOString() };
+    });
   }
 
   /** What is owed to vendors by how late it is, and who it is owed to. Owner and Store Head views (not the shift people). */

@@ -41,6 +41,7 @@ export const test = base.extend<Fixtures>({
         const fin = attachPerf(page);
         finalizers.push(() => fin(testInfo));
         await page.goto(to ?? landingPath(me), { waitUntil: 'domcontentloaded' });
+        if (/\/secure\/dashboard/.test(page.url())) await revealLazy(page);
         return { page, me };
       },
       async loginUI(email, password = PASS) {
@@ -108,6 +109,23 @@ export const test = base.extend<Fixtures>({
     await use(harness);
   },
 });
+
+/**
+ * The dashboard builds its lower cards as they are scrolled to (appInView). A test that looks for one expects it to be there, so after opening the
+ * dashboard the placeholders are scrolled into view one by one and the page goes back to the top.
+ */
+async function revealLazy(page: Page) {
+  try {
+    await page.locator('[data-lazy]').first().waitFor({ state: 'attached', timeout: 5000 }).catch(() => undefined);
+    for (let i = 0; i < 10; i++) {
+      const waiting = page.locator('[data-lazy="waiting"]').first();
+      if (!(await waiting.count())) break;
+      await waiting.scrollIntoViewIfNeeded({ timeout: 3000 });
+      await page.waitForTimeout(250);
+    }
+    await page.evaluate(() => { document.querySelectorAll('*').forEach((el) => { if ((el as HTMLElement).scrollTop > 0) (el as HTMLElement).scrollTop = 0; }); window.scrollTo(0, 0); });
+  } catch { /* not the dashboard shape: nothing to reveal */ }
+}
 
 export { expect, data, landingPath, openAs, apiLogin };
 export type { Page, BrowserContext, Me };

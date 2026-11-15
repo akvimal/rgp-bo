@@ -10,7 +10,7 @@ const MGR = 'businesshead@local.test';
 const HEAD = 'storehead@local.test';
 
 test('WF-UI-1 a card explains itself and links to its source', async ({ app }) => {
-  const { page } = await app.open(MGR, '/secure/dashboard');
+  const { page } = await app.open(MGR, '/secure/financials');
   await expect(page.getByTestId('stock-value')).toBeVisible();
   await page.getByTestId('stock-value-info').click();
   await expect(page.getByTestId('stock-value-definition')).toContainText('purchase rate');
@@ -18,7 +18,7 @@ test('WF-UI-1 a card explains itself and links to its source', async ({ app }) =
 });
 
 test('WF-UI-2 the period bar changes the money card and is kept in the address', async ({ app }) => {
-  const { page } = await app.open(MGR, '/secure/dashboard');
+  const { page } = await app.open(MGR, '/secure/financials');
   await expect(page.getByTestId('finance-matrix')).toBeVisible();
   await page.getByTestId('matrix-period').selectOption('6m');
   await expect(page).toHaveURL(/period=6m/);
@@ -30,10 +30,14 @@ test('WF-UI-2 the period bar changes the money card and is kept in the address',
   await expect(page.getByTestId('matrix-period')).toHaveValue('6m');
 });
 
-test('WF-UI-3 the Store Head holds the cards the server lists and not the GST estimate', async ({ app }) => {
+test('WF-UI-3 the Store Head dashboard holds health and a link to the financial page, not the heavy money cards', async ({ app }) => {
   const { page } = await app.open(HEAD, '/secure/dashboard');
   await expect(page.getByTestId('findings-card')).toBeVisible();
+  await expect(page.getByTestId('dash-financials-link')).toBeVisible();
+  await expect(page.getByTestId('finance-matrix')).toHaveCount(0);
+  await expect(page.getByTestId('gst-position')).toHaveCount(0);
+  await page.getByTestId('dash-financials-link').click();
+  await expect(page).toHaveURL(/\/secure\/financials/);
   await expect(page.getByTestId('finance-matrix')).toBeVisible();
-  await expect(page.getByTestId('stock-value')).toBeVisible();
   await expect(page.getByTestId('gst-position')).toHaveCount(0);
 });

@@ -223,3 +223,19 @@ Suggested order: **F1 and F2 first** (largest visible gain, little new data), th
 - **Shared filter** (`DashboardFilterService`, `app-filter-bar`): period (this month, last month, 6 months, 12 months, this or last financial year) and compare, kept in the page address and remembered per browser. It drives money by category and the GST estimate (the last month of the period, never a month not yet begun). Sales patterns (fixed 36-month and 365-day windows), stock (now) and cost ratios (12 months) keep their own windows and the bar says so. The older cards (tiles, sales trend, etc.) are not on it.
 - The Counter and Personal dashboard path was already granted by migration 109, so no migration 203 is needed.
 - **Not done:** the Counter view is still the existing staff view, not rebuilt to the kit; the old cards are not moved onto the frame or the filter; the one-page shell (scope bar, hero, footer note) is the existing dash header, not re-done.
+
+## Performance pass (2026-11-15, after the first real screens)
+
+Reported: the dashboard is too long and slow to load, the whole app feels slow, the stock card showed "Database operation failed", the HR tabs stacked vertically.
+
+- **The stock card error:** its query read `stores.name`, which does not exist (a store's name is `location`). Fixed there and in the money drill-through. The same query also divided whole numbers (a pack of 10 with 25 units counted 2 packs, not 2.5); it now divides as decimals, so stock values were understated.
+- **Why it was slow (not measured on the live data, reasoned from the code):** the dashboard opened with about twenty requests at once, several of them heavy (patterns over 36 months of bills, the money stream for a whole year, stock for every batch, the findings with about twenty queries). They filled the database's connections and the browser's six connections to the server, so every other page queued behind them, and they kept running after the person left the page.
+- **What changed:**
+  - The money, stock and GST cards are no longer on the dashboard (they were also on the Financial dashboard page): one link card replaces them. The busy-hours and patterns row and each lower section (customers, products, purchasing, cash, team) are built only when scrolled near (`appInView`).
+  - The dashboard's GET requests are cancelled when the person goes to another page (`CancelOnNavigateInterceptor`), so the next page is not queued behind them.
+  - Server: heavy figures are cached for a short time and shared between simultaneous requests (`TtlCache`: findings 60 s, money matrix, ratios, cash and unclassified 60 s, stock and GST 2 min, patterns 5 min; the owner's own changes clear them). Heavy reads have a database time limit (`heavy`: 25 to 30 s) so a slow one fails with a plain message instead of holding a connection.
+  - The "needs a category" count now reads the small tables, not the whole money view.
+  - The roll-up builds itself once, 90 seconds after the app starts, if it has never been built (`ROLLUP_AUTOBUILD=off` to stop that). Until it is built the money matrix reads the live view.
+  - Migration 204 adds two indexes (sales by store and day, adjustments by store and batch).
+- **Also fixed:** the HR tabs stacked because a stylesheet rule made any `ul.nav` in a page head a block; the matrix's section rows were pale in the dark theme; the product group word after each sales row is gone.
+- **Not measured:** none of this was timed against your data. If the app is still slow, the Network tab (slowest requests) and the database's slow-query log say which read is left.

@@ -102,6 +102,8 @@ export class HrController {
   @Post('kpi/metrics') addMetric(@Body() b: any, @User() u: any) { return this.kpi.saveMetric(null, b, u); }
   @Put('kpi/metrics/:id') saveMetric(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.kpi.saveMetric(id, b, u); }
   @Delete('kpi/metrics/:id') removeMetric(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.kpi.removeMetric(id, u); }
+  @Get('kpi/templates') templates() { return this.kpi.templates(); }
+  @Post('kpi/templates/apply') applyTemplates(@Body() b: any, @User() u: any) { return this.kpi.applyTemplates(b, u); }
   @Get('kpi/bands') bands() { return this.kpi.bands(); }
   @Put('kpi/bands') saveBands(@Body() b: any, @User() u: any) { return this.kpi.saveBands(b, u); }
   @Get('kpi/month') month(@Query('period') period: string) { return this.kpi.month(period); }

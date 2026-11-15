@@ -157,16 +157,26 @@
           <input *ngIf="metrics.length > 6" class="form-control form-control-sm" style="width:14rem;max-width:100%" placeholder="Search measures" [(ngModel)]="q" aria-label="Search measures">
           <div class="small text-muted">A measure is either measured by the system or rated by a manager each month, and can be limited to roles, staff types and designations. Edit to change one; Remove deletes a measure never scored, and switches off one that has scores so past months stay the same.</div>
         </div>
-        <div class="page-toolbar-actions"><button class="btn btn-primary btn-sm" type="button" (click)="newMeasure()" data-testid="hr-set-metric-new">Add measure</button></div>
+        <div class="page-toolbar-actions"><button class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="previewStarter()" [disabled]="starterBusy" data-testid="hr-set-starter">Starter sets for a pharmacy</button><button class="btn btn-primary btn-sm" type="button" (click)="newMeasure()" data-testid="hr-set-metric-new">Add measure</button></div>
       </div>
+      <div class="alert alert-success py-2 small" *ngIf="starterMsg" data-testid="hr-set-starter-done">Loaded. {{starterMsg}}</div>
+      <div class="card mb-3" *ngIf="starter" data-testid="hr-set-starter-card"><div class="card-body">
+        <h6 class="mb-1">Starter KPI sets: Sales Staff, Pharmacist (weekends), Store Head</h6>
+        <div class="small text-muted mb-2">Each job role gets its measures, 100 points in all, and gates: a gate carries no points, and if it is not met the month's incentive is nil. Job roles that do not exist are created. Measures a job role already has are kept and count with these. Targets are starting values: set them from the History of each measure. Incentive bands are not changed.</div>
+        <div *ngFor="let s of starter.sets" class="mb-2" data-testid="hr-set-starter-set"><strong>{{s.position}}</strong> <span class="small text-muted">{{s.exists ? 'job role exists' : 'will be created'}}, {{s.points}} points</span>
+          <div class="small"><span *ngFor="let m of s.metrics" class="badge me-1 mb-1" [ngClass]="m.action === 'same' ? 'bg-light text-muted border' : m.action === 'add' ? 'bg-success' : 'bg-warning text-dark'">{{m.gate ? 'Gate: ' : ''}}{{m.name}} ({{m.action}})</span></div>
+          <div class="small text-warning" *ngIf="s.others.length">Already has {{s.others.length}} other measure{{s.others.length === 1 ? '' : 's'}} ({{s.others.join(', ')}}): they will count with these, so the total may pass 100.</div></div>
+        <button class="btn btn-primary btn-sm" type="button" (click)="loadStarter()" [disabled]="starterBusy" data-testid="hr-set-starter-load">Load these sets</button>
+        <button class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="starter = null">Cancel</button>
+      </div></div>
       <div class="table-responsive">
       <table class="table table-sm align-middle" data-testid="hr-set-metrics">
         <thead><tr><th>Measure</th><th>How</th><th class="text-end">Max points</th><th>Applies to</th><th>Status</th><th></th></tr></thead>
         <tbody>
           <tr *ngFor="let m of shownMetrics; trackBy: trackId" data-testid="hr-set-metric-row">
             <td>{{m.name}}<div class="small text-muted" *ngIf="m.description">{{m.description}}</div></td>
-            <td>{{m.source === 'SYSTEM' ? 'System: ' + (m.system_key | titlecase) : 'Rated by a manager (1-' + m.rating_scale + ')'}}</td>
-            <td class="text-end">{{m.max_points}}</td>
+            <td>{{howText(m)}}</td>
+            <td class="text-end">{{m.is_gate ? 'Gate' : m.max_points}}</td>
             <td>{{m.applies_positions?.length ? positionSummary(m.applies_positions) : roleSummary(m.applies_roles)}}<span class="small text-muted d-block" *ngIf="m.applies_types?.length || m.applies_designations?.length">{{(m.applies_types || []).join(', ')}} {{(m.applies_designations || []).join(', ')}}</span></td>
             <td><span class="badge" [ngClass]="m.active ? 'bg-success' : 'bg-secondary'">{{m.active ? 'Active' : 'Inactive'}}</span></td>
             <td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="editMeasure(m)" data-testid="hr-set-metric-edit">Edit</button></td></tr>
@@ -318,13 +328,15 @@
     <div *ngSwitchCase="'measure'" data-testid="hr-set-metric-form">
       <div class="row g-3">
         <div class="col-12 col-md-8"><label class="form-label">Name <span class="required">*</span></label><input class="form-control" [(ngModel)]="mf.name" maxlength="60" data-testid="hr-set-metric-name"></div>
-        <div class="col-6 col-md-4"><label class="form-label">Max points <span class="required">*</span></label><input type="number" min="1" class="form-control" [(ngModel)]="mf.max_points" data-testid="hr-set-metric-max"></div>
+        <div class="col-6 col-md-4" *ngIf="!mf.is_gate"><label class="form-label">Max points <span class="required">*</span></label><input type="number" min="1" class="form-control" [(ngModel)]="mf.max_points" data-testid="hr-set-metric-max"></div>
         <div class="col-6"><label class="form-label">Measured by</label>
           <select class="form-select" [(ngModel)]="mf.source" data-testid="hr-set-metric-source"><option value="MANUAL">A manager's rating</option><option value="SYSTEM">The system</option></select></div>
         <div class="col-6 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="mfactive" [(ngModel)]="mf.active"><label class="form-check-label" for="mfactive">Active</label></div></div>
+        <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="mfgate" [(ngModel)]="mf.is_gate" [disabled]="!!mf.id" data-testid="hr-set-metric-gate"><label class="form-check-label" for="mfgate">A gate: no points, and if it is not met the month's incentive is nil</label></div></div>
         <div class="col-12"><label class="form-label">Description</label><input class="form-control" [(ngModel)]="mf.description" maxlength="200" placeholder="What good looks like"></div>
 
-        <ng-container *ngIf="mf.source === 'MANUAL'">
+        <div class="col-12 small text-muted" *ngIf="mf.source === 'MANUAL' && mf.is_gate">The manager confirms it each month as Met or Not met.</div>
+        <ng-container *ngIf="mf.source === 'MANUAL' && !mf.is_gate">
           <div class="col-6"><label class="form-label">Rating scale (1 to)</label><input type="number" min="2" max="10" class="form-control" [(ngModel)]="mf.rating_scale" data-testid="hr-set-metric-scale"></div>
           <div class="col-12 small text-muted">A rating of {{mf.rating_scale}} earns all the points; each step below earns proportionally less.</div>
         </ng-container>
@@ -336,10 +348,13 @@
             <div class="form-text">{{measureHint}}</div></div>
           <div class="col-6 col-md-5"><label class="form-label">Judged only after</label><input type="number" min="0" class="form-control" [(ngModel)]="mf.min_activity" data-testid="hr-set-metric-minact">
             <div class="form-text">activity needed (bills, shifts, inquiries); below it the measure drops out</div></div>
-          <div class="col-12 col-md-7" *ngIf="mf.system_key">
+          <div class="col-12 col-md-7" *ngIf="mf.system_key && mf.is_gate" data-testid="hr-set-metric-gatelimit">
+            <label class="form-label">The gate is met when the figure is {{direction === 'higher' ? 'at least' : 'at most'}}</label>
+            <div class="input-group" style="max-width:14rem"><input type="number" min="0" class="form-control" [(ngModel)]="mf.gate_limit"><span class="input-group-text">{{measureUnit}}</span></div></div>
+          <div class="col-12 col-md-7" *ngIf="mf.system_key && !mf.is_gate">
             <label class="form-label">Points from the figure</label>
             <select class="form-select" [(ngModel)]="mf.rule_kind" data-testid="hr-set-metric-rule"><option value="steps" [disabled]="direction === 'higher'">Steps (less is better)</option><option value="linear">Target and floor</option></select></div>
-          <div class="col-12" *ngIf="mf.system_key && mf.rule_kind === 'steps'" data-testid="hr-set-metric-steps">
+          <div class="col-12" *ngIf="mf.system_key && !mf.is_gate && mf.rule_kind === 'steps'" data-testid="hr-set-metric-steps">
             <div class="small text-muted mb-1">Up to each limit the person earns that share of the points ({{measureUnit}}).</div>
             <div class="d-flex flex-wrap gap-2 align-items-center mb-1" *ngFor="let s of mf.steps; let i = index">
               <span class="small">up to</span><input type="number" min="0" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="s.upto">
@@ -348,7 +363,7 @@
             <button class="btn btn-outline-secondary btn-sm" type="button" (click)="addStep()">Add step</button>
             <span class="small ms-3">Beyond the last step earns</span> <input type="number" min="0" max="100" class="form-control form-control-sm d-inline-block" style="width:5rem" [(ngModel)]="mf.otherwise"> <span class="small">%</span>
           </div>
-          <div class="col-12" *ngIf="mf.system_key && mf.rule_kind === 'linear'" data-testid="hr-set-metric-linear">
+          <div class="col-12" *ngIf="mf.system_key && !mf.is_gate && mf.rule_kind === 'linear'" data-testid="hr-set-metric-linear">
             <div class="d-flex flex-wrap gap-2 align-items-center">
               <span class="small">Full points at</span><input type="number" class="form-control form-control-sm" style="width:7rem" [(ngModel)]="mf.target" data-testid="hr-set-metric-target">
               <span class="small">no points at</span><input type="number" class="form-control form-control-sm" style="width:7rem" [(ngModel)]="mf.floor" data-testid="hr-set-metric-floor">

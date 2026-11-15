@@ -322,7 +322,7 @@ export class HrSetupComponent implements OnInit, OnDestroy {
   // ------------------------------------------------------------ KPI measures
   private blankMeasure() {
     return { id: 0, name: "", description: "", max_points: 10, source: "MANUAL", system_key: "", rule_kind: "steps", steps: [{ upto: 0, pct: 100 }, { upto: 2, pct: 60 }], otherwise: 0,
-             target: null, floor: null, min_activity: 0, rating_scale: 5, applies_types: [], designations: "", applies_roles: null, position_names: null, active: true };
+             target: null, floor: null, min_activity: 0, rating_scale: 5, applies_types: [], designations: "", applies_roles: null, position_names: null, active: true, is_gate: false, gate_limit: null };
   }
 
   newMeasure() { this.mf = this.blankMeasure(); this.openPanel("measure", "New KPI measure", this.mf); }
@@ -332,8 +332,9 @@ export class HrSetupComponent implements OnInit, OnDestroy {
     Object.assign(f, {
       id: m.id, name: m.name, description: m.description || "", max_points: m.max_points, source: m.source, system_key: m.system_key || "",
       min_activity: m.min_activity || 0, rating_scale: m.rating_scale || 5, applies_types: m.applies_types || [],
-      designations: (m.applies_designations || []).join(", "), applies_roles: m.applies_roles?.length ? m.applies_roles : null, position_names: this.idsToNames(m.applies_positions), active: m.active,
+      designations: (m.applies_designations || []).join(", "), applies_roles: m.applies_roles?.length ? m.applies_roles : null, position_names: this.idsToNames(m.applies_positions), active: m.active, is_gate: !!m.is_gate,
     });
+    if (m.rule?.kind === "gate") Object.assign(f, { gate_limit: m.rule.limit });
     if (m.rule?.kind === "steps") Object.assign(f, { rule_kind: "steps", steps: m.rule.steps.map((s: any) => ({ ...s })), otherwise: m.rule.otherwise ?? 0 });
     if (m.rule?.kind === "linear") Object.assign(f, { rule_kind: "linear", target: m.rule.target, floor: m.rule.floor });
     this.mf = f;
@@ -358,13 +359,13 @@ export class HrSetupComponent implements OnInit, OnDestroy {
   private saveMeasure() {
     const f = this.mf; this.busy = true;
     const body: any = {
-      name: f.name, description: f.description, max_points: f.max_points, source: f.source, min_activity: f.min_activity, rating_scale: f.rating_scale,
+      name: f.name, description: f.description, max_points: f.is_gate ? 0 : f.max_points, source: f.source, min_activity: f.min_activity, rating_scale: f.rating_scale, is_gate: !!f.is_gate,
       applies_types: f.applies_types, applies_roles: f.applies_roles || [], applies_positions: this.namesToIds(f.position_names), active: f.active,
       applies_designations: String(f.designations || "").split(",").map((x: string) => x.trim()).filter(Boolean),
     };
     if (f.source === "SYSTEM") {
       body.system_key = f.system_key;
-      body.rule = f.rule_kind === "steps"
+      body.rule = f.is_gate ? { kind: "gate", limit: +f.gate_limit } : f.rule_kind === "steps"
         ? { kind: "steps", steps: f.steps.map((s: any) => ({ upto: +s.upto, pct: +s.pct })), otherwise: +f.otherwise }
         : { kind: "linear", target: +f.target, floor: +f.floor };
     }
@@ -373,6 +374,31 @@ export class HrSetupComponent implements OnInit, OnDestroy {
   }
 
   roleSummary(r: string[] | null) { return r?.length ? r.join(", ") : "All roles"; }
+
+  /** how a measure is judged, in words, for the list */
+  howText(m: any): string {
+    if (m.is_gate) return m.source === "SYSTEM" ? `Gate: ${this.systemMeasures.find(s => s.key === m.system_key)?.label || m.system_key}, limit ${m.rule?.limit}` : "Gate: pass or fail by a manager";
+    return m.source === "SYSTEM" ? "System: " + String(m.system_key || "").toLowerCase().replace(/_/g, " ") : `Rated by a manager (1-${m.rating_scale})`;
+  }
+
+  // ------------------------------------------------------------ starter sets for a pharmacy
+  starter: any = null;
+  starterBusy = false;
+  starterMsg = "";
+
+  /** what loading the sets would do, per job role: nothing is written */
+  previewStarter() {
+    this.starterBusy = true; this.starterMsg = ""; this.error = "";
+    this.hr.post("kpi/templates/apply", {}).subscribe(r => { this.starter = r; this.starterBusy = false; }, e => { this.starterBusy = false; this.error = this.hr.msg(e); });
+  }
+  loadStarter() {
+    this.starterBusy = true; this.error = "";
+    this.hr.post("kpi/templates/apply", { confirm: true }).subscribe(r => {
+      this.starterBusy = false; this.starter = null;
+      this.starterMsg = r.sets.map((s: any) => `${s.position}: ${s.metrics.filter((m: any) => m.action === "add").length} added, ${s.metrics.filter((m: any) => m.action === "update").length} updated`).join(". ") + ".";
+      this.load();
+    }, e => { this.starterBusy = false; this.error = this.hr.msg(e); });
+  }
 
   // ------------------------------------------------------------ bands, one set per role
   /** the band set on screen: "" the default, a login role's name, or "job:<id>" for a job role */

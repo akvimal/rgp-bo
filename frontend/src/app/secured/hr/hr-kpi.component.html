@@ -52,7 +52,8 @@
             <td class="small">{{i.source === 'SYSTEM' ? (i.evidence || '') : (i.rating !== null ? ('Rated ' + i.rating + ' of ' + i.scale) : '')}}<div class="text-muted" *ngIf="i.note">{{i.note}}</div></td>
             <td class="text-end text-nowrap"><span [ngClass]="i.state === 'SCORED' ? '' : 'text-muted'">{{stateText(i)}}</span>
               <div class="small text-warning" *ngIf="i.override_points !== null">overridden (computed {{i.points ?? '-'}})</div></td>
-            <td class="text-nowrap" *ngIf="!open.locked">
+            <td class="text-nowrap" *ngIf="!open.locked && i.gate"><span class="small text-muted">a gate has no points to override</span></td>
+            <td class="text-nowrap" *ngIf="!open.locked && !i.gate">
               <input type="number" min="0" [max]="i.max" class="form-control form-control-sm d-inline-block" style="width:5rem" [(ngModel)]="ov[i.metric_id].points" [attr.data-testid]="'hr-kpi-ov-' + i.metric_id">
               <input class="form-control form-control-sm d-inline-block ms-1" style="width:11rem" placeholder="Reason" maxlength="200" [(ngModel)]="ov[i.metric_id].reason" [attr.data-testid]="'hr-kpi-ovr-' + i.metric_id">
               <button class="btn btn-outline-primary btn-sm ms-1" type="button" (click)="setOverride(i)" [attr.data-testid]="'hr-kpi-ovs-' + i.metric_id">Set</button>
@@ -64,6 +65,7 @@
         </tbody>
       </table>
       <div class="small mt-2" *ngIf="open.finalised">Finalised: {{open.percent}}% ({{open.total_points}}/{{open.max_points}}) {{open.band_label}}, incentive {{incentiveText(open)}}.</div>
+      <div class="alert alert-danger py-2 small mt-2" *ngIf="!open.finalised && open.draft.gate_failed?.length" data-testid="hr-kpi-gate-failed">Gate not met: {{open.draft.gate_failed.join(', ')}}. No incentive this month, whatever the points.</div>
       <div class="small mt-2" *ngIf="!open.finalised">Draft: {{open.draft.percent}}% ({{open.draft.total}}/{{open.draft.max}}) {{open.draft.band_label}}, incentive {{incentiveText(open.draft)}}.</div>
     </div>
   </div>

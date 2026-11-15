@@ -9,7 +9,7 @@ const MGR = 'businesshead@local.test';
 const HEAD = 'storehead@local.test';
 
 test('FM-UI-1 the owner sees the table, the profit estimate and can change the period', async ({ app }) => {
-  const { page } = await app.open(MGR, '/secure/dashboard');
+  const { page } = await app.open(MGR, '/secure/financials');
   const card = page.getByTestId('finance-matrix');
   await expect(card).toBeVisible();
   await expect(page.getByTestId('matrix-tiles')).toContainText('Estimated profit');
@@ -22,7 +22,7 @@ test('FM-UI-1 the owner sees the table, the profit estimate and can change the p
 });
 
 test('FM-UI-2 the Store Head sees no purchases and no profit', async ({ app }) => {
-  const { page } = await app.open(HEAD, '/secure/dashboard');
+  const { page } = await app.open(HEAD, '/secure/financials');
   await expect(page.getByTestId('finance-matrix')).toBeVisible();
   await expect(page.getByTestId('matrix-tiles')).not.toContainText('Estimated profit');
   await expect(page.getByTestId('matrix-section-COST_OF_GOODS')).toHaveCount(0);

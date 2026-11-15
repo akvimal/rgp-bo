@@ -28,7 +28,7 @@ import { InsightsService } from "src/app/shared/insights.service";
             <tr *ngFor="let i of data.current.items" data-testid="kpi-setup-row">
               <td>{{i.name}}<div class="small text-muted" *ngIf="i.description">{{i.description}}</div></td>
               <td class="small">{{ruleText(i)}}</td>
-              <td class="text-end">{{i.max}}</td>
+              <td class="text-end">{{i.gate ? 'Gate' : i.max}}</td>
               <td class="small">
                 <ng-container *ngIf="i.source === 'MANUAL'"><span class="text-muted">Rated by your manager at the month end</span></ng-container>
                 <ng-container *ngIf="i.source !== 'MANUAL' && i.state === 'NA'"><span class="text-muted">{{i.na_reason || 'Not counted'}}</span></ng-container>
@@ -67,7 +67,7 @@ import { InsightsService } from "src/app/shared/insights.service";
               <td>{{s.name}}</td>
               <td class="small">{{s.source === 'SYSTEM' ? s.evidence : (s.rating !== null && s.rating !== undefined ? ('Rated ' + s.rating + ' of ' + s.scale) : '')}}
                 <span class="text-muted" *ngIf="s.note"> - {{s.note}}</span><span class="text-warning" *ngIf="s.overridden"> (adjusted: {{s.override_reason}})</span></td>
-              <td class="text-end">{{s.points}} / {{s.max}}</td>
+              <td class="text-end">{{s.gate ? (s.passed ? 'Gate met' : 'Gate not met') : (s.points + ' / ' + s.max)}}</td>
             </tr>
           </tbody>
         </table>
@@ -87,6 +87,7 @@ export class KpiMineComponent implements OnInit {
   /** how a measure turns into points, in words (a target and a floor, or steps for a figure that should stay low) */
   ruleText(i: any): string {
     const r = i.rule, u = i.unit ? ' ' + i.unit : '';
+    if (i.gate) return i.source === 'MANUAL' ? 'A gate: your manager confirms each month that it is met. If it is not met there is no incentive.' : 'A gate: it must be ' + (i.direction === 'higher' ? 'at least ' : 'at most ') + (i.rule?.limit) + u + '. If it is not met there is no incentive.';
     if (i.source === 'MANUAL') return 'Your manager rates it out of ' + (i.scale || 5) + '.';
     if (r?.kind === 'linear') return 'Full points at ' + r.target + u + ', none at ' + r.floor + u + ', in proportion between.';
     if (r?.kind === 'steps') {

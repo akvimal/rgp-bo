@@ -4,6 +4,7 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { MANAGER_ROLES } from 'src/core/roles';
 import { DashboardService } from './dashboard.service';
+import { TtlCache, cacheKey, heavy } from 'src/core/heavy-query';
 import { costRatios } from './cost-ratios';
 import { DashboardRollupService, rollupCut } from './dashboard-rollup.service';
 import { FlowRow, buildMatrix, compareRange, financialYear, monthsBetween } from './money-matrix';
@@ -20,6 +21,9 @@ const VIEWS: Record<string, string[] | null> = { pnl: null, products: ['INCOME',
  */
 @Injectable()
 export class DashboardFinanceService {
+  /** the figures are worked out once a minute per person's view, however many open the page (a change by the owner clears them) */
+  private readonly cache = new TtlCache(60_000);
+
   constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly dash: DashboardService, private readonly audit: AuditService, private readonly rollup: DashboardRollupService) {}
 
   private num(v: any): number | null {
@@ -52,14 +56,14 @@ export class DashboardFinanceService {
     const cut = rollupCut(await this.rollup.through(), ISTDAY(), start);
     const rolledUntil = cut && cut < end ? cut : cut ? end : start;
     const scope = `($1::int[] is null or store_id = any($1::int[]) or (store_id is null and $2::boolean)) and ($3::text[] is null or flow_class = any($3::text[]))`;
-    const rows = await this.manager.query(
+    const rows = await heavy(this.manager, 25_000, (tx) => tx.query(
       `select to_char(flow_date, 'YYYY-MM') as month, flow_class as cls, grp, category, sum(amount)::float8 as amount, sum(n)::int as n, bool_or(unclassified) as unclassified
          from (
            select flow_date, store_id, flow_class, grp, category, amount, 1 as n, unclassified from money_flow where flow_date >= $5::date and flow_date < $6::date and ${scope}
            union all
            select flow_date, store_id, flow_class, grp, category, amount, entries as n, unclassified from metric_daily where flow_date >= $4::date and flow_date < $5::date and ${scope}
          ) u group by 1, 2, 3, 4`,
-      [sc.stores, sc.withBusinessLevel, classes, start, rolledUntil, end]);
+      [sc.stores, sc.withBusinessLevel, classes, start, rolledUntil, end]));
     return rows.map((r: any) => ({ ...r, amount: Number(r.amount) }));
   }
 
@@ -70,9 +74,11 @@ export class DashboardFinanceService {
     const view = q.view && q.view in VIEWS ? q.view : 'pnl';
     const classes = VIEWS[view];
     const cmp = compareRange(from, to, String(q.compare || 'none'));
-    const [rows, compareRows] = await Promise.all([this.flow(sc, from, to, classes), cmp ? this.flow(sc, cmp.from, cmp.to, classes) : Promise.resolve(undefined)]);
-    const result = buildMatrix(rows, months, { hideCost: !sc.owner, compareRows, compareMonths: cmp ? monthsBetween(cmp.from, cmp.to) : undefined });
-    return { ...result, from, to, view, compare: cmp ? { ...cmp, kind: q.compare } : null, owner: sc.owner, basis: 'ACCRUAL', asOf: new Date().toISOString() };
+    return this.cache.get(cacheKey('matrix', sc.businessId, sc.owner, sc.stores, sc.withBusinessLevel, from, to, view, cmp ? q.compare : 'none'), async () => {
+      const [rows, compareRows] = await Promise.all([this.flow(sc, from, to, classes), cmp ? this.flow(sc, cmp.from, cmp.to, classes) : Promise.resolve(undefined)]);
+      const result = buildMatrix(rows, months, { hideCost: !sc.owner, compareRows, compareMonths: cmp ? monthsBetween(cmp.from, cmp.to) : undefined });
+      return { ...result, from, to, view, compare: cmp ? { ...cmp, kind: q.compare } : null, owner: sc.owner, basis: 'ACCRUAL', asOf: new Date().toISOString() };
+    });
   }
 
   /** The entries behind one cell or row: ?month=YYYY-MM (optional), cls, grp, category. At most 200, newest first. */
@@ -81,7 +87,7 @@ export class DashboardFinanceService {
     if (!sc.owner && q.cls === 'COST_OF_GOODS') throw new ForbiddenException('Purchases are shown to the owner only.');
     const { from, to } = this.range(q.month && MONTH.test(q.month) ? q.month : q.from, q.month && MONTH.test(q.month) ? q.month : q.to);
     const rows = await this.manager.query(
-      `select m.flow_date::text as date, m.store_id, st.name as store, m.amount::float8 as amount, m.gst::float8 as gst, m.source, m.source_id,
+      `select m.flow_date::text as date, m.store_id, trim(st.location) as store, m.amount::float8 as amount, m.gst::float8 as gst, m.source, m.source_id,
               case m.source
                 when 'SALE' then 'Bill ' || coalesce(s.bill_no::text, s.id::text)
                 when 'RETURN' then 'Return on bill ' || coalesce(rs.bill_no::text, rs.id::text)
@@ -110,21 +116,27 @@ export class DashboardFinanceService {
   /** What has no category: expense categories with no mapping, and products with no category (their sales count under Unclassified). */
   async unclassified(user: any, q: { storeid?: any } = {}) {
     const sc = await this.guard(user, q.storeid);
-    const expenses = await this.manager.query(
-      `select m.category as key, count(*)::int as entries, sum(m.amount)::float8 as amount
-         from money_flow m
-        where m.source = 'EXPENSE' and m.unclassified and m.flow_date >= current_date - interval '12 months'
-          and ($1::int[] is null or m.store_id = any($1::int[]) or (m.store_id is null and $2::boolean))
-        group by 1 order by 3 desc`, [sc.stores, sc.withBusinessLevel]);
-    const [products] = await this.manager.query(
-      `select count(distinct p.id)::int as products, coalesce(sum(m.amount), 0)::float8 as amount
-         from money_flow m join sale_item si on m.source = 'SALE' and si.id = m.source_id join product p on p.id = si.product_id
-        where m.source = 'SALE' and m.unclassified and m.flow_date >= current_date - interval '12 months'
-          and ($1::int[] is null or m.store_id = any($1::int[]))`, [sc.stores]);
-    const mapped = await this.manager.query(
-      `select c.name as key, coalesce(f.flow_class, 'OPERATING_COST') as flow_class, coalesce(f.grp, c.cost_group) as grp, (f.id is not null) as filed
-         from expense_category c left join flow_category f on f.source = 'EXPENSE' and f.source_key = c.name where c.active order by c.name`);
-    return { expenses, products: { count: Number(products?.products) || 0, amount: Number(products?.amount) || 0 }, categories: mapped, classes: EXPENSE_CLASSES, canFile: sc.owner };
+    return this.cache.get(cacheKey('unclassified', sc.businessId, sc.owner, sc.stores, sc.withBusinessLevel), async () => {
+      // straight from the expense and sale tables: the money view would read every bill line of the year just to count what has no category
+      const expenses = await this.manager.query(
+        `select c.name as key, count(*)::int as entries, sum(e.amount - e.gst_amount)::float8 as amount
+           from expense e join expense_category c on c.id = e.category_id
+           left join flow_category m on m.source = 'EXPENSE' and m.source_key = c.name
+          where e.status = 'APPROVED' and m.id is null and e.expense_date >= current_date - interval '12 months'
+            and ($1::int[] is null or e.store_id = any($1::int[]) or (e.store_id is null and $2::boolean))
+          group by 1 order by 3 desc`, [sc.stores, sc.withBusinessLevel]);
+      const [products] = await this.manager.query(
+        `select count(distinct si.product_id)::int as products,
+                coalesce(sum(si.total / (1 + coalesce(si.tax_pcnt, p.tax_pcnt, 0) / 100.0)), 0)::float8 as amount
+           from sale s join sale_item si on si.sale_id = s.id and si.active and not si.archive and coalesce(si.sale_mode, 'SALE') = 'SALE'
+           join product p on p.id = si.product_id
+          where s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= current_date - interval '12 months'
+            and nullif(btrim(p.category), '') is null and ($1::int[] is null or s.store_id = any($1::int[]))`, [sc.stores]);
+      const mapped = await this.manager.query(
+        `select c.name as key, coalesce(f.flow_class, 'OPERATING_COST') as flow_class, coalesce(f.grp, c.cost_group) as grp, (f.id is not null) as filed
+           from expense_category c left join flow_category f on f.source = 'EXPENSE' and f.source_key = c.name where c.active order by c.name`);
+      return { expenses, products: { count: Number(products?.products) || 0, amount: Number(products?.amount) || 0 }, categories: mapped, classes: EXPENSE_CLASSES, canFile: sc.owner };
+    });
   }
 
   /**
@@ -138,6 +150,7 @@ export class DashboardFinanceService {
     const shift = (ym: string, by: number) => { const t = +ym.slice(0, 4) * 12 + (+ym.slice(5, 7) - 1) + by; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`; };
     const from = shift(thisMonth, -12);
     const months = monthsBetween(from, thisMonth);
+    return this.cache.get(cacheKey('trend', sc.businessId, sc.stores, sc.withBusinessLevel, thisMonth), async () => {
     const rows = await this.flow(sc, from, thisMonth, ['INCOME', 'INCOME_REDUCTION', 'OPERATING_COST', 'PEOPLE', 'FINANCE_COST']);
     const sales = months.map((m) => ({
       month: m,
@@ -145,11 +158,13 @@ export class DashboardFinanceService {
     }));
     const costs = rows.filter((r) => ['OPERATING_COST', 'PEOPLE', 'FINANCE_COST'].includes(r.cls)).map((r) => ({ month: r.month, grp: r.grp, amount: r.amount }));
     return { ...costRatios(costs, sales, months, { latest: shift(thisMonth, -1) }), thisMonth };
+    });
   }
 
   /** What is in the bank now: the last balance of each active bank account, with its date. Accounts of the business show when no single store is chosen. */
   async cash(user: any, q: { storeid?: any }) {
     const sc = await this.guard(user, q.storeid);
+    return this.cache.get(cacheKey('cash', sc.businessId, sc.stores, sc.withBusinessLevel), async () => {
     const accounts = await this.manager.query(
       `select a.id, a.name, a.bank_name, a.store_id, st.location as store,
               (select t.balance from bank_txn t where t.account_id = a.id and t.balance is not null order by t.txn_date desc, t.id desc limit 1)::float8 as balance,
@@ -160,6 +175,7 @@ export class DashboardFinanceService {
         order by a.name`, [sc.stores, sc.withBusinessLevel, sc.businessId]);
     const known = accounts.filter((a: any) => a.balance !== null);
     return { accounts, bankTotal: Math.round(known.reduce((t: number, a: any) => t + Number(a.balance), 0)), unknown: accounts.length - known.length };
+    });
   }
 
   /** Rebuilds the daily roll-up now (owner only): the last 100 days, or all history with `full`. It also runs every night. */
@@ -167,6 +183,7 @@ export class DashboardFinanceService {
     const sc = await this.guard(user, null);
     if (!sc.owner) throw new ForbiddenException('Only the owner rebuilds the roll-up.');
     const r = await this.rollup.refresh(full);
+    this.cache.clear();
     await this.audit.record({ userId: user.id, action: 'finance.rollup_rebuilt', entityType: 'metric_daily', entityId: 0, summary: `Roll-up rebuilt through ${r.through} (${r.full ? 'all history' : 'recent days'})`, details: r });
     return r;
   }
@@ -188,6 +205,7 @@ export class DashboardFinanceService {
       `insert into flow_category (source, source_key, flow_class, grp, updated_by, updated_on) values ('EXPENSE', $1, $2, $3, $4, now())
        on conflict (source, source_key) do update set flow_class = excluded.flow_class, grp = excluded.grp, updated_by = excluded.updated_by, updated_on = now()`,
       [key, cls, grp, user.id]);
+    this.cache.clear();
     await this.audit.record({ userId: user.id, action: 'finance.category_filed', entityType: 'flow_category', entityId: 0, summary: `${key} filed under ${cls} / ${grp}`, details: { key, flow_class: cls, grp } });
     return { saved: true };
   }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
 import { EntityManager } from 'typeorm';
@@ -25,11 +25,24 @@ export function rollupCut(through: string | null, today: string, from: string): 
 
 /** The nightly roll-up of the money stream (migration 202). A failure is logged and leaves the last good roll-up in place. */
 @Injectable()
-export class DashboardRollupService {
+export class DashboardRollupService implements OnApplicationBootstrap {
   private readonly log = new Logger(DashboardRollupService.name);
   private running = false;
 
   constructor(@InjectEntityManager() private readonly manager: EntityManager) {}
+
+  /**
+   * The first time (the roll-up has never been built) it is built in the background a minute and a half after the app starts, so the financial
+   * figures do not read every bill line on each open. Set ROLLUP_AUTOBUILD=off to leave that to the owner's button or the first night.
+   */
+  onApplicationBootstrap() {
+    if (String(process.env.ROLLUP_AUTOBUILD || 'on').toLowerCase() === 'off') return;
+    setTimeout(async () => {
+      try {
+        if (!(await this.through())) await this.refresh(true);
+      } catch (e: any) { this.log.warn(`The first roll-up was not built: ${e?.message}`); }
+    }, 90_000).unref();
+  }
 
   /** the date the roll-up is complete through, or null when it has never been built */
   async through(): Promise<string | null> {

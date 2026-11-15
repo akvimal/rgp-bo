@@ -43,6 +43,7 @@ export class HrKpiComponent implements OnInit {
   stateText(i: any): string {
     if (i.state === "PENDING") return "Not rated yet";
     if (i.state === "NA") return i.na_reason || "Not applicable";
+    if (i.gate) return i.passed ? "Gate met" : "Gate not met";
     return `${i.final_points} / ${i.max}`;
   }
 

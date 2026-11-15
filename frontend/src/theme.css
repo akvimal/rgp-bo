@@ -73,6 +73,8 @@ h1, h2, h3, h4, h5, h6,
 .page-head > h1 { margin: 0; padding: .4rem 0; font-size: 1.25rem; white-space: nowrap; align-self: center; }
 .page-head > nav, .page-head > ul.nav, .page-head > app-purchase-header, .page-head > app2-reports-tabs { flex: 0 1 auto; min-width: 0; margin: 0 !important; border: 0 !important; display: block; }
 .page-head nav.navbar, .page-head nav.navbar.bg-light, .page-head nav.page-menu { border: 0 !important; margin: 0 !important; padding: 0 !important; }
+/* a tab list is a row: the block rule above is for nav wrappers, and would stack the tabs of a ul.nav one under another */
+.page-head > ul.nav { display: flex; }
 .page-head ul.nav { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; border: 0 !important; margin: 0 !important; scrollbar-width: none; }
 .page-head ul.nav::-webkit-scrollbar { display: none; }
 .page-head .nav-link, .page-head .page-menu a { white-space: nowrap; padding: .5rem .85rem; }

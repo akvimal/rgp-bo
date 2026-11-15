@@ -12,7 +12,7 @@ import { DashboardService } from "../dashboard.service";
     selector: 'app-finance-matrix',
     styles: [
         ':host { display: block; } .mx th, .mx td { white-space: nowrap; } .mx .first { position: sticky; left: 0; background: var(--bs-body-bg, #fff); z-index: 1; min-width: 12rem; }',
-        '.mx tr.sec td { background: var(--bs-light, #f1f3f5); font-weight: 600; cursor: pointer; } .mx tr.sum td { font-weight: 600; border-top: 2px solid #adb5bd; } .mx .cell { cursor: pointer; }'
+        '.mx tr.sec td { background: rgba(128, 128, 128, .16); color: inherit; font-weight: 600; cursor: pointer; } .mx tr.sum td { font-weight: 600; border-top: 2px solid #adb5bd; } .mx .cell { cursor: pointer; }'
     ],
     template: `
     <section class="card mb-3" aria-label="Money by category" data-testid="finance-matrix">
@@ -58,7 +58,7 @@ import { DashboardService } from "../dashboard.service";
                     <td class="text-end" *ngIf="data.compare">{{s.change === null ? '' : (s.change | number:'1.0-1') + '%'}}</td></tr>
                   <ng-container *ngIf="!closed[s.cls]">
                     <tr *ngFor="let r of s.rows" [attr.data-testid]="'matrix-row'">
-                      <td class="first ps-4">{{r.category}} <span class="badge bg-warning text-dark" *ngIf="r.unclassified">no category</span> <span class="text-muted small" *ngIf="s.rows.length > 1 && r.grp !== r.category">{{r.grp}}</span></td>
+                      <td class="first ps-4">{{r.category}} <span class="badge bg-warning text-dark" *ngIf="r.unclassified">no category</span> <span class="text-muted small" *ngIf="s.rows.length > 1 && r.grp !== r.category && s.cls !== 'INCOME' && s.cls !== 'INCOME_REDUCTION' && s.cls !== 'COST_OF_GOODS'">{{r.grp}}</span></td>
                       <td class="text-end cell" *ngFor="let c of r.cells; let i = index" (click)="open(s.cls, r, data.months[i])" [class.text-muted]="!c">{{c ? (c | number:'1.0-0') : '-'}}</td>
                       <td class="text-end cell fw-semibold" (click)="open(s.cls, r, null)">{{r.total | number:'1.0-0'}}</td>
                       <td class="text-end">{{r.pct === null ? '' : r.pct + '%'}}</td>

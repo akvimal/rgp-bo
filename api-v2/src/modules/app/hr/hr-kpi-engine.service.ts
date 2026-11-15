@@ -20,6 +20,7 @@ export const SYSTEM_MEASURES = [
   { key: 'AUDITS_LATE', label: 'Late or overdue stock audits', unit: 'audits', direction: 'lower', hint: 'Stock audits assigned to the person that were finished after the due date, or are still open past it.' },
   { key: 'SUGGESTIONS_ADDED', label: 'Cross-sell / up-sell suggestions taken', unit: 'suggestions', direction: 'higher', hint: 'Suggestions shown at the counter that the person added to a bill in the month.' },
   { key: 'ABSENT_DAYS', label: 'Absent days', unit: 'days', direction: 'lower', hint: 'Marked absent in attendance (a half day counts as 0.5).' },
+  { key: 'CUSTOMER_CAPTURE', label: 'Bills with a named customer', unit: '%', direction: 'higher', hint: "Share of the person's completed bills that carry a named customer (a mobile number, or a name and location). A bill with no customer, or the placeholder customer, does not count." },
 ];
 const MEASURE = (key: string) => SYSTEM_MEASURES.find(m => m.key === key);
 
@@ -43,10 +44,20 @@ export function pctFor(rule: any, raw: number): number {
   return 0;
 }
 
+/** whether a gate is met: a figure that should stay low must not pass the limit, one that should stay high must reach it */
+export function gatePassed(direction: string | null | undefined, limit: number, raw: number): boolean {
+  return direction === 'higher' ? raw >= limit : raw <= limit;
+}
+
 /** a rule must make sense for the measure it is attached to */
 export function checkRule(key: string, rule: any) {
   const m = MEASURE(key);
   if (!m) throw new BadRequestException('Choose what the system should measure.');
+  if (rule?.kind === 'gate') {
+    const limit = Number(rule.limit);
+    if (!Number.isFinite(limit) || limit < 0) throw new BadRequestException("A gate's limit must be zero or more.");
+    return { kind: 'gate', limit };
+  }
   if (rule?.kind === 'steps') {
     if (m.direction !== 'lower') throw new BadRequestException(`${m.label}: use a target and a floor, since a bigger figure is better.`);
     const steps = Array.isArray(rule.steps) ? rule.steps : [];
@@ -116,6 +127,18 @@ export class HrKpiEngine {
             and sh.shift_date >= $2::date and sh.shift_date < ($2::date + interval '1 month')`, [uids, start]);
       if (c.closed === 0 || c.closed < minActivity) return { na: `${c.closed} shifts closed; ${Math.max(minActivity, 1)} needed` };
       return { raw: r2(c.total), evidence: `${c.off} of ${c.closed} shifts off, Rs ${r2(c.total)} in all` };
+    }
+    if (key === 'CUSTOMER_CAPTURE') {
+      // named = a customer on the bill who is not the counter placeholder (mobile 0000000000) and has a name
+      const [c] = await this.manager.query(
+        `select count(*)::int as bills,
+                count(*) filter (where c.id is not null and coalesce(c.mobile, '') <> '0000000000' and btrim(coalesce(c.name, '')) <> '')::int as named
+           from sale s left join customer c on c.id = s.customer_id
+          where s.status = 'COMPLETE' and coalesce(s.acting_user_id, s.created_by) = any($1::int[])
+            and s.bill_date >= $2::date and s.bill_date < ($2::date + interval '1 month')`, [uids, start]);
+      if (c.bills < minActivity || c.bills === 0) return { na: `Only ${c.bills} bills; ${Math.max(minActivity, 1)} needed` };
+      const pct = r1(c.named * 100 / c.bills);
+      return { raw: pct, evidence: `${c.named} of ${c.bills} bills had a named customer (${pct}%)` };
     }
     if (key === 'GRIEVANCES') {
       const [g] = await this.manager.query(
@@ -210,7 +233,7 @@ export class HrKpiEngine {
         where e.on_payroll and e.join_date < ($1::date + interval '1 month') and (e.exit_date is null or e.exit_date >= $1::date)
         order by coalesce(e.full_name, u.full_name)`, [start]);
     const metrics = await this.manager.query(
-      `select id, name, description, max_points::float as max, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions
+      `select id, name, description, max_points::float as max, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions, is_gate
          from hr_kpi_metric where active order by display_order, name`);
     const ratings = await this.manager.query(
       `select employee_id, metric_id, rating::float as rating, override_points::float as override_points, override_reason, note from hr_kpi_rating where period = $1`, [period]);
@@ -233,7 +256,21 @@ export class HrKpiEngine {
           unit: MEASURE(m.system_key)?.unit || null, scale: m.rating_scale, rule: m.rule ?? null, direction: MEASURE(m.system_key)?.direction ?? null,
           rating: rt?.rating ?? null, note: rt?.note ?? null, override_points: rt?.override_points ?? null, override_reason: rt?.override_reason ?? null,
           state: 'SCORED', na_reason: null, raw: null, evidence: null, points: null, final_points: null,
+          gate: !!m.is_gate, passed: null,
         };
+        if (m.is_gate) {
+          // a gate carries no points: it is met or not. A system gate is a figure against a limit; a manual gate is confirmed by the manager (the top rating is a pass).
+          item.override_points = null;
+          if (m.source === 'SYSTEM') {
+            const r: any = await this.raw(m.system_key, e, start, m.min_activity || 0);
+            if (r.na) { item.state = 'NA'; item.na_reason = r.na; }
+            else { item.raw = r.raw; item.evidence = r.evidence; item.passed = gatePassed(MEASURE(m.system_key)?.direction, Number(m.rule?.limit), r.raw); }
+          } else if (item.rating === null) item.state = 'PENDING';
+          else item.passed = item.rating >= m.rating_scale;
+          if (item.state === 'SCORED') { item.points = 0; item.final_points = 0; }
+          items.push(item);
+          continue;
+        }
         if (m.source === 'SYSTEM') {
           const r: any = await this.raw(m.system_key, e, start, m.min_activity || 0);
           if (r.na) { item.state = 'NA'; item.na_reason = r.na; }
@@ -247,15 +284,19 @@ export class HrKpiEngine {
         else if (item.state === 'SCORED') item.final_points = item.points;
         items.push(item);
       }
-      const scored = items.filter(i => i.state === 'SCORED');
+      const scored = items.filter(i => i.state === 'SCORED' && !i.gate);
       const total = r1(scored.reduce((t, i) => t + i.final_points, 0));
       const max = r1(scored.reduce((t, i) => t + i.max, 0));
       const percent = r1(max > 0 ? total * 100 / max : 0);
       const band = bandFor(bandsFor(e.position_id, e.role_name), percent);
+      // a gate not met means no incentive this month, whatever the points
+      const gateFailed = items.filter(i => i.gate && i.state === 'SCORED' && i.passed === false).map(i => i.name);
       out.push({
         employee_id: e.id, user_id: e.user_id, role_name: e.role_name, position_id: e.position_id, name: e.name, designation: e.designation, emp_type: e.emp_type, store_id: e.store_id, store_ids: e.store_ids,
         items, pending: items.filter(i => i.state === 'PENDING').map(i => i.name),
-        draft: { total, max, percent, band_label: band?.label ?? null, incentive_percent: band?.pct ?? 0, incentive_amount: band?.amt ?? null },
+        draft: gateFailed.length
+          ? { total, max, percent, band_label: 'Gate not met', incentive_percent: 0, incentive_amount: band?.amt === null || band?.amt === undefined ? null : 0, gate_failed: gateFailed }
+          : { total, max, percent, band_label: band?.label ?? null, incentive_percent: band?.pct ?? 0, incentive_amount: band?.amt ?? null, gate_failed: [] as string[] },
         finalised: !!review, review: review && {
           id: review.id, total_points: +review.total_points, max_points: +review.max_points, percent: +review.percent, band_label: review.band_label,
           incentive_percent: +review.incentive_percent, incentive_amount: review.incentive_amount === null || review.incentive_amount === undefined ? null : +review.incentive_amount, scores: review.scores, note: review.note, scored_on: review.scored_on,
@@ -299,6 +340,7 @@ export class HrKpiEngine {
     if (!d) throw new NotFoundException('That staff member was not employed in that month.');
     const it = d.items.find((i: any) => i.metric_id === Number(b?.metric_id));
     if (!it) throw new BadRequestException('That measure does not apply to this person.');
+    if (it.gate) throw new BadRequestException(`${it.name} is a gate: it is met or not met, so it has no points to override. Correct the rating or the figure behind it.`);
     if (d.locked) throw new BadRequestException(d.payroll_locked ? 'Payroll for that month is approved.' : 'That month is finalised; reopen it first.');
     const clearing = b.points === null || b.points === '' || b.points === undefined;
     const pts = clearing ? null : Number(b.points);
@@ -333,6 +375,7 @@ export class HrKpiEngine {
       const scores = d.items.filter((i: any) => i.state === 'SCORED').map((i: any) => ({
         metric_id: i.metric_id, name: i.name, max: i.max, points: i.final_points, source: i.source, raw: i.raw, unit: i.unit, evidence: i.evidence,
         rating: i.rating, scale: i.source === 'MANUAL' ? i.scale : null, computed: i.points, overridden: i.override_points !== null, override_reason: i.override_reason, note: i.note,
+        gate: !!i.gate, passed: i.passed,
       }));
       await this.manager.query(
         `insert into hr_kpi_review (employee_id, period, scores, total_points, max_points, percent, band_label, incentive_percent, incentive_amount, note, scored_by)
