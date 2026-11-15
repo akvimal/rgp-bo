@@ -83,7 +83,6 @@ export class InvoiceViewService {
                   when w.total - w.paid <= 0.005 then 'Paid'
                   when w.stored_status = 'On Hold' then 'On Hold'
                   when w.needs_appr then 'Awaiting approval'
-                  when w.due_date < current_date then 'Overdue'
                   when w.paid > 0.005 then 'Part Paid'
                   else 'Unpaid' end as payment_status,
              case when w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.due_date < current_date
