@@ -1068,6 +1068,60 @@ export class PurchaseInvoiceService {
         return { written: !!confirm, results };
       }
 
+      // ---------------------------------------------------------------- line totals check
+      /** a line's total is qty x rate x (1 - discount), before tax: the SQL for the lines whose stored total is not that (beyond a few paise, or 0.3%) */
+      private static readonly LINE_OFF = `abs(x.total::numeric - x.qty * x.ptr_value::numeric * (1 - coalesce(x.disc_pcnt, 0)::numeric / 100.0)) > greatest(0.06, 0.003 * x.total::numeric)`;
+
+      /**
+       * Lines of completed invoices whose stored total is not qty x rate x (1 - discount) (a discount not taken off, or a line edited by hand), which is what throws
+       * an invoice's total and balance off. Business Head only. With an invoice id, that invoice; otherwise every completed invoice still owing (at most 600 lines).
+       */
+      async lineCheck(userid:number, invoiceid?:number){
+        await this.needOwner(userid, 'check line totals');
+        const rows = await this.manager.query(
+          `select i.id as invoice_id, i.invoice_no, v.business_name as vendor, x.id as line_id, p.title as product, x.qty::float8 as qty, round(x.ptr_value::numeric, 2)::float8 as rate,
+                  coalesce(x.disc_pcnt, 0)::float8 as disc, coalesce(x.tax_pcnt, 0)::float8 as tax, x.total::float8 as stored,
+                  round((x.qty * x.ptr_value::numeric * (1 - coalesce(x.disc_pcnt, 0)::numeric / 100.0)), 2)::float8 as should_be,
+                  coalesce(i.total, 0)::float8 as invoice_total,
+                  coalesce((select sum(amount) from vendor_payment where invoice_id = i.id and active and not archive), 0)::float8 as paid
+             from purchase_invoice_item x join purchase_invoice i on i.id = x.invoice_id join vendor v on v.id = i.vendor_id join product p on p.id = x.product_id
+            where i.status = 'COMPLETE' and i.active and not i.archive and x.active and not x.archive and x.status not in ('DISPUTED', 'REJECTED')
+              and ($1::int is null or i.id = $1) and ${PurchaseInvoiceService.LINE_OFF}
+              and ($1::int is not null or coalesce(i.total, 0) - coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0) > 0.005)
+            order by i.invoice_date desc, i.id desc, x.id limit 600`, [invoiceid ?? null]);
+        return { rows: rows.map((r:any) => ({ ...r, stored: r2(r.stored), should_be: r2(r.should_be), difference: r2(r.should_be - r.stored) })) };
+      }
+
+      /**
+       * Puts each off line's total back to qty x rate x (1 - discount); the invoice total, its GST split and the balance then follow (as whenever a line changes).
+       * Business Head only. Without `confirm` nothing is changed: it says what would be. An invoice that would then come to less than is already paid on it is left
+       * alone. Every line changed is recorded in the audit trail with the old and the new total.
+       */
+      async lineFix(userid:number, invoiceIds:any, confirm:boolean){
+        await this.needOwner(userid, 'correct line totals');
+        const list = Array.from(new Set((Array.isArray(invoiceIds) ? invoiceIds : []).map(Number).filter((n:number) => Number.isInteger(n) && n > 0))).slice(0, 200) as number[];
+        if(!list.length) throw new BadRequestException('Choose the invoices to correct.');
+        const results: any[] = [];
+        for(const id of list){
+          const { rows } = await this.lineCheck(userid, id);
+          if(!rows.length){ results.push({ id, action: 'unchanged', reason: 'No line is off.' }); continue; }
+          const before = await this.expectedTotal(id);
+          // what the invoice would come to: each corrected line adds its difference with its GST (cash discount ignored in this preview)
+          const after = r2(before + rows.reduce((t:number, l:any) => t + l.difference * (1 + l.tax / 100), 0));
+          const paid = rows[0].paid;
+          if(paid > after + 0.005){ results.push({ id, invoice_no: rows[0].invoice_no, lines: rows.length, from: before, to: after, action: 'skipped', reason: `Rs ${r2(paid).toFixed(2)} is already paid, more than the corrected lines come to (Rs ${after.toFixed(2)}). Sort it out by hand.` }); continue; }
+          if(confirm){
+            for(const l of rows){
+              await this.updateItems([+l.line_id], { total: l.should_be }, userid);
+              await this.audit.record({ userId: userid, action: 'invoice.line_total_corrected', entityType: 'purchases', entityId: id,
+                summary: `invoice ${l.invoice_no}: ${l.product} line total corrected from ${l.stored.toFixed(2)} to ${l.should_be.toFixed(2)} (qty x rate less discount)`, details: { line: +l.line_id, from: l.stored, to: l.should_be } });
+            }
+          }
+          results.push({ id, invoice_no: rows[0].invoice_no, lines: rows.length, from: before, to: after, action: confirm ? 'corrected' : 'would correct' });
+        }
+        return { written: !!confirm, results };
+      }
+
       /** what the vendor billed on the lines still in play: a line the vendor agreed to drop counts at its original value, a line in dispute is left out */
       async billedNet(invoiceid:number){
         const lines = await this.manager.query(

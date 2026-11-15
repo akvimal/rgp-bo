@@ -77,12 +77,15 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     reverseReason = '';
 
     // invoice totals check (Business Head): invoices whose amount payable is not what their lines come to
-    totals: any = { open: false, loading: false, fixing: false, rows: [], checked: 0, error: '', done: null };
+    totals: any = { open: false, loading: false, fixing: false, rows: [], checked: 0, error: '', done: null, lines: [], lineDone: null };
+
+    get lineInvoiceIds(): number[] { return Array.from(new Set((this.totals.lines || []).map((l: any) => +l.invoice_id))) as number[]; }
 
     get fixableTotals(): any[] { return (this.totals.rows || []).filter((r: any) => r.kind === 'TOTAL'); }
 
     openTotals() {
-        this.totals = { open: true, loading: true, fixing: false, rows: [], checked: 0, error: '', done: null };
+        this.totals = { open: true, loading: true, fixing: false, rows: [], checked: 0, error: '', done: null, lines: [], lineDone: null };
+        this.service.lineTotalCheck().subscribe((r: any) => { this.totals.lines = r.rows || []; }, () => {});
         this.service.totalCheck().subscribe(
             (r: any) => { this.totals.loading = false; this.totals.rows = r.rows || []; this.totals.checked = r.checked || 0; },
             (e: any) => { this.totals.loading = false; this.totals.error = e?.error?.message || 'The check could not be done.'; });
@@ -95,6 +98,15 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
         this.service.totalFix(ids, true).subscribe(
             (r: any) => { this.totals.fixing = false; this.totals.done = r.results || []; this.reload(); this.openTotalsAgain(); },
             (e: any) => { this.totals.fixing = false; this.totals.error = e?.error?.message || 'The totals could not be corrected.'; });
+    }
+
+    fixLines() {
+        const ids = this.lineInvoiceIds;
+        if (!ids.length || this.totals.fixing) return;
+        this.totals.fixing = true; this.totals.error = '';
+        this.service.lineTotalFix(ids, true).subscribe(
+            (r: any) => { this.totals.fixing = false; this.totals.lineDone = r.results || []; this.reload(); this.service.lineTotalCheck().subscribe((x: any) => { this.totals.lines = x.rows || []; }); this.openTotalsAgain(); },
+            (e: any) => { this.totals.fixing = false; this.totals.error = e?.error?.message || 'The line totals could not be corrected.'; });
     }
 
     /** after a correction: look again, and keep what was done on show */

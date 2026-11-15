@@ -94,6 +94,18 @@ export class PurchaseInvoiceController {
       return this.purchaseInvoiceService.totalFix(currentUser.id, body?.ids, body?.confirm === true);
     }
 
+    /** Business Head: lines whose total is not qty x rate less discount (the usual reason an invoice total is off). ?invoiceid= checks one. */
+    @Get('/line-check')
+    async lineCheck(@Query('invoiceid') invoiceid:string, @User() currentUser:any) {
+      return this.purchaseInvoiceService.lineCheck(currentUser.id, /^[0-9]+$/.test(String(invoiceid ?? '')) ? +invoiceid : undefined);
+    }
+
+    /** Business Head: puts those line totals right (the invoice total follows). Without confirm it only says what would change. */
+    @Post('/line-fix')
+    async lineFix(@Body() body:any, @User() currentUser:any) {
+      return this.purchaseInvoiceService.lineFix(currentUser.id, body?.ids, body?.confirm === true);
+    }
+
     @Get('/outstanding')
     async findOutstanding(@Query() query: any) {
       return this.purchaseInvoiceService.findOutstanding(query);

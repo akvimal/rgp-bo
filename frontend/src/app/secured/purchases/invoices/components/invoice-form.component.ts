@@ -7,6 +7,7 @@ import { Invoice } from "../invoice.model";
 import { InvoiceService } from "../invoices.service";
 import { PurchaseOrderService } from "../../requests/purchase-order.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
+import { UsersService } from "../../../settings/users/users.service";
 import { FileUploadService } from "../../../documents/file-upload.service";
 import { ProductsService } from "../../../products/products.service";
 import { isValidGstin } from "../../vendors/gst-util";
@@ -94,7 +95,8 @@ export class InvoiceFormComponent implements OnInit {
       private poService:PurchaseOrderService,
       private files:FileUploadService,
       private productsService:ProductsService,
-      private storeContext:StoreContextService){}
+      private storeContext:StoreContextService,
+      private users:UsersService){}
 
     get id(): any { return this.route.snapshot.paramMap.get('id'); }
     /** a received invoice keeps what was received: only the due date, reference and notes change */
@@ -114,7 +116,17 @@ export class InvoiceFormComponent implements OnInit {
     get vendor(): any { return this.vendors.find(v => +v.id === +this.form.value.vendorid) || null; }
     get terms(): number { return +(this.vendor?.paymenttermsdays || 0); }
 
+    /** the Business Head (and owner-operator) can change a received invoice; everyone else can only finish a draft */
+    isOwner = false;
+    private applyLock(){
+      if(!this.locked) return;
+      const fixed = ['storeid','purchaseorderid'];
+      if(!this.awaiting) fixed.push('invoiceno','invoicedate','printedtotal','suppliergstin','supplytype','itceligibility','reversecharge','challanno','challandate');
+      fixed.forEach(k => this.isOwner ? this.form.controls[k].enable() : this.form.controls[k].disable());
+    }
+
     ngOnInit(){
+      this.users.getCurrentUser().subscribe((u:any) => { this.isOwner = ['Business Head', 'Owner-operator'].includes(u?.rolename); this.applyLock(); });
       this.storeContext.stores$.subscribe((stores:any) => {
         this.stores = stores || [];
         if(!this.id && !this.form.controls['storeid'].value){
@@ -145,11 +157,7 @@ export class InvoiceFormComponent implements OnInit {
         this.showChallan = !!(data.challanno || data.challanpath || data.challandate) || (!data.invoiceno && data.status !== 'NEW');      // opened when a challan is recorded, or the receipt awaits its invoice
         this.form.controls['vendorid'].disable();
         // a received invoice is fixed, except that a receipt still awaiting its invoice can take the invoice's number, date, total and GST details
-        if(this.locked){
-          const fixed = ['storeid','purchaseorderid'];
-          if(!this.awaiting) fixed.push('invoiceno','invoicedate','printedtotal','suppliergstin','supplytype','itceligibility','reversecharge','challanno','challandate');
-          fixed.forEach(k => this.form.controls[k].disable());
-        }
+        this.applyLock();
         this.loadOrders(data.vendorid);
         // a draft made from a scanned copy comes back with its lines, as they were left
         if(data.status === 'NEW') this.loadScan(id);

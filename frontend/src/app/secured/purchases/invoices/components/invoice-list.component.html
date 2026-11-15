@@ -41,6 +41,21 @@
           </tbody>
         </table>
       </div>
+      <div *ngIf="totals.lines.length" class="mt-3" data-testid="inv-lines-panel">
+        <h3 class="h6 mb-1">Line totals that are not qty &times; rate less discount</h3>
+        <div class="small text-muted mb-2">A line's total is its quantity times the rate, less the discount, before tax. These lines are stored differently (a discount not taken off, or a line edited by hand), which throws the invoice total off. Correcting sets each to qty &times; rate less discount; the invoice total and balance follow. Each change is recorded.</div>
+        <div class="table-responsive"><table class="table table-sm align-middle mb-2">
+          <thead><tr><th>Invoice</th><th>Product</th><th class="text-end">Qty</th><th class="text-end">Rate</th><th class="text-end">Disc %</th><th class="text-end">Stored</th><th class="text-end">Should be</th></tr></thead>
+          <tbody><tr *ngFor="let l of totals.lines" [attr.data-testid]="'inv-lines-row-' + l.line_id">
+            <td><a [routerLink]="['/secure/purchases/invoices/items', l.invoice_id]">{{l.invoice_no}}</a></td><td>{{l.product}}</td>
+            <td class="text-end">{{l.qty}}</td><td class="text-end">{{l.rate | number:'1.2-2'}}</td><td class="text-end">{{l.disc}}</td>
+            <td class="text-end">{{l.stored | number:'1.2-2'}}</td><td class="text-end">{{l.should_be | number:'1.2-2'}}</td></tr></tbody>
+        </table></div>
+        <button type="button" class="btn btn-warning btn-sm" [disabled]="totals.fixing" (click)="fixLines()" data-testid="inv-lines-fix">Correct {{totals.lines.length}} line{{totals.lines.length === 1 ? '' : 's'}} on {{lineInvoiceIds.length}} invoice{{lineInvoiceIds.length === 1 ? '' : 's'}}</button>
+      </div>
+      <div class="small mt-2" *ngIf="totals.lineDone" data-testid="inv-lines-done">
+        <div *ngFor="let d of totals.lineDone" [class.text-danger]="d.action === 'skipped'">{{d.invoice_no || d.id}}: {{d.action}}<span *ngIf="d.action === 'corrected'"> ({{d.lines}} line{{d.lines === 1 ? '' : 's'}}, invoice {{d.from | number:'1.2-2'}} &rarr; {{d.to | number:'1.2-2'}})</span><span *ngIf="d.reason"> - {{d.reason}}</span></div>
+      </div>
       <button type="button" class="btn btn-warning btn-sm" *ngIf="fixableTotals.length" [disabled]="totals.fixing" (click)="fixTotals()" data-testid="inv-totals-fix">Correct {{fixableTotals.length}} invoice{{fixableTotals.length === 1 ? '' : 's'}} to what their lines come to</button>
       <div class="small mt-2" *ngIf="totals.done" data-testid="inv-totals-done">
         <div *ngFor="let d of totals.done" [class.text-danger]="d.action === 'skipped'">{{d.invoice_no || d.id}}: {{d.action}}<span *ngIf="d.action === 'corrected'"> ({{d.from | number:'1.2-2'}} &rarr; {{d.to | number:'1.2-2'}})</span><span *ngIf="d.reason"> - {{d.reason}}</span></div>

@@ -115,6 +115,15 @@ export class InvoiceService {
         return this.http.get<any>(`${this.apiurl}/purchases/total-check`, { params: invoiceid ? { invoiceid: String(invoiceid) } : {} });
     }
 
+    /** Business Head: lines whose total is not qty x rate less discount, and putting them right (nothing is written without confirm) */
+    lineTotalCheck(invoiceid?:number){
+        return this.http.get<any>(`${this.apiurl}/purchases/line-check`, { params: invoiceid ? { invoiceid: String(invoiceid) } : {} });
+    }
+
+    lineTotalFix(ids:number[], confirm:boolean){
+        return this.http.post<any>(`${this.apiurl}/purchases/line-fix`, { ids, confirm });
+    }
+
     totalFix(ids:number[], confirm:boolean){
         return this.http.post<any>(`${this.apiurl}/purchases/total-fix`, { ids, confirm });
     }

@@ -51,6 +51,11 @@ with inv as (
   select x.invoice_id, count(*)::int as n
     from purchase_invoice_item x where x.active and not x.archive and x.status not in ('DISPUTED', 'REJECTED')
      and abs(x.total::numeric - x.qty * x.ptr_value::numeric * (1 - coalesce(x.disc_pcnt, 0)::numeric / 100.0)) > greatest(0.06, 0.003 * x.total::numeric) group by x.invoice_id
+), rate_calc as (   -- the same lines worked out again from qty x rate x (1 - discount), then GST
+  select x.invoice_id,
+         coalesce(sum(round(x.qty * x.ptr_value::numeric * (1 - coalesce(x.disc_pcnt, 0)::numeric / 100.0), 2)), 0) as goods,
+         coalesce(sum(round(x.qty * x.ptr_value::numeric * (1 - coalesce(x.disc_pcnt, 0)::numeric / 100.0), 2) * (1 + coalesce(x.tax_pcnt, 0)::numeric / 100.0)), 0) as gross
+    from purchase_invoice_item x where x.active and not x.archive and x.status not in ('DISPUTED', 'REJECTED') group by x.invoice_id
 ), held as (
   select x.invoice_id, count(*) filter (where x.status = 'DISPUTED')::int as disputed, count(*) filter (where x.status = 'REJECTED')::int as rejected
     from purchase_invoice_item x where x.active and not x.archive group by x.invoice_id
@@ -63,7 +68,7 @@ with inv as (
   select i.id, coalesce(i.invoice_no, 'challan ' || i.challan_no) as no, v.business_name as vendor, i.status, coalesce(i.payment_status, 'Unpaid') as stored_status,
          i.invoice_date, coalesce(i.due_date, i.invoice_date) as due_date,
          i.printed_total::numeric as printed, coalesce(i.cash_discount, 0)::numeric as cash_discount,
-         coalesce(l.n, 0) as n, round(coalesce(l.goods, 0), 2) as lines_pre_tax, round(coalesce(l.gross, 0), 2) as lines_with_gst,
+         coalesce(l.n, 0) as n, round(coalesce(rc.goods, 0), 2) as from_rates_pre_tax, round(coalesce(rc.gross, 0), 2) as from_rates_with_gst, round(coalesce(l.goods, 0), 2) as lines_pre_tax, round(coalesce(l.gross, 0), 2) as lines_with_gst,
          round(case when i.cd > 0 and coalesce(l.goods, 0) > i.cd then coalesce(l.gross, 0) * (l.goods - i.cd) / l.goods else coalesce(l.gross, 0) end, 2) as lines_net,
          round(case when i.cd > 0 and coalesce(b.goods, 0) > i.cd then coalesce(b.gross, 0) * (b.goods - i.cd) / b.goods else coalesce(b.gross, 0) end, 2) as billed_net,
          coalesce(c.credits, 0) as credits,
@@ -72,7 +77,7 @@ with inv as (
          coalesce(p.paid, 0) as paid, coalesce(p.entries, 0) as pay_entries, coalesce(p.reversals, 0) as pay_reversals,
          coalesce(o.n, 0) as odd_lines, coalesce(h.disputed, 0) as disputed, coalesce(h.rejected, 0) as rejected
     from inv i left join vendor v on v.id = i.vendor_id left join live l on l.invoice_id = i.id left join billed b on b.invoice_id = i.id
-    left join odd o on o.invoice_id = i.id left join held h on h.invoice_id = i.id left join cr c on c.invoice_id = i.id left join pay p on p.invoice_id = i.id
+    left join rate_calc rc on rc.invoice_id = i.id left join odd o on o.invoice_id = i.id left join held h on h.invoice_id = i.id left join cr c on c.invoice_id = i.id left join pay p on p.invoice_id = i.id
 ), g as (
   select f.*,
          case when f.printed > 0 then round(greatest(0, f.printed + (f.lines_net - f.billed_net) - f.credits), 2)
@@ -90,7 +95,7 @@ for n in "$@"; do
   echo "=================================================================  invoice matching '$safe'"
   $PSQL -P pager=off -x -c "${FIGURES//@N@/$safe}
 select id, no, vendor, status, stored_status as stored_payment_status, invoice_date, due_date,
-       printed as net_total_entered, cash_discount, n as live_lines, lines_pre_tax, lines_with_gst, lines_net as lines_net_of_cash_discount, billed_net, credits,
+       printed as net_total_entered, cash_discount, n as live_lines, lines_pre_tax as stored_lines_pre_tax, lines_with_gst as stored_lines_with_gst, from_rates_pre_tax, from_rates_with_gst, lines_net as lines_net_of_cash_discount, billed_net, credits,
        payable as payable_now, stored_total, header_parts as header_gst_parts_plus_roundoff,
        paid, balance_stored as balance_from_stored_total, balance_payable as balance_from_payable
   from h2 order by id desc limit 5;"
@@ -102,7 +107,10 @@ select '[' || id || ' ' || no || '] ' || reason from (
   union all select id, no, 2, 'The stored total (' || stored_total || ') differs from what is payable (' || payable || ') by ' || round(payable - stored_total, 2) || '. The lists use the stored total, so their balance is off by that. Fix: as Business Head run Check totals (preview, then fix) or  POST /purchases/total-fix.' from h2 where abs(stored_total - payable) > 0.005
   union all select id, no, 3, 'The stored total is the payable amount rounded to the rupee (' || stored_total || ' vs ' || payable || '): an older rule. Check totals puts it to the paisa.' from h2 where abs(stored_total - payable) > 0.005 and abs(stored_total - round(payable)) < 0.005
   union all select id, no, 4, 'The lines come to ' || billed_net || ' but the net total entered is ' || printed || ' (' || abs(round(billed_net - printed, 2)) || CASE WHEN billed_net > printed THEN ' more' ELSE ' less' END || '). More than Rs 1 apart means a missing, repeated or mistyped line, or a wrong net total. Payable follows the net total entered.' from h2 where printed > 0 and abs(billed_net - printed) > 1.0001
-  union all select id, no, 5, odd_lines || ' line(s) have a stored total that is not qty x rate x (1 - discount): a line was edited or entered oddly. See the lines below.' from h2 where odd_lines > 0
+  union all select id, no, 5, odd_lines || ' line(s) have a stored total that is not qty x rate x (1 - discount). Worked out from the rates the invoice comes to ' || from_rates_with_gst || ' with GST (' || from_rates_pre_tax || ' before tax), but the stored line totals give ' || lines_with_gst || ' (' || lines_pre_tax || ' before tax): ' || round(from_rates_with_gst - lines_with_gst, 2) || ' apart. The lines are listed next.' from h2 where odd_lines > 0
+  union all select h2.id, h2.no, 5, '  line ' || p.title || ': stored ' || round(x.total::numeric, 2) || ', qty ' || x.qty || ' x rate ' || x.ptr_value || ' less ' || coalesce(x.disc_pcnt, 0) || '% = ' || round(x.qty * x.ptr_value::numeric * (1 - coalesce(x.disc_pcnt, 0)::numeric / 100.0), 2) || ' (' || CASE WHEN abs(x.total::numeric - x.qty * x.ptr_value::numeric) < 0.01 THEN 'the discount was not taken off' ELSE 'differs by ' || round(x.total::numeric - x.qty * x.ptr_value::numeric * (1 - coalesce(x.disc_pcnt, 0)::numeric / 100.0), 2) END || ')'
+    from h2 join purchase_invoice_item x on x.invoice_id = h2.id and x.active and not x.archive and x.status not in ('DISPUTED', 'REJECTED') join product p on p.id = x.product_id
+   where abs(x.total::numeric - x.qty * x.ptr_value::numeric * (1 - coalesce(x.disc_pcnt, 0)::numeric / 100.0)) > greatest(0.06, 0.003 * x.total::numeric)
   union all select id, no, 6, disputed || ' line(s) in dispute and ' || rejected || ' rejected are left out of the lines total until accepted or dropped.' from h2 where disputed > 0 or rejected > 0
   union all select id, no, 7, 'The header GST parts plus round-off (' || header_parts || ') do not add up to the stored total (' || stored_total || '): the GST split is stale. Check totals refreshes it.' from h2 where status = 'COMPLETE' and abs(header_parts - stored_total) > 0.02
   union all select id, no, 8, 'Credits of ' || credits || ' (vendor returns) are taken off what was bought.' from h2 where credits > 0
@@ -118,7 +126,9 @@ select '[' || id || ' ' || no || '] ' || reason from (
   $PSQL -P pager=off -c "
 select p.title as product, x.qty, x.free_qty as free, x.ptr_value as rate, x.disc_pcnt as disc, x.tax_pcnt as tax,
        round((x.qty * x.ptr_value * (1 - coalesce(x.disc_pcnt, 0) / 100.0))::numeric, 2) as qty_x_rate,
-       round(x.total::numeric, 2) as stored_line_total, x.status
+       round(x.total::numeric, 2) as stored_line_total,
+       round(x.total::numeric - x.qty * x.ptr_value::numeric * (1 - coalesce(x.disc_pcnt, 0)::numeric / 100.0), 2) as stored_minus_worked_out,
+       case when abs(x.total::numeric - x.qty * x.ptr_value::numeric * (1 - coalesce(x.disc_pcnt, 0)::numeric / 100.0)) > greatest(0.06, 0.003 * x.total::numeric) then '<< OFF' else '' end as flag, x.status
   from purchase_invoice_item x join purchase_invoice i on i.id = x.invoice_id join product p on p.id = x.product_id
  where upper(coalesce(i.invoice_no, '')) like upper('%$safe%') and x.active and not x.archive order by x.id;"
 
