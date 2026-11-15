@@ -27,7 +27,7 @@ export class HrKpiService {
     const isGate = b?.is_gate === true;
     const max = isGate ? 0 : Number(b?.max_points);
     if (!isGate && (!Number.isFinite(max) || max <= 0 || max > 1000)) throw new BadRequestException('Maximum points must be above 0.');
-    const desc = String(b?.description || '').trim().slice(0, 200) || null;
+    const desc = String(b?.description || '').trim().slice(0, 500) || null;
     const source = b?.source === 'SYSTEM' ? 'SYSTEM' : 'MANUAL';
     let systemKey: string | null = null, rule: any = null;
     if (source === 'SYSTEM') {

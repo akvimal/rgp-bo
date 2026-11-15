@@ -346,6 +346,21 @@ export class HrSetupComponent implements OnInit, OnDestroy {
   get measureUnit(): string { return this.systemMeasures.find(s => s.key === this.mf?.system_key)?.unit || ""; }
 
   systemChanged() { this.mf.rule_kind = this.direction === "higher" ? "linear" : "steps"; }
+  /** the description box: two rows at least, growing with the text */
+  get descRows(): number { const t = String(this.mf?.description || ""); return Math.max(2, Math.min(8, t.split(/\r?\n/).reduce((n: number, l: string) => n + Math.max(1, Math.ceil(l.length / 70)), 0))); }
+
+  /** switching a measure into or out of a gate (also when it already exists): a gate has no points, a manual gate is pass or fail */
+  gateChanged() {
+    const f = this.mf;
+    if (f.is_gate) {
+      f.max_points = 0;
+      if (f.source === "MANUAL") f.rating_scale = 2;
+    } else {
+      if (!(+f.max_points > 0)) f.max_points = 5;
+      if (f.source === "MANUAL" && +f.rating_scale === 2) f.rating_scale = 5;
+      if (f.source === "SYSTEM" && f.system_key) this.systemChanged();
+    }
+  }
   addStep() { const last = this.mf.steps[this.mf.steps.length - 1]; this.mf.steps = [...this.mf.steps, { upto: (last ? +last.upto : 0) + 1, pct: 0 }]; }
   removeStep(i: number) { this.mf.steps = this.mf.steps.filter((_: any, k: number) => k !== i); }
   toggleType(t: string) { const a: string[] = this.mf.applies_types; this.mf.applies_types = a.includes(t) ? a.filter(x => x !== t) : [...a, t]; }

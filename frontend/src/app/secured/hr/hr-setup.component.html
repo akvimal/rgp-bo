@@ -332,8 +332,9 @@
         <div class="col-6"><label class="form-label">Measured by</label>
           <select class="form-select" [(ngModel)]="mf.source" data-testid="hr-set-metric-source"><option value="MANUAL">A manager's rating</option><option value="SYSTEM">The system</option></select></div>
         <div class="col-6 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="mfactive" [(ngModel)]="mf.active"><label class="form-check-label" for="mfactive">Active</label></div></div>
-        <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="mfgate" [(ngModel)]="mf.is_gate" [disabled]="!!mf.id" data-testid="hr-set-metric-gate"><label class="form-check-label" for="mfgate">A gate: no points, and if it is not met the month's incentive is nil</label></div></div>
-        <div class="col-12"><label class="form-label">Description</label><input class="form-control" [(ngModel)]="mf.description" maxlength="200" placeholder="What good looks like"></div>
+        <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="mfgate" [(ngModel)]="mf.is_gate" (ngModelChange)="gateChanged()" data-testid="hr-set-metric-gate"><label class="form-check-label" for="mfgate">A gate: no points, and if it is not met the month's incentive is nil</label></div>
+          <div class="form-text" *ngIf="mf.id" data-testid="hr-set-metric-gate-note">You can switch this on or off. It applies from the months not yet finalised; months already finalised keep their result.<span *ngIf="mf.source === 'SYSTEM'"> A system measure needs its {{mf.is_gate ? 'limit' : 'scoring'}} below.</span></div></div>
+        <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" [rows]="descRows" style="min-height: 4.2rem; resize: vertical" [(ngModel)]="mf.description" maxlength="500" placeholder="What good looks like" data-testid="hr-set-metric-desc"></textarea><div class="form-text text-end">{{(mf.description || '').length}} / 500</div></div>
 
         <div class="col-12 small text-muted" *ngIf="mf.source === 'MANUAL' && mf.is_gate">The manager confirms it each month as Met or Not met.</div>
         <ng-container *ngIf="mf.source === 'MANUAL' && !mf.is_gate">
