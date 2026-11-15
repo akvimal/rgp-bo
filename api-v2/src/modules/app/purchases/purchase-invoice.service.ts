@@ -46,19 +46,18 @@ export class PurchaseInvoiceService {
 
     private getDerivedPaymentStatus(invoice:any, paidAmount:number){
       const total = +(invoice.total || 0);
-      const dueDate = invoice.duedate ? new Date(invoice.duedate) : (invoice.invoicedate ? new Date(invoice.invoicedate) : null);
-      const isOverdue = !!(dueDate && total - paidAmount > 0 && dueDate < new Date(new Date().toDateString()));
+      // payment status is only what has been paid against the invoice total: overdue is not worked out here (the lists show how late a due date is)
 
       if(invoice.paymentstatus === 'On Hold'){
         return 'On Hold';
       }
 
       if(paidAmount <= 0){
-        return isOverdue ? 'Overdue' : 'Unpaid';
+        return 'Unpaid';
       }
 
       if(paidAmount < total){
-        return isOverdue ? 'Overdue' : 'Part Paid';
+        return 'Part Paid';
       }
 
       return 'Paid';
@@ -76,6 +75,9 @@ export class PurchaseInvoiceService {
         paidamount: Math.round(paidamount * 100) / 100,
         balanceamount: Math.round(balanceamount * 100) / 100,
         paymentstatus,
+        // late = past its due date with something still unpaid (for the lists; not part of the payment status)
+        isoverdue: paymentstatus !== 'Paid' && paymentstatus !== 'On Hold' && balanceamount > 0.005
+          && !!(invoice.duedate || invoice.invoicedate) && new Date(invoice.duedate || invoice.invoicedate) < new Date(new Date().toDateString()),
       };
     }
 
@@ -436,7 +438,7 @@ export class PurchaseInvoiceService {
           total: mapped.total,
           paid_amount: mapped.paidamount,
           balance_amount: mapped.balanceamount,
-          is_overdue: mapped.paymentstatus === 'Overdue'
+          is_overdue: mapped.isoverdue
         };
       });
       return { data, total, page: safePage, limit: safeLimit };
@@ -483,7 +485,7 @@ export class PurchaseInvoiceService {
         total: mapped.total,
         paid_amount: mapped.paidamount,
         balance_amount: mapped.balanceamount,
-        is_overdue: mapped.paymentstatus === 'Overdue'
+        is_overdue: mapped.isoverdue
       }));
   }
   
@@ -589,6 +591,10 @@ export class PurchaseInvoiceService {
           .addOrderBy('payments.id', 'DESC')
           .getOne();
 
+        // what is owed on a received invoice is its net total as entered (the lines total when none was entered), never a stored figure that may be stale
+        if(invoice && invoice.status === 'COMPLETE'){
+          try { (invoice as any).total = await this.expectedTotal(+id); } catch { /* keep the stored total */ }
+        }
         return invoice ? this.mapInvoice(invoice) : null;
     }
 

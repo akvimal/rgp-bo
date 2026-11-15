@@ -5,6 +5,7 @@ import { EntityManager, Repository } from "typeorm";
 import { VendorPayment } from "src/entities/vendor-payment.entity";
 import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
 import { AuditService } from "src/core/audit/audit.service";
+import { PurchaseInvoiceService } from "./purchase-invoice.service";
 
 @Injectable()
 export class VendorPaymentService {
@@ -12,6 +13,7 @@ export class VendorPaymentService {
         @InjectRepository(VendorPayment) private readonly paymentRepository: Repository<VendorPayment>,
         @InjectRepository(PurchaseInvoice) private readonly invoiceRepository: Repository<PurchaseInvoice>,
         private readonly audit: AuditService,
+        private readonly invoices: PurchaseInvoiceService,
     ) {}
 
     async create(dto: any, userid: number) {
@@ -185,7 +187,10 @@ export class VendorPaymentService {
         }
 
         const paid = await this.sumActivePayments(tm, invoice.id);
-        const balance = Number(invoice.total || 0) - paid;
+        // what is owed is the invoice's net total as entered (the lines total when none was entered): no overdue or stored figure comes into it
+        let payable = Number(invoice.total || 0);
+        try { payable = await this.invoices.expectedTotal(invoice.id); } catch { /* keep the stored total */ }
+        const balance = payable - paid;
         // vendors round their own bill to the rupee, sometimes up where we round down (3162.49 -> 3163), so up to Re 1 over is a rounding, not an overpayment
         if (amount > balance + 1.005) {
             throw new BadRequestException(
