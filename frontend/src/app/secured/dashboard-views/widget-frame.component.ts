@@ -15,6 +15,8 @@ import { Component, EventEmitter, Input, Output } from "@angular/core";
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
           <h2 class="h6 mb-0">{{title}} <span class="text-muted fw-normal small"><ng-content select="[sub]"></ng-content></span></h2>
           <div class="d-flex gap-2 align-items-center">
+            <span class="small text-muted" *ngIf="asOf" [attr.data-testid]="testid + '-asof'" title="When this figure was worked out. Figures are kept for a while and worked out again on their own.">{{updating ? 'Updating…' : 'As of ' + (asOf | date:'d MMM, h:mm a')}}</span>
+            <button type="button" class="btn btn-sm btn-link p-0" *ngIf="asOf" [disabled]="updating" (click)="refresh.emit()" [attr.data-testid]="testid + '-refresh'">Refresh</button>
             <ng-content select="[actions]"></ng-content>
             <button type="button" class="btn btn-sm btn-link p-0" (click)="info = !info" [attr.aria-expanded]="info" aria-label="What is this?" [attr.data-testid]="testid + '-info'" *ngIf="definition">?</button>
             <a class="small" [routerLink]="drill" *ngIf="drill" [attr.data-testid]="testid + '-open'">Open</a>
@@ -41,6 +43,11 @@ export class WidgetFrameComponent {
     @Input() error = '';
     @Input() empty = false;
     @Input() emptyText = 'Nothing to show yet.';
+    /** when the figure was worked out (the server keeps heavy figures for an hour, a day or a week); set it to show the time and a Refresh link */
+    @Input() asOf: string | null | undefined = null;
+    /** the server has shown the kept figure and is working out a new one */
+    @Input() updating = false;
     @Output() retry = new EventEmitter<void>();
+    @Output() refresh = new EventEmitter<void>();
     info = false;
 }

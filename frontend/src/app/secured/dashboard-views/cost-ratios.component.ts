@@ -1,5 +1,6 @@
-import { Component, Input, OnChanges, SimpleChanges } from "@angular/core";
+import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from "@angular/core";
 import { DashboardService } from "../dashboard.service";
+import { RefreshWatch } from "./refresh-watch";
 
 /**
  * Each cost group as a share of sales over 12 months, with the usual band, so a cost that creeps up shows early
@@ -9,7 +10,7 @@ import { DashboardService } from "../dashboard.service";
     selector: 'app-cost-ratios',
     styles: [':host { display: block; } .spark { display: flex; align-items: flex-end; gap: 2px; height: 28px; } .spark i { display: block; width: 7px; background: #adb5bd; border-radius: 1px; } .spark i.last { background: #1c7ed6; } .spark i.high { background: #e03131; }'],
     template: `
-    <app-widget title="Costs as a share of sales" testid="cost-ratios" [loading]="!data && !error" [error]="error" [empty]="!!data && !data.groups.length" emptyText="No costs recorded in these months." (retry)="load()"
+    <app-widget [asOf]="data?.asOf" [updating]="!!data?.refreshing" (refresh)="load(true)" title="Costs as a share of sales" testid="cost-ratios" [loading]="!data && !error" [error]="error" [empty]="!!data && !data.groups.length" emptyText="No costs recorded in these months." (retry)="load()"
       definition="Each cost group as a share of sales over 12 months, against its usual band: the mean of the earlier months plus or minus one standard deviation.">
       <span sub>last 12 months, before GST</span>
         <ng-container *ngIf="data">
@@ -26,17 +27,19 @@ import { DashboardService } from "../dashboard.service";
         </ng-container>
     </app-widget>`
 })
-export class CostRatiosComponent implements OnChanges {
+export class CostRatiosComponent implements OnChanges, OnDestroy {
+    private rw = new RefreshWatch();
+    ngOnDestroy() { this.rw.stop(); }
     @Input() storeid: number | null = null;
     data: any = null;
     error = '';
     constructor(private dashboard: DashboardService) {}
 
     ngOnChanges(c: SimpleChanges) { if (c.storeid || !this.data) this.load(); }
-    load() {
+    load(force = false) {
         this.error = '';
-        this.dashboard.getFinanceTrend(this.storeid).subscribe({
-            next: (d: any) => { this.data = d; this.error = ''; },
+        this.dashboard.getFinanceTrend(this.storeid, force).subscribe({
+            next: (d: any) => { this.data = d; this.error = ''; this.rw.watch(d, () => this.load()); },
             error: (e) => (this.error = e?.error?.message || 'The ratios could not be loaded.')
         });
     }

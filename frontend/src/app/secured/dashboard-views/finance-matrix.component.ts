@@ -2,6 +2,7 @@ import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from "@angular/
 import { Subscription } from "rxjs";
 import { DashboardFilterService, rangeOf } from "../dashboard-filter.service";
 import { DashboardService } from "../dashboard.service";
+import { RefreshWatch } from "./refresh-watch";
 
 /**
  * Money by category across months (docs/planning/DASHBOARD_FINANCE_HEALTH.md section 2, phase F3): sales, returns, purchases and costs in one table,
@@ -20,6 +21,8 @@ import { DashboardService } from "../dashboard.service";
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
           <h2 class="h6 mb-0">Money by category <span class="text-muted fw-normal small" *ngIf="data">{{label}}, before GST, by invoice or bill date</span></h2>
           <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="small text-muted" *ngIf="data?.asOf" data-testid="matrix-asof" title="When these figures were worked out. They are kept for a day and worked out again on the first open of each day.">{{data.refreshing ? 'Updating…' : 'As of ' + (data.asOf | date:'d MMM, h:mm a')}}</span>
+            <button type="button" class="btn btn-sm btn-link p-0" *ngIf="data?.asOf" [disabled]="data.refreshing" (click)="load(true)" data-testid="matrix-refresh">Refresh</button>
             <select class="form-select form-select-sm w-auto" [(ngModel)]="view" (ngModelChange)="load()" aria-label="What to show" data-testid="matrix-view">
               <option value="pnl">Sales, purchases and costs</option><option value="products">Product categories: sold and bought</option></select>
             <button class="btn btn-sm btn-outline-secondary" (click)="download()" [disabled]="!data" data-testid="matrix-download">Download</button>
@@ -123,7 +126,8 @@ export class FinanceMatrixComponent implements OnChanges, OnDestroy {
     constructor(private dashboard: DashboardService, private filter: DashboardFilterService) {
         this.sub = filter.filter$.subscribe(() => { if (this.first) { this.first = false; return; } this.load(); });
     }
-    ngOnDestroy() { this.sub.unsubscribe(); }
+    private rw = new RefreshWatch();
+    ngOnDestroy() { this.sub.unsubscribe(); this.rw.stop(); }
 
     ngOnChanges(c: SimpleChanges) { if (c.storeid || !this.data) this.load(); }
 
@@ -158,13 +162,13 @@ export class FinanceMatrixComponent implements OnChanges, OnDestroy {
     /** the month range of the shared period, from today's date in India */
     private range(): { from: string; to: string } { return rangeOf(this.filter.value.period); }
 
-    load() {
+    load(force = false) {
         const r = this.range();
-        this.dashboard.getFinanceMatrix({ storeid: this.storeid, from: r.from, to: r.to, view: this.view, compare: this.filter.value.compare }).subscribe({
-            next: (d: any) => { this.data = d; this.error = ''; },
+        this.dashboard.getFinanceMatrix({ storeid: this.storeid, from: r.from, to: r.to, view: this.view, compare: this.filter.value.compare }, force).subscribe({
+            next: (d: any) => { this.data = d; this.error = ''; this.rw.watch(d, () => this.load()); },
             error: (e) => (this.error = e?.error?.message || 'The figures could not be loaded.')
         });
-        this.dashboard.getFinanceUnclassified(this.storeid).subscribe({ next: (u: any) => { this.un = u; for (const e of u.expenses) { const c = (u.categories || []).find((x: any) => x.key === e.key); this.pick[e.key] = this.pick[e.key] || (c && c.flow_class) || 'OPERATING_COST'; this.pickGroup[e.key] = this.pickGroup[e.key] || (c && c.grp) || ''; } }, error: () => (this.un = null) });
+        this.dashboard.getFinanceUnclassified(this.storeid, force).subscribe({ next: (u: any) => { this.un = u; for (const e of u.expenses) { const c = (u.categories || []).find((x: any) => x.key === e.key); this.pick[e.key] = this.pick[e.key] || (c && c.flow_class) || 'OPERATING_COST'; this.pickGroup[e.key] = this.pickGroup[e.key] || (c && c.grp) || ''; } }, error: () => (this.un = null) });
     }
 
     open(cls: string, row: any, month: string | null) {

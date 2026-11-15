@@ -2,13 +2,14 @@ import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from "@angular/
 import { Subscription } from "rxjs";
 import { DashboardService } from "../dashboard.service";
 import { DashboardFilterService, rangeOf } from "../dashboard-filter.service";
+import { RefreshWatch } from "./refresh-watch";
 
 /** The GST position of a month, estimated from the bills, purchase invoices and expenses (owner only). It is not the return. */
 @Component({
     selector: 'app-gst-position',
     styles: [':host { display: block; }'],
     template: `
-    <app-widget title="GST, estimated" testid="gst-position" drill="/secure/gst-filing" [loading]="!data && !error" [error]="error" (retry)="load()"
+    <app-widget [asOf]="data?.asOf" [updating]="!!data?.refreshing" (refresh)="load(true)" title="GST, estimated" testid="gst-position" drill="/secure/gst-filing" [loading]="!data && !error" [error]="error" (retry)="load()"
       definition="Tax collected on sales less tax paid on purchases and costs, for the last month of the chosen period. It is an estimate, not the return.">
       <span sub *ngIf="data">{{data.month}}</span>
       <ng-container *ngIf="data">
@@ -31,7 +32,8 @@ export class GstPositionComponent implements OnChanges, OnDestroy {
     constructor(private dashboard: DashboardService, private filter: DashboardFilterService) {
         this.sub = filter.filter$.subscribe(() => { if (this.first) { this.first = false; return; } this.load(); });
     }
-    ngOnDestroy() { this.sub.unsubscribe(); }
+    private rw = new RefreshWatch();
+    ngOnDestroy() { this.sub.unsubscribe(); this.rw.stop(); }
     ngOnChanges(c: SimpleChanges) { if (c.storeid || !this.data) this.load(); }
 
     /** the last month of the shared period, but never a month that has not begun */
@@ -41,10 +43,10 @@ export class GstPositionComponent implements OnChanges, OnDestroy {
         return to > now ? now : to;
     }
 
-    load() {
+    load(force = false) {
         this.error = '';
-        this.dashboard.getFinanceGst(this.storeid, this.month()).subscribe({
-            next: (d: any) => { this.data = d; this.error = ''; },
+        this.dashboard.getFinanceGst(this.storeid, this.month(), force).subscribe({
+            next: (d: any) => { this.data = d; this.error = ''; this.rw.watch(d, () => this.load()); },
             error: (e) => (this.error = e?.error?.message || 'The GST figures could not be loaded.')
         });
     }

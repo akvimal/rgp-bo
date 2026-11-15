@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
 import { EntityManager } from 'typeorm';
+import { StoredCache } from 'src/core/stored-cache';
 
 /** how many recent days the nightly run rebuilds */
 export const REFRESH_DAYS = 100;
@@ -29,7 +30,11 @@ export class DashboardRollupService implements OnApplicationBootstrap {
   private readonly log = new Logger(DashboardRollupService.name);
   private running = false;
 
-  constructor(@InjectEntityManager() private readonly manager: EntityManager) {}
+  private readonly stored: StoredCache;
+
+  constructor(@InjectEntityManager() private readonly manager: EntityManager) {
+    this.stored = new StoredCache(manager);
+  }
 
   /**
    * The first time (the roll-up has never been built) it is built in the background a minute and a half after the app starts, so the financial
@@ -82,6 +87,10 @@ export class DashboardRollupService implements OnApplicationBootstrap {
         const [n] = await tx.query(`select count(*)::int as n from metric_daily`);
         this.log.log(`Roll-up built through ${yesterday} (${everything ? 'all history' : `last ${REFRESH_DAYS} days`}): ${n.n} rows`);
         return { through: yesterday, rows: n.n, full: everything };
+      }).then(async (r) => {
+        // the money figures kept between opens were worked out on the old roll-up: they stay on show but are worked out again on their next open
+        await this.stored.markStale('daily');
+        return r;
       });
     } finally { this.running = false; }
   }

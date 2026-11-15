@@ -239,3 +239,27 @@ Reported: the dashboard is too long and slow to load, the whole app feels slow, 
   - Migration 204 adds two indexes (sales by store and day, adjustments by store and batch).
 - **Also fixed:** the HR tabs stacked because a stylesheet rule made any `ul.nav` in a page head a block; the matrix's section rows were pale in the dark theme; the product group word after each sales row is gone.
 - **Not measured:** none of this was timed against your data. If the app is still slow, the Network tab (slowest requests) and the database's slow-query log say which read is left.
+
+## Kept figures (tiered cache), built 2026-11-15
+
+The heavy figures are kept in the database between opens (`dashboard_cache`, migration 205) and shown with when they were worked out. How long a figure
+is kept follows how fast its data changes:
+
+| Tier | Figures | Worked out again |
+|---|---|---|
+| live | cash balances (short memory cache, 60 s) | each minute |
+| hourly | health findings, stock on the shelf, what needs a category | after an hour |
+| daily | money by category and month, cost ratios, GST estimate | on the first open of each day (India time), and after the nightly roll-up |
+| weekly | sales patterns (36 months) | on the first open of each week (weeks start Monday) |
+
+- **Past its time, a figure is still shown at once** (marked "Updating..."), and rebuilt behind; the card asks again after a few seconds, up to three times.
+- **Refresh** on each card (`?refresh=1`) works the figure out again now. Asking again within 30 seconds of a build changes nothing.
+- **Keys carry the view** (business, role, stores, period), so a Store Head never gets the owner's figure. Findings are cleared when one is set aside or brought
+  back; the money figures are cleared when the owner files a category or rebuilds the roll-up; the nightly roll-up marks the daily figures stale.
+- **If the table is missing or a save fails**, the cache is skipped for a minute and the figure is worked out as before: it never stops the dashboard.
+- **Settings** (server environment): `DASH_CACHE=off` switches the kept figures off; `DASH_TTL_HOURLY_MIN` (60), `DASH_TTL_DAILY_HOURS` (24),
+  `DASH_TTL_WEEKLY_DAYS` (8) set the longest age.
+- Code: `api-v2/src/core/stored-cache.ts` (`isFresh` is pure and tested), the four dashboard services, `widget-frame` (As of + Refresh), `refresh-watch.ts`.
+- Not built: warming the figures overnight for each person's view (a first open of the day shows the kept one at once and rebuilds behind it).
+- Tested: spec `qa/specs/dashboard-cache.spec.ts` (DC-1..4); on a local stack: stored, served unchanged, aged figure shown then rebuilt, cooldown, refresh,
+  restart keeps it, table missing falls back.

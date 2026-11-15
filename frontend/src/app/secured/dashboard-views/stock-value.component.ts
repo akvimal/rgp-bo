@@ -1,5 +1,6 @@
-import { Component, Input, OnChanges, SimpleChanges } from "@angular/core";
+import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from "@angular/core";
 import { DashboardService } from "../dashboard.service";
+import { RefreshWatch } from "./refresh-watch";
 
 /**
  * Stock value, expiry ladder and dead stock (docs/planning/DASHBOARD_FINANCE_HEALTH.md section 2.2 item 7). Values are at the purchase rate before GST,
@@ -9,7 +10,7 @@ import { DashboardService } from "../dashboard.service";
     selector: 'app-stock-value',
     styles: [':host { display: block; } .bar { height: 1.1rem; background: #1c7ed6; border-radius: 2px; min-width: 2px; } .bar.danger { background: #e03131; }'],
     template: `
-    <app-widget title="Stock on the shelf" testid="stock-value" drill="/secure/store/stock" [loading]="!data && !error" [error]="error" [empty]="!!data && data.total === 0 && !data.batches" emptyText="No stock on the shelf." (retry)="load()"
+    <app-widget [asOf]="data?.asOf" [updating]="!!data?.refreshing" (refresh)="load(true)" title="Stock on the shelf" testid="stock-value" drill="/secure/store/stock" [loading]="!data && !error" [error]="error" [empty]="!!data && data.total === 0 && !data.batches" emptyText="No stock on the shelf." (retry)="load()"
       definition="Stock at purchase rate before GST, by expiry, category and store, with the value that has not sold in 90 days.">
       <span sub>at purchase rate, before GST</span>
         <ng-container *ngIf="data">
@@ -46,16 +47,18 @@ import { DashboardService } from "../dashboard.service";
         </ng-container>
     </app-widget>`
 })
-export class StockValueComponent implements OnChanges {
+export class StockValueComponent implements OnChanges, OnDestroy {
+    private rw = new RefreshWatch();
+    ngOnDestroy() { this.rw.stop(); }
     @Input() storeid: number | null = null;
     data: any = null;
     error = '';
     constructor(private dashboard: DashboardService) {}
     ngOnChanges(c: SimpleChanges) { if (c.storeid || !this.data) this.load(); }
-    load() {
+    load(force = false) {
         this.error = '';
-        this.dashboard.getStockValue(this.storeid).subscribe({
-            next: (d: any) => { this.data = d; this.error = ''; },
+        this.dashboard.getStockValue(this.storeid, force).subscribe({
+            next: (d: any) => { this.data = d; this.error = ''; this.rw.watch(d, () => this.load()); },
             error: (e) => (this.error = e?.error?.message || 'The stock figures could not be loaded.')
         });
     }

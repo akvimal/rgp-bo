@@ -60,8 +60,11 @@ export class DashboardService {
     return this.http.get(`${environment.apiHost}/dashboard/tiles`, { params: { ...this.scoped(storeid), compare } as any });
   }
 
-  getFindings(storeid?: number | null) {
-    return this.http.get(`${environment.apiHost}/dashboard/findings`, { params: this.scoped(storeid) as any });
+  /** `refresh` asks the server to work the figure out again now instead of showing the kept one (the kept ones are shown with when they were worked out) */
+  private fresh(refresh?: boolean) { return refresh ? { refresh: '1' } : {}; }
+
+  getFindings(storeid?: number | null, refresh?: boolean) {
+    return this.http.get(`${environment.apiHost}/dashboard/findings`, { params: { ...this.scoped(storeid), ...this.fresh(refresh) } as any });
   }
 
   snoozeFinding(body: { key: string; until: string; reason: string }) {
@@ -72,9 +75,9 @@ export class DashboardService {
     return this.http.delete(`${environment.apiHost}/dashboard/findings/snooze`, { params: { key } });
   }
 
-  getFinanceMatrix(q: { storeid?: number | null; from: string; to: string; view: string; compare: string }) {
+  getFinanceMatrix(q: { storeid?: number | null; from: string; to: string; view: string; compare: string }, refresh?: boolean) {
     const { storeid, ...rest } = q;
-    return this.http.get(`${environment.apiHost}/dashboard/finance/matrix`, { params: { ...this.scoped(storeid), ...rest } as any });
+    return this.http.get(`${environment.apiHost}/dashboard/finance/matrix`, { params: { ...this.scoped(storeid), ...rest, ...this.fresh(refresh) } as any });
   }
 
   getFinanceDrill(q: any) {
@@ -82,24 +85,24 @@ export class DashboardService {
     return this.http.get(`${environment.apiHost}/dashboard/finance/drill`, { params: { ...this.scoped(storeid), ...rest } as any });
   }
 
-  getFinanceUnclassified(storeid?: number | null) {
-    return this.http.get(`${environment.apiHost}/dashboard/finance/unclassified`, { params: this.scoped(storeid) as any });
+  getFinanceUnclassified(storeid?: number | null, refresh?: boolean) {
+    return this.http.get(`${environment.apiHost}/dashboard/finance/unclassified`, { params: { ...this.scoped(storeid), ...this.fresh(refresh) } as any });
   }
 
   fileFinanceCategory(body: { source: string; key: string; flow_class: string; grp: string }) {
     return this.http.put(`${environment.apiHost}/dashboard/finance/category`, body);
   }
 
-  getStockValue(storeid?: number | null) {
-    return this.http.get(`${environment.apiHost}/dashboard/stock/value`, { params: this.scoped(storeid) as any });
+  getStockValue(storeid?: number | null, refresh?: boolean) {
+    return this.http.get(`${environment.apiHost}/dashboard/stock/value`, { params: { ...this.scoped(storeid), ...this.fresh(refresh) } as any });
   }
 
-  getFinanceGst(storeid?: number | null, month?: string) {
-    return this.http.get(`${environment.apiHost}/dashboard/finance/gst`, { params: { ...this.scoped(storeid), ...(month ? { month } : {}) } as any });
+  getFinanceGst(storeid?: number | null, month?: string, refresh?: boolean) {
+    return this.http.get(`${environment.apiHost}/dashboard/finance/gst`, { params: { ...this.scoped(storeid), ...(month ? { month } : {}), ...this.fresh(refresh) } as any });
   }
 
-  getFinanceTrend(storeid?: number | null) {
-    return this.http.get(`${environment.apiHost}/dashboard/finance/trend`, { params: this.scoped(storeid) as any });
+  getFinanceTrend(storeid?: number | null, refresh?: boolean) {
+    return this.http.get(`${environment.apiHost}/dashboard/finance/trend`, { params: { ...this.scoped(storeid), ...this.fresh(refresh) } as any });
   }
 
   getFinanceCash(storeid?: number | null) {
@@ -122,8 +125,8 @@ export class DashboardService {
     return this.http.post(`${environment.apiHost}/dashboard/finance/rollup`, {}, { params: { full: full ? '1' : '0' } });
   }
 
-  getPatterns(storeid?: number | null, category?: string | null) {
-    return this.http.get(`${environment.apiHost}/dashboard/metrics/patterns`, { params: { ...this.scoped(storeid), ...(category ? { category } : {}) } as any });
+  getPatterns(storeid?: number | null, category?: string | null, refresh?: boolean) {
+    return this.http.get(`${environment.apiHost}/dashboard/metrics/patterns`, { params: { ...this.scoped(storeid), ...(category ? { category } : {}), ...this.fresh(refresh) } as any });
   }
 
   getMetric(name: string, storeid?: number | null) {

@@ -1,5 +1,6 @@
-import { Component, Input, OnChanges, SimpleChanges } from "@angular/core";
+import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from "@angular/core";
 import { DashboardService } from "../dashboard.service";
+import { RefreshWatch } from "./refresh-watch";
 
 /**
  * When sales happen: hour of day, weekday, day of month, month of year (docs/planning/DASHBOARD_FINANCE_HEALTH.md section 3).
@@ -9,7 +10,7 @@ import { DashboardService } from "../dashboard.service";
     selector: 'app-sales-patterns',
     styles: [':host { display: block; } .chart-box { position: relative; width: 100%; min-width: 0; overflow: hidden; } .chart-box > * { display: block; }'],
     template: `
-    <app-widget title="When sales happen" testid="sales-patterns" [loading]="!data && !error" [error]="error" (retry)="load()"
+    <app-widget [asOf]="data?.asOf" [updating]="!!data?.refreshing" (refresh)="load(true)" title="When sales happen" testid="sales-patterns" [loading]="!data && !error" [error]="error" (retry)="load()"
       definition="Average sales per trading day by hour, weekday, day of month and month of year. Bars with few days behind them are grey.">
       <span sub *ngIf="data">average per trading day, {{data.basis.tradingDays}} days from {{data.basis.from}}</span>
       <div actions class="d-flex gap-2 align-items-center">
@@ -34,7 +35,9 @@ import { DashboardService } from "../dashboard.service";
         </ng-container>
     </app-widget>`
 })
-export class SalesPatternsComponent implements OnChanges {
+export class SalesPatternsComponent implements OnChanges, OnDestroy {
+    private rw = new RefreshWatch();
+    ngOnDestroy() { this.rw.stop(); }
     @Input() storeid: number | null = null;
 
     data: any = null;
@@ -52,9 +55,9 @@ export class SalesPatternsComponent implements OnChanges {
 
     ngOnChanges(c: SimpleChanges) { if (c.storeid || !this.data) this.load(); }
 
-    load() {
-        this.dashboard.getPatterns(this.storeid, this.category).subscribe({
-            next: (d: any) => { this.data = d; this.error = ''; },
+    load(force = false) {
+        this.dashboard.getPatterns(this.storeid, this.category, force).subscribe({
+            next: (d: any) => { this.data = d; this.error = ''; this.rw.watch(d, () => this.load()); },
             error: (e) => (this.error = e?.error?.message || 'The patterns could not be loaded.')
         });
         if (!this.loadedCategories) {

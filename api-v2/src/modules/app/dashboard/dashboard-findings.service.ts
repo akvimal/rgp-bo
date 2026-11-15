@@ -8,7 +8,8 @@ import { MANAGER_ROLES, OWNER_ROLES } from 'src/core/roles';
 import { StoreService } from '../store/store.service';
 import { KINDS, cleanParams } from '../alerts/alert-kinds';
 import { render } from '../alerts/alert-messages';
-import { TtlCache, cacheKey } from 'src/core/heavy-query';
+import { cacheKey } from 'src/core/heavy-query';
+import { StoredCache } from 'src/core/stored-cache';
 import { DashboardService } from './dashboard.service';
 import { DashboardMetricsService } from './dashboard-metrics.service';
 import { ALERT_KINDS_USED, HFinding, daysBetween, findingsFromChecks, fromAlert, legalFloor, live, rollup, snoozeProblem, storeMatrix, varianceFinding } from './dashboard-findings';
@@ -24,8 +25,8 @@ const inr = (n: number) => Math.round(n).toLocaleString('en-IN');
 @Injectable()
 export class DashboardFindingsService {
   private readonly log = new Logger(DashboardFindingsService.name);
-  /** the findings run about twenty queries: once a minute per view is enough, and setting one aside clears it */
-  private readonly cache = new TtlCache(60_000);
+  /** the findings run about twenty queries: kept for an hour per view (shown with when they were worked out), and setting one aside clears them */
+  private readonly stored: StoredCache;
 
   constructor(
     @InjectEntityManager() private readonly manager: EntityManager,
@@ -35,7 +36,9 @@ export class DashboardFindingsService {
     private readonly stores: StoreService,
     private readonly modules: ModulesService,
     private readonly audit: AuditService,
-  ) {}
+  ) {
+    this.stored = new StoredCache(manager);
+  }
 
   private num(v: any): number | null {
     const n = Number(v);
@@ -148,9 +151,9 @@ export class DashboardFindingsService {
   }
 
   /** the findings that are live today, with the figures the card draws */
-  async findings(user: any, storeid?: any) {
+  async findings(user: any, storeid?: any, refresh = false) {
     const sc = await this.guard(user, storeid);
-    return this.cache.get(cacheKey('findings', sc.businessId, sc.owner, sc.role, sc.stores, this.num(storeid)), () => this.findingsNow(user, storeid));
+    return this.stored.get(cacheKey('findings', sc.businessId, sc.owner, sc.role, sc.stores, this.num(storeid)), 'hourly', () => this.findingsNow(user, storeid), refresh);
   }
 
   private async findingsNow(user: any, storeid?: any) {
@@ -229,10 +232,10 @@ export class DashboardFindingsService {
     const f = [...current.findings, ...current.snoozed].find((x: HFinding) => x.key === key);
     if (!f) throw new BadRequestException('That finding is not open any more.');
     if (f.legal) throw new BadRequestException('A legal or statutory item cannot be set aside. Put it right, or ask for a waiver in the compliance register.');
-    this.cache.clear();
     await this.manager.query(
       `update health_finding_state set snoozed_until = $3, snooze_reason = $4, snoozed_by = $5, snoozed_on = now() where business_id = $1 and fkey = $2`,
       [sc.businessId, key, body.until, reason, user.id]);
+    await this.stored.clear('findings|');
     await this.audit.record({ userId: user.id, action: 'health.finding_snoozed', entityType: 'health_finding', entityId: 0, summary: `Set aside until ${body.until}: ${f.title}`, details: { key, until: body.until, reason } });
     return { saved: true };
   }
@@ -240,8 +243,8 @@ export class DashboardFindingsService {
   async unsnooze(user: any, key: string) {
     const sc = await this.guard(user, null);
     if (!sc.owner || !sc.businessId) throw new ForbiddenException('Only the owner can bring a finding back.');
-    this.cache.clear();
     await this.manager.query(`update health_finding_state set snoozed_until = null, snooze_reason = null where business_id = $1 and fkey = $2`, [sc.businessId, String(key || '')]);
+    await this.stored.clear('findings|');
     await this.audit.record({ userId: user.id, action: 'health.finding_unsnoozed', entityType: 'health_finding', entityId: 0, summary: `Brought back: ${key}`, details: { key } });
     return { saved: true };
   }

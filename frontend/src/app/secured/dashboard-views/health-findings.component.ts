@@ -1,5 +1,6 @@
-import { Component, Input, OnChanges, SimpleChanges } from "@angular/core";
+import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from "@angular/core";
 import { DashboardService } from "../dashboard.service";
+import { RefreshWatch } from "./refresh-watch";
 
 /**
  * The health card: status from the worst finding (not an average), the findings by severity, the five to put right first, and (for the owner) every
@@ -87,7 +88,7 @@ import { DashboardService } from "../dashboard.service";
             </table></div>
             <div class="small text-muted">Red critical, amber major, blue minor, green clear. Findings that belong to the whole business, not to a store, are not in a row.</div>
           </div>
-          <div class="small text-muted mt-2">Updated {{data.asOf | date:'shortTime'}}. A minor finding left open for 14 days counts as major. Legal and statutory items cannot be set aside.</div>
+          <div class="small text-muted mt-2"><span data-testid="findings-asof">{{data.refreshing ? 'Updating…' : 'As of ' + (data.asOf | date:'d MMM, h:mm a')}}</span> <button type="button" class="btn btn-sm btn-link p-0 align-baseline" [disabled]="data.refreshing" (click)="load(true)" data-testid="findings-refresh">Refresh</button>. A minor finding left open for 14 days counts as major. Legal and statutory items cannot be set aside.</div>
         </ng-container>
       </div>
     </section>
@@ -121,7 +122,9 @@ import { DashboardService } from "../dashboard.service";
       </div>
     </ng-template>`
 })
-export class HealthFindingsComponent implements OnChanges {
+export class HealthFindingsComponent implements OnChanges, OnDestroy {
+    private rw = new RefreshWatch();
+    ngOnDestroy() { this.rw.stop(); }
     @Input() storeid: number | null = null;
     /** the owner may set a finding aside; nobody sets a legal one aside */
     @Input() canSnooze = false;
@@ -140,9 +143,9 @@ export class HealthFindingsComponent implements OnChanges {
 
     ngOnChanges(c: SimpleChanges) { if (c.storeid || !this.data) this.load(); }
 
-    load() {
-        this.dashboard.getFindings(this.storeid).subscribe({
-            next: (d: any) => { this.data = d; this.error = ''; },
+    load(force = false) {
+        this.dashboard.getFindings(this.storeid, force).subscribe({
+            next: (d: any) => { this.data = d; this.error = ''; this.rw.watch(d, () => this.load()); },
             error: (e) => (this.error = e?.error?.message || 'Health could not be loaded.')
         });
     }

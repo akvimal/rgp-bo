@@ -10,6 +10,7 @@ import { DashboardFinanceService } from "./dashboard-finance.service";
 import { DashboardStockService } from "./dashboard-stock.service";
 import { DashboardDigestService } from "./dashboard-digest.service";
 import { DashboardAccountantService } from "./dashboard-accountant.service";
+import { wantsRefresh } from "src/core/stored-cache";
 
 @ApiTags("Dashboard")
 @Controller("dashboard")
@@ -22,7 +23,7 @@ export class DashboardController {
   health(@Query("storeid") storeid: string, @User() currentUser: any) { return this.metrics.health(currentUser, storeid); }
 
   @Get("/stock/value")
-  stockValue(@Query("storeid") storeid: string, @User() currentUser: any) { return this.stock.value(currentUser, storeid); }
+  stockValue(@Query("storeid") storeid: string, @Query("refresh") refresh: string, @User() currentUser: any) { return this.stock.value(currentUser, storeid, wantsRefresh({ refresh })); }
 
   @Get("/finance/gst")
   financeGst(@Query() q: any, @User() currentUser: any) { return this.stock.gst(currentUser, q); }
@@ -62,7 +63,7 @@ export class DashboardController {
   financeFile(@Body() body: any, @User() currentUser: any) { return this.finance.file(currentUser, body); }
 
   @Get("/findings")
-  findingsList(@Query("storeid") storeid: string, @User() currentUser: any) { return this.findings.findings(currentUser, storeid); }
+  findingsList(@Query("storeid") storeid: string, @Query("refresh") refresh: string, @User() currentUser: any) { return this.findings.findings(currentUser, storeid, wantsRefresh({ refresh })); }
 
   @Post("/findings/snooze")
   snooze(@Body() body: any, @User() currentUser: any) { return this.findings.snooze(currentUser, body); }
@@ -101,7 +102,7 @@ export class DashboardController {
   busyHours(@Query("storeid") storeid: string, @User() currentUser: any) { return this.metrics.busyHours(currentUser, storeid); }
 
   @Get("/metrics/patterns")
-  patterns(@Query("storeid") storeid: string, @Query("category") category: string, @User() currentUser: any) { return this.metrics.patterns(currentUser, storeid, category); }
+  patterns(@Query("storeid") storeid: string, @Query("category") category: string, @Query("refresh") refresh: string, @User() currentUser: any) { return this.metrics.patterns(currentUser, storeid, category, wantsRefresh({ refresh })); }
 
   @Get("/metrics/payables")
   payables(@Query("storeid") storeid: string, @User() currentUser: any) { return this.metrics.payables(currentUser, storeid); }

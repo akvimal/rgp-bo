@@ -5,6 +5,7 @@ import { AuditService } from 'src/core/audit/audit.service';
 import { MANAGER_ROLES } from 'src/core/roles';
 import { DashboardService } from './dashboard.service';
 import { TtlCache, cacheKey, heavy } from 'src/core/heavy-query';
+import { StoredCache, wantsRefresh } from 'src/core/stored-cache';
 import { costRatios } from './cost-ratios';
 import { DashboardRollupService, rollupCut } from './dashboard-rollup.service';
 import { FlowRow, buildMatrix, compareRange, financialYear, monthsBetween } from './money-matrix';
@@ -21,10 +22,17 @@ const VIEWS: Record<string, string[] | null> = { pnl: null, products: ['INCOME',
  */
 @Injectable()
 export class DashboardFinanceService {
-  /** the figures are worked out once a minute per person's view, however many open the page (a change by the owner clears them) */
+  /** the cash balances are worked out once a minute per person's view (live) */
   private readonly cache = new TtlCache(60_000);
+  /** the other figures are kept between opens, by how fast they change (hourly, daily), and show when they were worked out */
+  private readonly stored: StoredCache;
 
-  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly dash: DashboardService, private readonly audit: AuditService, private readonly rollup: DashboardRollupService) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly dash: DashboardService, private readonly audit: AuditService, private readonly rollup: DashboardRollupService) {
+    this.stored = new StoredCache(manager);
+  }
+
+  /** the money figures kept between opens (a rebuilt roll-up or a filed category changes them all) */
+  private forgetMoney() { return Promise.all(['matrix|', 'unclassified|', 'trend|', 'gst|'].map((k) => this.stored.clear(k))); }
 
   private num(v: any): number | null {
     const n = Number(v);
@@ -68,17 +76,17 @@ export class DashboardFinanceService {
   }
 
   /** The category x month matrix: ?from=YYYY-MM&to=YYYY-MM (this financial year by default), ?view=pnl|products, ?compare=prev|yoy|none, ?storeid */
-  async matrix(user: any, q: { storeid?: any; from?: string; to?: string; view?: string; compare?: string }) {
+  async matrix(user: any, q: { storeid?: any; from?: string; to?: string; view?: string; compare?: string; refresh?: any }) {
     const sc = await this.guard(user, q.storeid);
     const { from, to, months } = this.range(q.from, q.to);
     const view = q.view && q.view in VIEWS ? q.view : 'pnl';
     const classes = VIEWS[view];
     const cmp = compareRange(from, to, String(q.compare || 'none'));
-    return this.cache.get(cacheKey('matrix', sc.businessId, sc.owner, sc.stores, sc.withBusinessLevel, from, to, view, cmp ? q.compare : 'none'), async () => {
+    return this.stored.get(cacheKey('matrix', sc.businessId, sc.owner, sc.stores, sc.withBusinessLevel, from, to, view, cmp ? q.compare : 'none'), 'daily', async () => {
       const [rows, compareRows] = await Promise.all([this.flow(sc, from, to, classes), cmp ? this.flow(sc, cmp.from, cmp.to, classes) : Promise.resolve(undefined)]);
       const result = buildMatrix(rows, months, { hideCost: !sc.owner, compareRows, compareMonths: cmp ? monthsBetween(cmp.from, cmp.to) : undefined });
       return { ...result, from, to, view, compare: cmp ? { ...cmp, kind: q.compare } : null, owner: sc.owner, basis: 'ACCRUAL', asOf: new Date().toISOString() };
-    });
+    }, wantsRefresh(q));
   }
 
   /** The entries behind one cell or row: ?month=YYYY-MM (optional), cls, grp, category. At most 200, newest first. */
@@ -114,9 +122,9 @@ export class DashboardFinanceService {
   }
 
   /** What has no category: expense categories with no mapping, and products with no category (their sales count under Unclassified). */
-  async unclassified(user: any, q: { storeid?: any } = {}) {
+  async unclassified(user: any, q: { storeid?: any; refresh?: any } = {}) {
     const sc = await this.guard(user, q.storeid);
-    return this.cache.get(cacheKey('unclassified', sc.businessId, sc.owner, sc.stores, sc.withBusinessLevel), async () => {
+    return this.stored.get(cacheKey('unclassified', sc.businessId, sc.owner, sc.stores, sc.withBusinessLevel), 'hourly', async () => {
       // straight from the expense and sale tables: the money view would read every bill line of the year just to count what has no category
       const expenses = await this.manager.query(
         `select c.name as key, count(*)::int as entries, sum(e.amount - e.gst_amount)::float8 as amount
@@ -136,21 +144,21 @@ export class DashboardFinanceService {
         `select c.name as key, coalesce(f.flow_class, 'OPERATING_COST') as flow_class, coalesce(f.grp, c.cost_group) as grp, (f.id is not null) as filed
            from expense_category c left join flow_category f on f.source = 'EXPENSE' and f.source_key = c.name where c.active order by c.name`);
       return { expenses, products: { count: Number(products?.products) || 0, amount: Number(products?.amount) || 0 }, categories: mapped, classes: EXPENSE_CLASSES, canFile: sc.owner };
-    });
+    }, wantsRefresh(q));
   }
 
   /**
    * Running cost against sales for the last 12 complete months and this one, by cost group, with the usual band. Managers see it too: it holds no
    * purchases and no profit.
    */
-  async trend(user: any, q: { storeid?: any }) {
+  async trend(user: any, q: { storeid?: any; refresh?: any }) {
     const sc = await this.guard(user, q.storeid);
     const today = ISTDAY();
     const thisMonth = today.slice(0, 7);
     const shift = (ym: string, by: number) => { const t = +ym.slice(0, 4) * 12 + (+ym.slice(5, 7) - 1) + by; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`; };
     const from = shift(thisMonth, -12);
     const months = monthsBetween(from, thisMonth);
-    return this.cache.get(cacheKey('trend', sc.businessId, sc.stores, sc.withBusinessLevel, thisMonth), async () => {
+    return this.stored.get(cacheKey('trend', sc.businessId, sc.stores, sc.withBusinessLevel, thisMonth), 'daily', async () => {
     const rows = await this.flow(sc, from, thisMonth, ['INCOME', 'INCOME_REDUCTION', 'OPERATING_COST', 'PEOPLE', 'FINANCE_COST']);
     const sales = months.map((m) => ({
       month: m,
@@ -158,7 +166,7 @@ export class DashboardFinanceService {
     }));
     const costs = rows.filter((r) => ['OPERATING_COST', 'PEOPLE', 'FINANCE_COST'].includes(r.cls)).map((r) => ({ month: r.month, grp: r.grp, amount: r.amount }));
     return { ...costRatios(costs, sales, months, { latest: shift(thisMonth, -1) }), thisMonth };
-    });
+    }, wantsRefresh(q));
   }
 
   /** What is in the bank now: the last balance of each active bank account, with its date. Accounts of the business show when no single store is chosen. */
@@ -184,6 +192,7 @@ export class DashboardFinanceService {
     if (!sc.owner) throw new ForbiddenException('Only the owner rebuilds the roll-up.');
     const r = await this.rollup.refresh(full);
     this.cache.clear();
+    await this.forgetMoney();
     await this.audit.record({ userId: user.id, action: 'finance.rollup_rebuilt', entityType: 'metric_daily', entityId: 0, summary: `Roll-up rebuilt through ${r.through} (${r.full ? 'all history' : 'recent days'})`, details: r });
     return r;
   }
@@ -206,6 +215,7 @@ export class DashboardFinanceService {
        on conflict (source, source_key) do update set flow_class = excluded.flow_class, grp = excluded.grp, updated_by = excluded.updated_by, updated_on = now()`,
       [key, cls, grp, user.id]);
     this.cache.clear();
+    await this.forgetMoney();
     await this.audit.record({ userId: user.id, action: 'finance.category_filed', entityType: 'flow_category', entityId: 0, summary: `${key} filed under ${cls} / ${grp}`, details: { key, flow_class: cls, grp } });
     return { saved: true };
   }

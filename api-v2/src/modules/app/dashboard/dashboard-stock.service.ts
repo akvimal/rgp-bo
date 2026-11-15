@@ -2,7 +2,8 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { MANAGER_ROLES } from 'src/core/roles';
-import { TtlCache, cacheKey, heavy } from 'src/core/heavy-query';
+import { cacheKey, heavy } from 'src/core/heavy-query';
+import { StoredCache, wantsRefresh } from 'src/core/stored-cache';
 import { DashboardService } from './dashboard.service';
 import { StockGroup, bucketOf, stockValue } from './stock-value';
 
@@ -16,10 +17,12 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
  */
 @Injectable()
 export class DashboardStockService {
-  /** two minutes: stock moves with every bill, but a dashboard does not need it to the second, and it is the heaviest read of the page */
-  private readonly cache = new TtlCache(120_000);
+  /** kept between opens: the stock figure hourly (stock moves with every bill, but a dashboard does not need it to the second and it is the heaviest read of the page), the GST estimate daily */
+  private readonly stored: StoredCache;
 
-  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly dash: DashboardService) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly dash: DashboardService) {
+    this.stored = new StoredCache(manager);
+  }
 
   private num(v: any): number | null {
     const n = Number(v);
@@ -34,9 +37,9 @@ export class DashboardStockService {
   }
 
   /** What is on the shelf now, at cost and at MRP, by expiry, category and store. ?storeid narrows it to one store. */
-  async value(user: any, storeid?: any) {
+  async value(user: any, storeid?: any, refresh = false) {
     const sc = await this.guard(user, storeid);
-    return this.cache.get(cacheKey('stock', sc.businessId, sc.owner, sc.stores, sc.requested), () => this.valueNow(sc));
+    return this.stored.get(cacheKey('stock', sc.businessId, sc.owner, sc.stores, sc.requested), 'hourly', () => this.valueNow(sc), refresh);
   }
 
   private async valueNow(sc: { stores: number[] | null; owner: boolean; requested: number | null }) {
@@ -104,11 +107,11 @@ export class DashboardStockService {
    * The GST position of a month, estimated from the money stream: tax collected on sales less returns, and tax paid on purchases and expenses.
    * It is not a return: ITC eligibility, reverse charge and the 2B match are not applied. Owner only.
    */
-  async gst(user: any, q: { storeid?: any; month?: string }) {
+  async gst(user: any, q: { storeid?: any; month?: string; refresh?: any }) {
     const sc = await this.guard(user, q.storeid);
     if (!sc.owner) throw new ForbiddenException('The GST position is shown to the owner only.');
     const month = q.month && MONTH.test(q.month) ? q.month : new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 7);
-    return this.cache.get(cacheKey('gst', sc.businessId, sc.stores, sc.requested, month), async () => {
+    return this.stored.get(cacheKey('gst', sc.businessId, sc.stores, sc.requested, month), 'daily', async () => {
     const rows = await this.manager.query(
       `select flow_class as cls, coalesce(sum(gst), 0)::float8 as gst, coalesce(sum(amount), 0)::float8 as amount
          from money_flow
@@ -122,6 +125,6 @@ export class DashboardStockService {
       month, output, input, net: r2(output - input),
       notes: ['An estimate from your bills, purchase invoices and expenses. It is not the return: eligibility of input credit, reverse charge and the match with GSTR-2B are not applied.'],
     };
-    });
+    }, wantsRefresh(q));
   }
 }
