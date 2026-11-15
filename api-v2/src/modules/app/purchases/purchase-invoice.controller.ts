@@ -82,6 +82,18 @@ export class PurchaseInvoiceController {
       return this.view.release(id, currentUser.id);
     }
 
+    /** Business Head: invoices whose stored total is off from what their lines come to (so the balance and the most a payment may be are wrong). ?invoiceid= checks one. */
+    @Get('/total-check')
+    async totalCheck(@Query('invoiceid') invoiceid:string, @User() currentUser:any) {
+      return this.purchaseInvoiceService.totalCheck(currentUser.id, /^[0-9]+$/.test(String(invoiceid ?? '')) ? +invoiceid : undefined);
+    }
+
+    /** Business Head: puts those totals back to what the lines come to. Without confirm it only says what would change. */
+    @Post('/total-fix')
+    async totalFix(@Body() body:any, @User() currentUser:any) {
+      return this.purchaseInvoiceService.totalFix(currentUser.id, body?.ids, body?.confirm === true);
+    }
+
     @Get('/outstanding')
     async findOutstanding(@Query() query: any) {
       return this.purchaseInvoiceService.findOutstanding(query);

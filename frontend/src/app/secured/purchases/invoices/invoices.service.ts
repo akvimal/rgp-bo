@@ -110,6 +110,15 @@ export class InvoiceService {
         return this.http.put<any>(`${this.apiurl}/purchases/approval-settings`, body);
     }
 
+    /** Business Head: invoices whose stored total is off from what their lines come to, and putting those totals right (nothing is written without confirm) */
+    totalCheck(invoiceid?:number){
+        return this.http.get<any>(`${this.apiurl}/purchases/total-check`, { params: invoiceid ? { invoiceid: String(invoiceid) } : {} });
+    }
+
+    totalFix(ids:number[], confirm:boolean){
+        return this.http.post<any>(`${this.apiurl}/purchases/total-fix`, { ids, confirm });
+    }
+
     approve(invoiceid:number, note?:string){
         return this.http.post(`${this.apiurl}/purchases/${invoiceid}/approve`, { note });
     }

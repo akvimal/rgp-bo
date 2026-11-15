@@ -8,10 +8,43 @@
         <a class="btn btn-outline-primary"  data-testid="inv-tab-byvendor" [routerLink]="['/secure/purchases/invoices/by-vendor']">By vendor</a>
       </div>
       <div class="page-toolbar-actions">
+        <button *ngIf="approval.canmanage" type="button" class="btn btn-outline-secondary me-2" data-testid="inv-totals-open" (click)="openTotals()" title="Invoices whose amount payable is not what their lines come to">Check totals</button>
         <button *ngIf="approval.canmanage" type="button" class="btn btn-outline-secondary me-2" data-testid="inv-rule-open" (click)="openRule()" title="Should invoices be approved before they are paid?">Approval rule<span *ngIf="approval.enabled"> &middot; on</span></button>
         <a *isAuth="'purchases.add'" class="btn btn-primary" role="button" [routerLink]="['/secure/purchases/invoices/new']" data-testid="inv-add">Add New</a>
       </div>
     </div>
+  </div>
+
+  <div class="col-12 mt-3" *ngIf="totals.open" data-testid="inv-totals-panel">
+    <div class="card"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div><h2 class="h6 mb-1">Invoice totals check</h2>
+          <div class="small text-muted">The balance of an invoice, and the most a payment can be, follow its amount payable. These invoices have an amount payable that is not what their lines come to (more than a rupee of rounding). Correcting sets it to what the lines come to; an invoice already paid more than that is left for you to sort out. Each change is recorded.</div></div>
+        <button type="button" class="btn-close" aria-label="Close" (click)="totals.open = false"></button>
+      </div>
+      <div class="small text-muted" *ngIf="totals.loading" data-testid="inv-totals-loading">Checking the invoices still owing...</div>
+      <div class="text-danger small" *ngIf="totals.error" data-testid="inv-totals-error">{{totals.error}}</div>
+      <div class="text-success small" *ngIf="!totals.loading && !totals.error && !totals.rows.length" data-testid="inv-totals-clear">Every invoice still owing matches its lines ({{totals.checked}} checked).</div>
+      <div class="table-responsive" *ngIf="totals.rows.length">
+        <table class="table table-sm align-middle mb-2" data-testid="inv-totals-table">
+          <thead><tr><th>Invoice</th><th>Vendor</th><th>Date</th><th class="text-end">Payable now</th><th class="text-end">Lines come to</th><th class="text-end">Paid</th><th class="text-end">Balance now</th><th class="text-end">Balance after</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of totals.rows" [attr.data-testid]="'inv-totals-row-' + r.id">
+              <td><a [routerLink]="['/secure/purchases/invoices/items', r.id]">{{r.invoice_no}}</a></td><td>{{r.vendor}}</td><td>{{r.invoice_date}}</td>
+              <td class="text-end">{{r.total | number:'1.2-2'}}</td><td class="text-end">{{r.expected === null ? '-' : (r.expected | number:'1.2-2')}}</td>
+              <td class="text-end">{{r.paid | number:'1.2-2'}}</td><td class="text-end">{{r.balance_now | number:'1.2-2'}}</td><td class="text-end">{{r.balance_after === null ? '-' : (r.balance_after | number:'1.2-2')}}</td>
+              <td class="small"><span *ngIf="r.kind === 'TOTAL'">Payable is {{(r.difference || 0) > 0 ? 'less' : 'more'}} than the lines by {{(r.difference || 0) < 0 ? -(r.difference || 0) : r.difference | number:'1.2-2'}}</span>
+                <span *ngIf="r.kind === 'PAYMENTS'">The list counts {{r.paid | number:'1.2-2'}} as paid, the payment screen {{r.paid_active | number:'1.2-2'}} (a payment was removed). Not changed here.</span>
+                <span *ngIf="r.kind === 'PROBLEM'" class="text-danger">{{r.problem}}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <button type="button" class="btn btn-warning btn-sm" *ngIf="fixableTotals.length" [disabled]="totals.fixing" (click)="fixTotals()" data-testid="inv-totals-fix">Correct {{fixableTotals.length}} invoice{{fixableTotals.length === 1 ? '' : 's'}} to what their lines come to</button>
+      <div class="small mt-2" *ngIf="totals.done" data-testid="inv-totals-done">
+        <div *ngFor="let d of totals.done" [class.text-danger]="d.action === 'skipped'">{{d.invoice_no || d.id}}: {{d.action}}<span *ngIf="d.action === 'corrected'"> ({{d.from | number:'1.2-2'}} &rarr; {{d.to | number:'1.2-2'}})</span><span *ngIf="d.reason"> - {{d.reason}}</span></div>
+      </div>
+    </div></div>
   </div>
 
   <!-- what is owed, in four cards that do not overlap: what can be paid now (by when it falls due), what is held up and needs a decision, what is not received yet, and what is paid -->

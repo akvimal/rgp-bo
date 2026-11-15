@@ -93,6 +93,28 @@ export class InvoiceItemsComponent {
         this.fetchItems(this.route.snapshot.paramMap.get('id'));
     }
 
+    /** a completed invoice whose amount payable is not what its lines come to (only a Business Head is told: the check is theirs) */
+    totalIssue:any = null;
+    fixingTotal = false;
+    fixTotalError = '';
+
+    private checkTotal(inv:any){
+        this.totalIssue = null;
+        if(inv?.status !== 'COMPLETE') return;
+        this.invService.totalCheck(inv.id).subscribe((r:any) => { this.totalIssue = (r?.rows || [])[0] || null; }, () => { this.totalIssue = null; });
+    }
+
+    fixTotal(){
+        if(!this.totalIssue || this.fixingTotal) return;
+        this.fixingTotal = true; this.fixTotalError = '';
+        this.invService.totalFix([this.totalIssue.id], true).subscribe((r:any) => {
+            this.fixingTotal = false;
+            const res = (r?.results || [])[0];
+            if(res?.action === 'skipped'){ this.fixTotalError = res.reason || 'It could not be corrected.'; return; }
+            this.fetchItems(this.route.snapshot.paramMap.get('id'));
+        }, (err:any) => { this.fixingTotal = false; this.fixTotalError = (Array.isArray(err?.error?.message) ? err.error.message.join(' ') : err?.error?.message) || 'It could not be corrected.'; });
+    }
+
     fetchItems(id:any){
         this.nettotal = 0;
         this.grosstotal = 0;
@@ -101,6 +123,7 @@ export class InvoiceItemsComponent {
 
         this.invService.find(id).subscribe((inv:any) => {
             this.invoice = inv;
+            this.checkTotal(inv);
             // lines of a scanned copy still to check against it keep the invoice from being completed
             if(inv.status === 'NEW'){
                 this.invService.scan(inv.id).subscribe((r:any) => { this.scanOpen = r?.counts?.open || 0; this.scanChecked = r?.counts?.verified || 0; }, () => {});

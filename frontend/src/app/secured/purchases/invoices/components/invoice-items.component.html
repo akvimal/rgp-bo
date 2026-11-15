@@ -50,6 +50,16 @@
             <span *ngIf="totalsAgree" class="text-success fw-semibold" data-testid="invoice-check-ok"><i class="bi bi-check-circle"></i> Lines match the net total<span *ngIf="invoice.total"> &middot; payable {{invoice.total | number:'1.2-2'}}</span></span>
             <span *ngIf="!totalsAgree" class="text-danger fw-semibold" data-testid="invoice-check-diff"><i class="bi bi-exclamation-triangle"></i> Lines are {{(printedDiff || 0) > 0 ? 'more' : 'less'}} than the invoice total by &#8377;{{(printedDiff || 0) | number:'1.2-2'}} (a line may be missing or mistyped). The invoice cannot be completed until they agree to within &#8377;1.</span>
         </div>
+        <div class="alert alert-warning small mt-2 mb-0 d-flex flex-wrap justify-content-between align-items-center gap-2" *ngIf="totalIssue && totalIssue.kind === 'TOTAL'" data-testid="invoice-total-issue">
+            <span>The amount payable on this invoice is <b>{{totalIssue.total | number:'1.2-2'}}</b>, but its lines come to <b>{{totalIssue.expected | number:'1.2-2'}}</b>. The balance, and the most a payment can be, follow the amount payable.
+                Corrected, the balance would be <b>{{totalIssue.balance_after | number:'1.2-2'}}</b>.</span>
+            <button type="button" class="btn btn-sm btn-warning" (click)="fixTotal()" [disabled]="fixingTotal" data-testid="invoice-total-fix">Correct it to {{totalIssue.expected | number:'1.2-2'}}</button>
+        </div>
+        <div class="alert alert-warning small mt-2 mb-0" *ngIf="totalIssue && totalIssue.kind === 'PAYMENTS'" data-testid="invoice-paid-issue">
+            The invoice list counts <b>{{totalIssue.paid | number:'1.2-2'}}</b> as paid, but the payment screen counts <b>{{totalIssue.paid_active | number:'1.2-2'}}</b>: a payment on this invoice was removed.
+            The balance shown can differ from what can be paid. Check the payments below.
+        </div>
+        <div class="text-danger small mt-2" *ngIf="fixTotalError" data-testid="invoice-total-fix-error">{{fixTotalError}}</div>
         <div class="text-danger small mt-2" *ngIf="deleteError" data-testid="invoice-delete-error">{{deleteError}}</div>
         <div class="mt-2 small" *ngIf="invoice.notes">
             <span class="inv-label">Notes:</span> {{invoice.notes}}

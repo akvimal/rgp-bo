@@ -2,7 +2,7 @@ import { userError } from 'src/core/db-error';
 import { loadApprovalPolicy, needsApproval } from './invoice-approval';
 import { assertStoreLicensed } from "../store/store-guard";
 import { assertVendorUsable } from "../vendors/vendor-guard";
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, In, Repository } from "typeorm";
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
@@ -16,6 +16,7 @@ import { Product } from "src/entities/product.entity";
 import { Vendor } from "src/entities/vendor.entity";
 import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
+import { isOwnerRole, ROLE } from "src/core/roles";
 import { isManagerRole } from "src/core/roles";
 import { cleanRef, gstPeriodFor } from "./receipt-rules";
 import { allocateCommitmentReceipts } from "../commitments/commitment-db";
@@ -25,6 +26,9 @@ import { businessOfUser } from "src/core/business-of-user";
 import { taxRatesFor } from "./tax-rates";
 import { HISTORY_LIMIT, summariseHistory, toHistoryLine } from "./purchase-history";
 import { classifyChange, DEFAULT_PRICE_APPROVAL_PCT, DEFAULT_PRICE_TOLERANCE_PCT, netRate, percentSetting, unitJump } from "./price-rules";
+
+/** a vendor may round its own bill up by a rupee, so a stored total this close to what the lines come to is not a difference (the same allowance as a payment) */
+export const TOTAL_TOLERANCE = 1.005;
 
 @Injectable()
 export class PurchaseInvoiceService {
@@ -945,8 +949,11 @@ export class PurchaseInvoiceService {
         return invoiceNet(lines, inv?.cd || 0);
       }
 
-      /** sets the invoice total to what its live lines come to with GST (rounded to the rupee when asked) and refreshes the GST split */
-      async refreshTotal(invoiceid:number, userid:number, round = true){
+      /**
+       * What the invoice's total should be: its live lines with GST (less any cash discount), less the credits the vendor has given, rounded to the rupee
+       * when asked, and the net total printed on the vendor's invoice once the lines agree with it. It is the one figure refreshTotal stores.
+       */
+      async expectedTotal(invoiceid:number, round = true): Promise<number>{
         const { net: bought } = await this.netLive(invoiceid);
         // returns the vendor has credited on this invoice come off what was bought
         const [c] = await this.manager.query(`select coalesce(sum(amount), 0)::float8 as t from purchase_invoice_credit where invoice_id = $1 and active`, [invoiceid]);
@@ -960,7 +967,84 @@ export class PurchaseInvoiceService {
           const billed = await this.billedNet(invoiceid);
           if(agreesWithPrinted(inv.printed, billed)) total = payableFromPrinted(inv.printed, billed, bought, +(c?.t || 0));
         }
+        return total;
+      }
+
+      /** sets the invoice total to what its live lines come to with GST (rounded to the rupee when asked) and refreshes the GST split */
+      async refreshTotal(invoiceid:number, userid:number, round = true){
+        const total = await this.expectedTotal(invoiceid, round);
         await this.update([invoiceid], { total }, userid);
+      }
+
+      // ---------------------------------------------------------------- invoice totals check
+      private async needOwner(userid:number, what:string){
+        const [r] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
+        if(!isOwnerRole(r?.name) && r?.name !== ROLE.SITE_ADMIN) throw new ForbiddenException(`Only a Business Head can ${what}.`);
+      }
+
+      /**
+       * Completed invoices whose stored total is off from what their lines come to by more than the rupee of rounding a vendor may add (that total is
+       * what the balance and the most a payment may be are taken from), and invoices where the list and the payment screen count a different amount as
+       * paid. Business Head only. With an invoice id, that one invoice; otherwise every invoice still owing, newest first (at most 600).
+       */
+      async totalCheck(userid:number, invoiceid?:number){
+        await this.needOwner(userid, 'check invoice totals');
+        const rows = await this.manager.query(
+          `select i.id, i.invoice_no, v.business_name as vendor, to_char(i.invoice_date, 'YYYY-MM-DD') as invoice_date, coalesce(i.total, 0)::float8 as total,
+                  coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::float8 as paid_listed,
+                  coalesce((select sum(amount) from vendor_payment where invoice_id = i.id and active and not archive), 0)::float8 as paid_active
+             from purchase_invoice i join vendor v on v.id = i.vendor_id
+            where i.status = 'COMPLETE' and i.active and not i.archive and ($1::int is null or i.id = $1)
+              and ($1::int is not null or coalesce(i.total, 0) - coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0) > 0.005)
+            order by i.invoice_date desc, i.id desc limit 600`, [invoiceid ?? null]);
+        const out: any[] = [];
+        for(const r of rows){
+          let expected: number | null = null, problem: string | null = null;
+          try { expected = await this.expectedTotal(+r.id); } catch(e:any){ problem = e?.message || 'The lines could not be added up.'; }
+          const off = expected !== null && Math.abs(r.total - expected) > TOTAL_TOLERANCE;
+          const paidDiffers = Math.abs(r.paid_listed - r.paid_active) > 0.005;
+          if(!off && !paidDiffers && !problem) continue;
+          out.push({
+            id: +r.id, invoice_no: r.invoice_no, vendor: r.vendor, invoice_date: r.invoice_date, total: r2(r.total), expected, paid: r2(r.paid_listed), paid_active: r2(r.paid_active),
+            difference: expected === null ? null : r2(expected - r.total),
+            balance_now: r2(Math.max(0, r.total - r.paid_listed)), balance_after: expected === null ? null : r2(Math.max(0, expected - r.paid_listed)),
+            kind: problem ? 'PROBLEM' : off ? 'TOTAL' : 'PAYMENTS', problem,
+          });
+        }
+        return { rows: out, checked: rows.length, tolerance: TOTAL_TOLERANCE };
+      }
+
+      /**
+       * Puts the stored total of each invoice back to what its lines come to (the same figure that is set whenever a line changes), so the balance and the most
+       * that can be paid follow it. Business Head only. Without `confirm` nothing is changed: it says what would be. An invoice already paid more than its
+       * lines come to is left alone, to be sorted out by hand. Every change is recorded in the audit trail with the old and the new total.
+       */
+      async totalFix(userid:number, ids:any, confirm:boolean){
+        await this.needOwner(userid, 'correct invoice totals');
+        const list = Array.from(new Set((Array.isArray(ids) ? ids : []).map(Number).filter((n:number) => Number.isInteger(n) && n > 0))).slice(0, 200) as number[];
+        if(!list.length) throw new BadRequestException('Choose the invoices to correct.');
+        const results: any[] = [];
+        for(const id of list){
+          const [inv] = await this.manager.query(
+            `select i.id, i.invoice_no, coalesce(i.total, 0)::float8 as total, coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::float8 as paid
+               from purchase_invoice i where i.id = $1 and i.status = 'COMPLETE' and i.active and not i.archive`, [id]);
+          if(!inv){ results.push({ id, action: 'skipped', reason: 'It is not a completed invoice.' }); continue; }
+          let expected: number;
+          try { expected = await this.expectedTotal(id); }
+          catch(e:any){ results.push({ id, invoice_no: inv.invoice_no, action: 'skipped', reason: e?.message || 'The lines could not be added up.' }); continue; }
+          if(Math.abs(inv.total - expected) <= TOTAL_TOLERANCE){ results.push({ id, invoice_no: inv.invoice_no, from: r2(inv.total), to: r2(inv.total), action: 'unchanged' }); continue; }
+          if(expected < inv.paid - 0.005){
+            results.push({ id, invoice_no: inv.invoice_no, from: r2(inv.total), to: expected, action: 'skipped', reason: `Rs ${r2(inv.paid).toFixed(2)} is already paid, more than the lines come to (Rs ${expected.toFixed(2)}). Sort it out by hand.` });
+            continue;
+          }
+          if(confirm){
+            await this.refreshTotal(id, userid);
+            await this.audit.record({ userId: userid, action: 'invoice.total_corrected', entityType: 'purchases', entityId: id,
+              summary: `invoice ${inv.invoice_no}: total corrected from ${r2(inv.total).toFixed(2)} to ${expected.toFixed(2)} (what its lines come to)`, details: { from: r2(inv.total), to: expected, paid: r2(inv.paid) } });
+          }
+          results.push({ id, invoice_no: inv.invoice_no, from: r2(inv.total), to: expected, action: confirm ? 'corrected' : 'would correct' });
+        }
+        return { written: !!confirm, results };
       }
 
       /** what the vendor billed on the lines still in play: a line the vendor agreed to drop counts at its original value, a line in dispute is left out */
