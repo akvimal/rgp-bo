@@ -1,3 +1,5 @@
+import { permsOf } from 'src/core/role-rules';
+import { SetupAction, canDoSetup } from '../business/setup-access';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -38,9 +40,9 @@ export class ConfigProfileService {
   ) {}
 
   /** the business of the signed-in owner; nobody else reaches this, and nobody reaches another business */
-  private async owner(user: any): Promise<{ id: number; name: string }> {
-    const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-    if (!isOwnerRole(role?.name)) throw new ForbiddenException('Only the Business Head can export or import the business setup.');
+  private async owner(user: any, action: SetupAction): Promise<{ id: number; name: string }> {
+    const [role] = await this.manager.query(`select name, permissions from app_role where id = $1`, [user?.roleid || 0]);
+    if (!canDoSetup(role?.name, permsOf(role), action)) throw new ForbiddenException(action === 'transfer.export' ? 'Exporting the business setup is not open to your role.' : 'Importing the business setup is not open to your role.');
     const [b] = await this.manager.query(
       `select b.id, b.name from app_user u join business b on b.id = ${BUSINESS_OF_USER_SQL} where u.id = $1`, [user?.id || 0]);
     if (!b) throw new NotFoundException('Your user is not linked to a business.');
@@ -89,7 +91,7 @@ export class ConfigProfileService {
 
   /** what is set up now, as a profile */
   async export(user: any): Promise<Profile> {
-    const b = await this.owner(user);
+    const b = await this.owner(user, 'transfer.export');
     const [biz] = await this.manager.query(`select * from business where id = $1`, [b.id]);
     const stores = await this.readStores(this.manager, b.id);
     const staff = await this.manager.query(
@@ -114,7 +116,7 @@ export class ConfigProfileService {
 
   /** an empty workbook with the headings and the dropdowns */
   async templateWorkbook(user: any): Promise<Buffer> {
-    await this.owner(user);
+    await this.owner(user, 'transfer.export');
     return profileToWorkbook({ format: PROFILE_FORMAT, schemaVersion: SCHEMA_VERSION }, await this.assignableRoleNames());
   }
 
@@ -125,7 +127,7 @@ export class ConfigProfileService {
 
   /** an uploaded Excel file as a profile (not yet applied) */
   async readWorkbook(user: any, buffer: Buffer): Promise<Profile> {
-    await this.owner(user);
+    await this.owner(user, 'transfer.import');
     let raw: any;
     try { raw = await workbookToProfile(buffer); } catch (e: any) { throw new BadRequestException(e.message); }
     return raw;
@@ -156,7 +158,7 @@ export class ConfigProfileService {
 
   /** what importing the file would change; nothing is written */
   async preview(user: any, raw: any) {
-    const b = await this.owner(user);
+    const b = await this.owner(user, 'transfer.import');
     const parsed = this.check(raw);
     const plan = await this.plan(this.manager, b, parsed.profile);
     return { plan, warnings: [...parsed.warnings, ...plan.warnings], blockers: plan.blockers, changes: planChangeCount(plan) };
@@ -181,7 +183,7 @@ export class ConfigProfileService {
    * temporary password, returned here once and kept nowhere (only its hash is stored).
    */
   async apply(user: any, raw: any) {
-    const b = await this.owner(user);
+    const b = await this.owner(user, 'transfer.import');
     const parsed = this.check(raw);
     const created: Array<{ email: string; fullName: string; role: string; password: string }> = [];
     const touched: number[] = [];

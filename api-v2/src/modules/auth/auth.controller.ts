@@ -110,6 +110,7 @@ export class AuthController {
   private async mfaReset(@Param('id') id: string, @User() currentUser: any) {
     const target = Number(id);
     if (target === Number(currentUser.id)) throw new BadRequestException('Ask another manager to reset your own authenticator.');
+    await this.userService.assertCanResetMfa(currentUser.id);
     await this.userService.assertCanManage(target, currentUser.id);
     return this.mfa.reset(target, currentUser.id);
   }

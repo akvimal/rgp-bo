@@ -1,3 +1,5 @@
+import { permsOf } from 'src/core/role-rules';
+import { SetupAction, canDoSetup } from './setup-access';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
@@ -28,9 +30,10 @@ export class BusinessService {
   ) {}
 
   /** The business the signed-in Business Head belongs to. Nobody else reaches this, and nobody reaches another business. */
-  private async ownBusiness(user: any): Promise<Business> {
-    const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-    if (!isOwnerRole(role?.name)) throw new ForbiddenException("Only the Business Head can manage the business details.");
+  private async ownBusiness(user: any, action?: SetupAction): Promise<Business> {
+    const [role] = await this.manager.query(`select name, permissions from app_role where id = $1`, [user?.roleid || 0]);
+    // the business details are the owner roles'; the modules and setup presets also go to a role given `modules.manage`
+    if (action ? !canDoSetup(role?.name, permsOf(role), action) : !isOwnerRole(role?.name)) throw new ForbiddenException(action ? 'Switching modules and setup presets is not open to your role.' : "Only the Business Head can manage the business details.");
     const [u] = await this.manager.query(`select business_id from app_user where id = $1`, [user?.id || 0]);
     const b = u?.business_id ? await this.businessRepository.findOne({ where: { id: u.business_id } }) : null;
     if (!b) throw new NotFoundException("Your user is not linked to a business.");
@@ -51,7 +54,7 @@ export class BusinessService {
   // ---------------------------------------------------------------- staffing presets (the setup wizard)
   /** The presets on offer, the one chosen, and each store as it is set up now. */
   async presets(user: any) {
-    const b = await this.ownBusiness(user);
+    const b = await this.ownBusiness(user, 'modules.manage');
     return { current: b.staffingpreset, locked: this.modules.lockedByPlan(), presets: PRESETS.map((k) => ({ ...PRESET_INFO[k], unavailable: this.presetUnavailable(k) })), stores: await this.storesNow(b.id) };
   }
 
@@ -89,7 +92,7 @@ export class BusinessService {
 
   /** What a preset would change here, without changing anything. */
   async previewPreset(user: any, body: any) {
-    const b = await this.ownBusiness(user);
+    const b = await this.ownBusiness(user, 'modules.manage');
     return { ...(await this.planFor(b, body)), info: PRESET_INFO[body.preset as Preset] };
   }
 
@@ -99,7 +102,7 @@ export class BusinessService {
    * switch waits (nothing is half applied). Logins listed in `accounts` are created afterwards, each reported on its own.
    */
   async applyPreset(user: any, body: any) {
-    const b = await this.ownBusiness(user);
+    const b = await this.ownBusiness(user, 'modules.manage');
     const plan = await this.planFor(b, body);
     if (plan.blockers.length) throw new ConflictException(plan.blockers.join(" "));
     const before = { preset: b.staffingpreset, approvalmode: b.approvalmode };
@@ -142,14 +145,14 @@ export class BusinessService {
 
   /** Which modules the Business Head's business has switched on (the whole picture, with defaults filled in). */
   async myModules(user: any) {
-    const b = await this.ownBusiness(user);
+    const b = await this.ownBusiness(user, 'modules.manage');
     const state = await this.modules.forBusiness(b.id);
     const locked = this.modules.lockedByPlan();
     return locked.length ? { ...state, locked } : state;
   }
 
   async updateMyModules(user: any, body: any) {
-    const b = await this.ownBusiness(user);
+    const b = await this.ownBusiness(user, 'modules.manage');
     return this.modules.update(b.id, user.id, body);
   }
 

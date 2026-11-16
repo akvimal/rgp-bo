@@ -1,6 +1,6 @@
 # Menu regrouping and fine-grained permissions
 
-Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the stock gate split (section 17); the full Purchasing split, and disposal, vault and cash, not built. Step E: Accounts (section 18) built 2026-11-16; Sales, Customers, Setup and scope on the grant not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
+Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the stock gate split (section 17); the full Purchasing split, and disposal, vault and cash, not built. Step E: Accounts (section 18) and Setup (section 19) built 2026-11-16; Sales, Customers and scope on the grant not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
 
 Scope of the review: `frontend/src/app/secured/menu.ts`, the Settings submenu in `secured.component.html`, the role editor's list (`settings/roles/permission-catalog.ts`), the route files, `auth.service.ts` (`isUrlAuthorized`), the API's `permission.guard.ts` / `permission.service.ts` / `role-rules.ts`, and `role-templates.ts`. **Not done:** a read of every API controller, so which endpoints enforce a permission and which only hide a button is still to be checked (step E0 below).
 
@@ -328,3 +328,16 @@ Finance and GST filing were each one presence check that opened everything. They
 | `gstfiling` | `unlock` | reopen a closed GST month |
 
 Decisions: this area first; scope on the grant is a later step of its own. Migration 213 keeps every role's access (every role holding `finance` gets bank.import, reconcile and records; every role holding `gstfiling` gets prepare, export and lock) except `unlock`, which goes to the owner roles only. GST reconciliation (`gst`: read, import, reconcile, lock, which also covers unlocking a reconciliation period, and the Store Head holds it by name) and Digital payments (`paymentrecon`) already had enforced actions and are unchanged; splitting `gst` unlock from lock is left for later. The Finance and GST pages do not yet hide buttons a role lacks the action for (the API refuses). QA RAC-1..4.
+
+## 19. Step E, Setup (2026-11-16, migration 214, uncommitted)
+
+Four Setup actions were the owner roles by name only. Three sit on the Business Details permission (`businessprofile`), which already carries the pages they live on (shop setup, import and export), one on `users` (rules in `business/setup-access.ts`; the owner roles hold each by name):
+
+| Permission | Action | Covers |
+|---|---|---|
+| `businessprofile` | `modules.manage` | read and switch modules, read, preview and apply a setup preset |
+| `businessprofile` | `transfer.export` | export the business setup (JSON, Excel) and the blank template |
+| `businessprofile` | `transfer.import` | read an Excel setup, preview and apply an import |
+| `users` | `mfareset` | unlink someone's authenticator, on top of being allowed to manage that person |
+
+Decisions: no new pages (the actions ride on the existing Business Details page); the business details themselves (`businessprofile.manage`) are still the owner roles by name in the API, which this pass does not change. The Business Details box is no longer a one-tick bundle, so the actions can be chosen. Migration 214 gives the three businessprofile actions to the owner roles only (they were owner-only), and `mfareset` to every role holding `users` edit (a Store Head could reset the authenticator of their own staff before). There is no admin password reset in the app, so there is no `users.resetpassword`. The Site Admin still resets authenticators by name. QA RSU-1..4.

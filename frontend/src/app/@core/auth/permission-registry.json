@@ -189,7 +189,8 @@
         {
           "key": "delete",
           "label": "Remove users"
-        }
+        },
+        { "key": "mfareset", "label": "Reset someone's authenticator (a lost phone)" }
       ]
     },
     {
@@ -274,13 +275,14 @@
       "group": "Setup",
       "path": "/secure/settings/business-profile",
       "settingsPath": true,
-      "bundle": true,
-      "bundleLabel": "Can edit business details",
       "actions": [
         {
           "key": "manage",
-          "label": "Manage"
-        }
+          "label": "Edit the business details"
+        },
+        { "key": "modules.manage", "label": "Switch modules on or off, and apply a setup preset" },
+        { "key": "transfer.export", "label": "Export the business setup (file or blank template)" },
+        { "key": "transfer.import", "label": "Read, preview and apply an imported business setup" }
       ]
     },
     {

@@ -1,3 +1,4 @@
+import { canDoSetup } from '../business/setup-access';
 import { userError } from 'src/core/db-error';
 import { isListedRater } from '../hr/hr-kpi-raters';
 import { packsOf } from 'src/core/modules/modules';
@@ -310,6 +311,12 @@ export class UserService {
   }
 
   /** throws unless the caller may manage this person's login (the same reach as editing them) */
+  /** resetting someone's authenticator needs the `users.mfareset` action (the owner roles and the platform admin hold it by name), on top of being allowed to manage that person */
+  async assertCanResetMfa(currentUserId: number) {
+    const [r] = await this.userRepository.manager.query(`select r.name, r.permissions from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [Number(currentUserId) || 0]);
+    if (!r || !canDoSetup(r.name, permsOf(r), 'mfareset')) throw new ForbiddenException('Resetting an authenticator is not open to your role.');
+  }
+
   async assertCanManage(rawId: number, currentUserId: number) {
     const id = Number(rawId);
     if (!Number.isInteger(id)) throw new BadRequestException('User not found');

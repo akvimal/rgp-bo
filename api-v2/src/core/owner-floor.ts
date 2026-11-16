@@ -10,6 +10,8 @@ const OWNER_FLOOR: Array<{ resource: string; path: string; actions: string[]; on
   { resource: 'customerorders', path: '/secure/commitments', actions: ['view', 'manage'] },
   { resource: 'deliverypartners', path: '/secure/settings/delivery-partners', actions: ['manage'] },
   { resource: 'reports', path: '/secure/reports', actions: ['sales', 'purchases', 'stock', 'margin', 'ask', 'export'] },
+  { resource: 'businessprofile', path: '/secure/settings/business-profile', onlyIfPresent: true, actions: ['modules.manage', 'transfer.export', 'transfer.import'] },
+  { resource: 'users', path: '/secure/settings/users', onlyIfPresent: true, actions: ['mfareset'] },
   { resource: 'finance', path: '/secure/finance', onlyIfPresent: true, actions: ['bank.import', 'reconcile', 'records'] },
   { resource: 'gstfiling', path: '/secure/gst-filing', onlyIfPresent: true, actions: ['prepare', 'export', 'lock', 'unlock'] },
   { resource: 'store', path: '/secure/store/stock', onlyIfPresent: true, actions: ['qty.adjust', 'audit.approve', 'count.perform', 'transfer.request', 'transfer.receive'] },
