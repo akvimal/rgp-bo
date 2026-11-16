@@ -2,7 +2,9 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
-import { isManagerRole, isOwnerRole } from 'src/core/roles';
+import { isOwnerRole } from 'src/core/roles';
+import { permsOf } from 'src/core/role-rules';
+import { canManageCustomerOrders } from './commitment-access';
 import { StoreService } from '../store/store.service';
 import { allocateCommitmentReceipts, commitmentBalance, holdDays, istToday } from './commitment-db';
 import { Advance, balanceOf, cleanAdvance, cleanLines, refundProblem, statusOf, totalOf } from './commitment-rules';
@@ -25,17 +27,18 @@ export class CommitmentService {
 
   // ------------------------------------------------------------------------------------------------------------------ who
 
-  private async roleOf(user: any): Promise<string | null> {
-    const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-    return role?.name ?? null;
+  private async roleOf(user: any): Promise<{ name: string | null; permissions: any } | null> {
+    const [role] = await this.manager.query(`select name, permissions from app_role where id = $1`, [user?.roleid || 0]);
+    return role ?? null;
   }
 
-  /** every store for an owner, a person's own stores for anyone else */
+  /** every store for an owner, a person's own stores for anyone else; `manager` = may do the manager actions (the customerorders manage permission) */
   private async scopeOf(user: any): Promise<{ owner: boolean; manager: boolean; stores: number[] }> {
-    const name = await this.roleOf(user);
+    const role = await this.roleOf(user);
+    const name = role?.name ?? null;
     if (isOwnerRole(name)) return { owner: true, manager: true, stores: [] };
     const mine = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
-    return { owner: false, manager: isManagerRole(name), stores: mine.map((m: any) => +m.store_id) };
+    return { owner: false, manager: canManageCustomerOrders(name, permsOf(role)), stores: mine.map((m: any) => +m.store_id) };
   }
 
   private assertStore(scope: { owner: boolean; stores: number[] }, storeId: number | null) {
@@ -295,7 +298,7 @@ export class CommitmentService {
 
   private async managerOnly(user: any, what: string) {
     const scope = await this.scopeOf(user);
-    if (!scope.manager) throw new ForbiddenException(`Only a Store Head or the owner can ${what}.`);
+    if (!scope.manager) throw new ForbiddenException(`Your role may not ${what}: it needs the Customer orders manage permission.`);
   }
 
   async refund(id: number, body: any, user: any) {

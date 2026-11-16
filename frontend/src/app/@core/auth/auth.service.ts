@@ -1,3 +1,4 @@
+import { pageRuleDecides, resourceAvailableFor } from './access-rules';
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Observable } from "rxjs";
@@ -194,20 +195,7 @@ export class AuthService {
 
   /** whether a permission group means anything on this account: the plan's modules, and the platform-only ones */
   public resourceAvailable(key:string):boolean{
-    switch (key) {
-      case 'businesses': return !this.hosted;
-      case 'hr': case 'myhr': case 'leaveapprove': case 'attendpunch': case 'attendreview': case 'kpirate': case 'mykpi': return this.moduleOn('hr');
-      case 'purchases': case 'vendorissues': return this.moduleOn('purchasing');
-      case 'purchaseorders': return this.purchasingFull;
-      case 'expenses': return this.moduleOn('expenses');
-      case 'paymentrecon': return this.moduleOn('payment_recon');
-      case 'stockaudit': return this.moduleOn('stock_audits');
-      case 'refills': return this.moduleOn('refills');
-      case 'returns': return this.moduleOn('returns');
-      case 'scheduleregister': return this.moduleOn('drug_register');
-      case 'feedback': return this.modules?.feedback === true;   // off unless the business switched it on
-      default: return true;
-    }
+    return resourceAvailableFor(key, { hosted: this.hosted, moduleOn: (k) => this.moduleOn(k), purchasingFull: this.purchasingFull, feedbackOn: this.modules?.feedback === true });
   }
 
   public get purchasingFull():boolean{
@@ -251,20 +239,9 @@ export class AuthService {
   public isUrlAuthorized(url:string):boolean{
     // a query string or fragment (a link such as /secure/attendance-review?period=2026-10) is not part of the page
     url = url.split(/[?#]/)[0];
-    // everyone signed in has their own notifications; what shows in them is decided by the server
-    if (url === '/secure/notifications') return true;
-    // the app guide is for everyone signed in; what it shows follows their login
-    if (url.split('?')[0] === '/secure/app-guide') return true;
-    // the help pages are for everyone signed in
-    if (url === '/secure/help' || url.startsWith('/secure/help/')) return true;
-    // the weekly knowledge check is each person's own
-    if (url.split('?')[0] === '/secure/knowledge') return true;
-    // customer orders (advance-paid commitments) are taken at the till: whoever may use sales may open them (no role carries this path)
-    if (url === '/secure/commitments' || url.startsWith('/secure/commitments/')) return this.isActionAuthorized('sales');
-    // the financial dashboard (money by category, cost ratios, cash, stock value): the same people the menu shows it to; no role carries this path
-    if (url === '/secure/financials') return this.isActionAuthorized('finance.view') || this.isActionAuthorized('expenses.approve');
-    // the pharmacy guide is for everyone who works in a pharmacy business, whatever their role
-    if (url.split('?')[0] === '/secure/pharmacy-guide') return this.packOn('pharmacy');
+    // the pages whose access is a rule, not a path some role carries (notifications, the guides, help, the financial dashboard)
+    const ruled = pageRuleDecides(url, { has: (k) => this.isActionAuthorized(k), packOn: (p) => this.packOn(p) });
+    if (ruled !== null) return ruled;
     const found = this.permissions.find((p:any) => {
       if(p.path instanceof Array)
         return p.path.some((i:string) => this.matchesPath(url, i));

@@ -19,6 +19,7 @@ import { personNameProblem } from "src/core/input-rules";
 import { ModulesService } from "src/core/modules/modules.service";
 import { PlatformService } from "src/core/platform/platform.service";
 import { filterPermissions } from "src/core/modules/modules";
+import { withOwnerFloor } from "src/core/owner-floor";
 import { businessOfUser } from "src/core/business-of-user";
 
 @Injectable()
@@ -428,7 +429,7 @@ export class UserService {
     const [reg] = data.businessid ? await this.userRepository.manager.query(
       `select r.reg_type, to_char(r.go_live, 'YYYY-MM-DD') as go_live, b.state_code from gst_registration r join business b on b.id = r.business_id where r.business_id = $1`, [data.businessid]) : [];
     // a person whose job role is named as a rater on a measure gets the rating screen even if their login role does not carry it
-    const permissions: any[] = filterPermissions(data.permissions, modules);
+    const permissions: any[] = withOwnerFloor(filterPermissions(data.permissions, modules), data.rolename);
     if (!permissions.some((p: any) => p.resource === 'kpirate') && (await isListedRater(this.userRepository.manager, Number(id)))) {
       permissions.push({ resource: 'kpirate', path: '/secure/kpi/rate', policies: [{ action: 'rate' }] });
     }

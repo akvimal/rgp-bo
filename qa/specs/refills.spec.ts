@@ -60,7 +60,7 @@ test.describe('Staff & Quality — Refill follow-up @p1', () => {
     const owner = (await api.request('GET', '/refills', undefined, OWNER)).body;
     expect(owner.rows.every((r: any) => 'typical_value' in r)).toBe(true);
     // a contact can only be logged for a customer who buys at their store
-    const stranger = (await api.request('POST', '/customers', { name: `QA Refill ${Date.now()}`, mobile: `9${Math.floor(100000000 + Math.random() * 899999999)}` }, OWNER)).body;
+    const stranger = (await api.request('POST', '/customers', { name: `QA Refill ${String(Date.now()).replace(/\d/g, (d) => 'abcdefghij'[+d])}`, mobile: `9${Math.floor(100000000 + Math.random() * 899999999)}` }, OWNER)).body;
     expect((await api.request('POST', `/refills/${stranger.id}/followup`, { outcome: 'NO_ANSWER' }, COUNTER)).status).toBe(404);
     expect((await api.request('POST', `/refills/${stranger.id}/followup`, { outcome: 'NO_ANSWER' }, OWNER)).status).toBeLessThan(300);
     // the rest of Staff & Quality stays closed to them
@@ -76,7 +76,8 @@ test.describe('Staff & Quality — Refill follow-up @p1', () => {
     await page.getByTestId('nav-refills').click();
     await expect(page).toHaveURL(/\/secure\/quality\/refills/);
     await expect(page.locator('#main h1').first()).toHaveText('Refill follow-up');
-    await expect(page.getByTestId('tab-refills')).toBeVisible();
+    // the counter has the grouped menu: Refills is its own Sell page, not a tab of a Staff & Quality drawer
+    await expect(page.getByTestId('tab-refills')).toHaveCount(0);
     await expect(page.getByTestId('tab-grievances')).toHaveCount(0);
 
     // the old Sales > Customers address lands on the refill list

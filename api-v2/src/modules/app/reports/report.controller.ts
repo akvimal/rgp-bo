@@ -2,24 +2,29 @@ import { ReportService } from "./report.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { BadRequestException, Body, Controller, Get, Post, Res, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "src/modules/auth/auth.guard";
+import { PermissionGuard } from "src/core/guards/permission.guard";
+import { Permission } from "src/core/decorator/permission.decorator";
+import { User } from "src/core/decorator/user.decorator";
 import { Response } from 'express';
 import { GeneratorService } from "./generator.service";
 
 @ApiTags('Reports')
 @Controller('reports')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 export class ReportController {
 
     constructor(private service:ReportService, private generator:GeneratorService){}
 
+    /** needs the Reports permission; only the stores the person may read are searched (see ReportService.saleQuery) */
+    @Permission('useReports')
     @Post('/sale')
-    async search(@Body() body: any, @Res() res: Response) {
+    async search(@Body() body: any, @Res() res: Response, @User() currentUser: any) {
       // console.log(body);
       if(body?.action !== 'search' && body?.action !== 'export'){
         throw new BadRequestException("action must be 'search' or 'export'.");
       }
-      const result = await this.service.saleQuery(body.criteria);
+      const result = await this.service.saleQuery(body.criteria, currentUser.id);
 
       if(body.action == 'search')
         res.send(result);

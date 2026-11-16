@@ -774,6 +774,15 @@ h6 {
   background-color: #4154f1;
 }
 
+/* a label inside the Settings submenu (Business, People and access, Integrations and alerts, Data) */
+.sidebar-nav .nav-content .nav-subheading {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #899bbd;
+  font-weight: 600;
+  margin: 10px 0 2px 40px;
+}
+
 /*--------------------------------------------------------------
 # Dashboard
 --------------------------------------------------------------*/

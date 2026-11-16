@@ -158,6 +158,7 @@ const RESOURCES: Record<string, (m: ModuleState) => boolean> = {
   purchaseorders: (m) => m.purchasing === 'full',
   vendorissues: (m) => m.purchasing !== 'off',
   expenses: (m) => m.expenses,
+  gst: (m) => m.gst,
   paymentrecon: (m) => m.payment_recon,
   stockaudit: (m) => m.stock_audits,
   scheduleregister: (m) => m.drug_register,

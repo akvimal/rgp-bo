@@ -1,5 +1,5 @@
 /**
- * Reports — RPT-1..4
+ * Reports — RPT-1..6
  * Source: docs/testing/manual-test-plan.html  (module "reports")
  */
 import { test, expect } from '../fixtures/index.js';
@@ -32,7 +32,9 @@ async function saleReport(token: string, criteria: any, action = 'search', timeo
 test.describe('Reports @p2', () => {
   test('RPT-1 a sale report for a date range totals to the sum of its sales @happy', async ({ api }) => {
     const token = await api.token(MGR);
-    const from = '2026-08-01', to = '2026-09-30';
+    // the seed's bills are the last few weeks, so the window is the last 60 days, not fixed dates
+    const day = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+    const from = day(60), to = day(0);
     const rep = await saleReport(token, rangeCriteria(from, to));
     expect(rep.status).toBeLessThan(400);
     const rows: any[] = Array.isArray(rep.body) ? rep.body : [];
@@ -87,6 +89,28 @@ test.describe('Reports @p2', () => {
       test.info().annotations.push({ type: 'finding', description: 'RPT-4: a 2-year sale report search did not respond within 25s' });
     }
     expect([0, 200, 201].includes(rep.status)).toBeTruthy();
+  });
+
+  test('RPT-5 a role without the Reports page cannot run the sale report @permission', async ({ api }) => {
+    for (const login of ['sales1@local.test', 'siteadmin@local.test']) {
+      const rep = await saleReport(await api.token(login), rangeCriteria('2026-08-01', '2026-09-30'), 'search', 10000);
+      expect(rep.status, login).toBe(403);
+    }
+  });
+
+  test('RPT-6 dates and filters are checked, so a value cannot carry SQL @negative', async ({ api }) => {
+    const token = await api.token(MGR);
+    for (const begin of ["2026-08-01'; drop table sale; --", '2026-13-40', '01/08/2026']) {
+      expect((await saleReport(token, rangeCriteria(begin, '2026-09-30'), 'search', 10000)).status, begin).toBe(400);
+    }
+    expect((await saleReport(token, rangeCriteria('2026-09-30', '2026-08-01'), 'search', 10000)).status).toBe(400);
+    // a filter value that looks like SQL is only a value: it matches nothing, and the sales are still there
+    const day = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+    const evil = await saleReport(token, rangeCriteria(day(60), day(0), { product: { category: "x' or '1'='1", props: [] } }), 'search', 10000);
+    expect(evil.status).toBeLessThan(400);
+    expect(Array.isArray(evil.body) ? evil.body.length : -1).toBe(0);
+    const again = await saleReport(token, rangeCriteria(day(60), day(0)), 'search', 15000);
+    expect(Array.isArray(again.body) ? again.body.length : 0).toBeGreaterThan(0);
   });
 
   test('the Reports screen loads @happy', async ({ app }) => {

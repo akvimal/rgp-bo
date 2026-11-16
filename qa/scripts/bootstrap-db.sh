@@ -21,6 +21,9 @@ MIGRATIONS=(
   035_stock_count 036_telegram_notifications 037_notifications_permission 038_audit_event 039_staff_sales_permission 040_grievances 041_discrepancies_permission 042_refill_followup 043_vendor_master 044_vendor_block 045_invoice_hold 046_invoice_gstin_backfill 047_business_profile_permission 048_store_licenses 049_sales_staff_purchase_request 050_customer_alt_mobile 051_customer_delete_permission 052_sales_staff_refills 053_digital_payment_reference 054_staff_credit 055_hr_module 056_customer_store_credit 057_expenses 058_hr_staff_without_login 059_hr_work_schedule 060_hr_kpi_sources 061_customer_inquiries 062_shift_handover_digital 063_sale_supply_months 064_vendor_issues 065_stock_audit 066_sale_suggestions 067_my_hr 068_payment_reconciliation 069_payment_statement 070_sales_staff_payment_recon 071_invoice_printed_total 072_invoice_cash_discount 073_store_transfers_path 074_store_profile 075_approval_mode 076_business_modules 077_account_kinds 078_staffing_preset 079_platform_entitlement 080_platform_counter 081_pharmacist_registration 082_store_type 083_deposit_schedule 084_alerts 085_request_unlisted_product 086_product_min_stock 087_setting_value_longer 088_shift_checklist 089_shift_checklist_log 090_return_rules 091_price_variance 092_challan_receipts 093_unit_changed_reason 094_price_view_gst_basis 095_price_policy 096_sale_gst_basis 097_sale_mrp_guard 098_usual_discount 099_outage_kit 100_stock_count_escalation 101_weekly_review 102_stock_audit_records 103_finance_bank 104_pharmacy_drug_register 105_returns_switch 106_gst_rate_changes 107_gst_registration 108_gst_filing_months 109_dashboard_path_all_roles 110_config_override 111_compliance_register 112_recognition 113_metric_target 114_dashboard_setup_permission 115_hr_position 116_hr_position_kpi 117_hr_leave_by_position 118_legal_form_statutory 119_hr_relationship 120_licence_types 121_store_head_manages_staff 122_pricing_mode
 )
 
+# the list above stops at 122; every later migration is picked up from the directory, in number order (3-digit prefix), rollbacks left out
+while IFS= read -r f; do MIGRATIONS+=("${f%.sql}"); done < <(ls "$REPO_ROOT/sql/migrations" | grep -E '^(12[3-9]|1[3-9][0-9]|[2-9][0-9][0-9])_.*\.sql$' | grep -v rollback | sort)
+
 echo "[bootstrap] reset public schema"
 psql_c -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
            GRANT ALL ON SCHEMA public TO ${POSTGRES_USER}; GRANT ALL ON SCHEMA public TO public;" >/dev/null
@@ -28,7 +31,7 @@ psql_c -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
 echo "[bootstrap] base DDL (001-005)"
 for f in "${DDL_BASE[@]}"; do echo "  - ddl/$f.sql"; psql_c -f "//sql/ddl/$f.sql" >/dev/null; done
 
-echo "[bootstrap] migrations (008-022)"
+echo "[bootstrap] migrations (008 to the latest: ${#MIGRATIONS[@]} files)"
 for f in "${MIGRATIONS[@]}"; do echo "  - migrations/$f.sql"; psql_c -f "//sql/migrations/$f.sql" >/dev/null; done
 
 echo "[bootstrap] dev demo data (006_dev_test_data.sql)"

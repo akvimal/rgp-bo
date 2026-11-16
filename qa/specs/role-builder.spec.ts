@@ -102,8 +102,8 @@ test('RB-4 a store head adds and edits staff of their own stores, never a manage
   // not the owner, or themselves
   const me = (await api.request('GET', '/auth/me', undefined, HEAD)).body;
   const owner = (await api.request('GET', '/auth/me', undefined, MGR)).body;
-  expect((await api.request('PUT', `/users/${owner.id}`, { fullname: 'x' }, HEAD)).status).toBe(403);
-  expect((await api.request('PUT', `/users/${me.id}`, { fullname: 'x' }, HEAD)).status).toBe(403);
+  expect((await api.request('PUT', `/users/${owner.id}`, { fullname: 'Xavier' }, HEAD)).status).toBe(403);
+  expect((await api.request('PUT', `/users/${me.id}`, { fullname: 'Xavier' }, HEAD)).status).toBe(403);
   expect((await api.request('DELETE', `/users/${owner.id}`, undefined, HEAD)).status).toBe(403);
   // removing a staff member of their store works
   expect((await api.request('DELETE', `/users/${id}`, undefined, HEAD)).status).toBeLessThan(300);
@@ -116,7 +116,7 @@ test('RB-5 a store head cannot reach staff of a store they do not work in, and o
   if (other) {
     const far = await newUser(api, MGR, sales, [other]);
     expect(far.res.status).toBeLessThan(300);
-    expect((await api.request('PUT', `/users/${far.res.body.id}`, { fullname: 'x' }, HEAD)).status).toBe(403);
+    expect((await api.request('PUT', `/users/${far.res.body.id}`, { fullname: 'Xavier' }, HEAD)).status).toBe(403);
     expect((await api.request('DELETE', `/users/${far.res.body.id}`, undefined, HEAD)).status).toBe(403);
     expect((await api.request('PUT', `/users/${far.res.body.id}/stores`, { storeids: [mine[0]] }, HEAD)).status).toBe(403);
   }

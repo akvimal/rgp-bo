@@ -150,7 +150,7 @@
             <span>Customers</span>
           </a>
         </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'sales'">
+        <li class="nav-item" [routerLinkActive]="['is-active']" *ngIf="has('customerorders.view','customerorders.manage')">
           <a class="nav-link collapsed" routerLink="commitments" data-testid="nav-commitments" title="Customer orders" aria-label="Customer orders">
             <i class="bi bi-bag-heart"></i>
             <span>Customer orders</span>
@@ -330,6 +330,8 @@
             <i class="bi bi-chevron-down ms-auto"></i>
           </a>
           <ul class="nav-content" *ngIf="settingsMenuOpen">
+            <!-- Business: what the business is and how it is set up -->
+            <li class="nav-subheading" *ngIf="has('businesses.manage','businessprofile','storesettings','dashsetup.view')" data-testid="nav-settings-group-business">Business</li>
             <li *isAuth="'businesses.manage'">
               <a [routerLinkActive]="['active']" routerLink="/secure/settings/businesses" data-testid="nav-settings-businesses">
                 <i class="bi bi-circle"></i><span>Businesses</span>
@@ -345,9 +347,26 @@
                 <i class="bi bi-circle"></i><span>Shop setup</span>
               </a>
             </li>
+            <li *isAuth="'storesettings'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/store" data-testid="nav-settings-store">
+                <i class="bi bi-circle"></i><span>Store</span>
+              </a>
+            </li>
+            <li *isAuth="'dashsetup.view'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/dashboards" data-testid="nav-settings-dashboards">
+                <i class="bi bi-circle"></i><span>Dashboards and compliance</span>
+              </a>
+            </li>
             <li *isAuth="'businessprofile'">
               <a [routerLinkActive]="['active']" routerLink="/secure/settings/business-profile/ai" data-testid="nav-settings-ai">
                 <i class="bi bi-circle"></i><span>AI assistant</span>
+              </a>
+            </li>
+            <!-- People and access: who can sign in and what each role may do -->
+            <li class="nav-subheading" *ngIf="has('users','roles')" data-testid="nav-settings-group-access">People and access</li>
+            <li *isAuth="'users'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/users" data-testid="nav-settings-users">
+                <i class="bi bi-circle"></i><span>Users</span>
               </a>
             </li>
             <li *isAuth="'roles'">
@@ -355,16 +374,8 @@
                 <i class="bi bi-circle"></i><span>Roles</span>
               </a>
             </li>
-            <li *isAuth="'users'">
-              <a [routerLinkActive]="['active']" routerLink="/secure/settings/users" data-testid="nav-settings-users">
-                <i class="bi bi-circle"></i><span>Users</span>
-              </a>
-            </li>
-            <li *isAuth="'purchases'">
-              <a [routerLinkActive]="['active']" routerLink="/secure/settings/delivery-partners" data-testid="nav-settings-delivery-partners">
-                <i class="bi bi-circle"></i><span>Delivery Partners</span>
-              </a>
-            </li>
+            <!-- Integrations and alerts: what reaches the shop from outside, and what the shop is told -->
+            <li class="nav-subheading" *ngIf="has('notifications.manage','alerts.manage','whatsappsettings.manage','deliverypartners.manage')" data-testid="nav-settings-group-integrations">Integrations and alerts</li>
             <li *isAuth="'notifications.manage'">
               <a [routerLinkActive]="['active']" routerLink="/secure/settings/notifications" data-testid="nav-settings-notifications">
                 <i class="bi bi-circle"></i><span>Notifications</span>
@@ -380,14 +391,16 @@
                 <i class="bi bi-circle"></i><span>WhatsApp</span>
               </a>
             </li>
-            <li *isAuth="'dashsetup.view'">
-              <a [routerLinkActive]="['active']" routerLink="/secure/settings/dashboards" data-testid="nav-settings-dashboards">
-                <i class="bi bi-circle"></i><span>Dashboards and compliance</span>
+            <li *isAuth="'deliverypartners.manage'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/delivery-partners" data-testid="nav-settings-delivery-partners">
+                <i class="bi bi-circle"></i><span>Delivery Partners</span>
               </a>
             </li>
-            <li *isAuth="'storesettings'">
-              <a [routerLinkActive]="['active']" routerLink="/secure/settings/store" data-testid="nav-settings-store">
-                <i class="bi bi-circle"></i><span>Store</span>
+            <!-- Data: moving a business's setup in and out -->
+            <li class="nav-subheading" *ngIf="has('businessprofile')" data-testid="nav-settings-group-data">Data</li>
+            <li *isAuth="'businessprofile'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/business-profile/transfer" data-testid="nav-settings-transfer">
+                <i class="bi bi-circle"></i><span>Import and export</span>
               </a>
             </li>
           </ul>

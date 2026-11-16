@@ -1,7 +1,8 @@
 /**
  * The grouped menu - MG-1..2
  * The eight-group menu is a per-business choice: off, the long-standing menu stays; on, the Business Head sees the groups in order, each entry under the job
- * it belongs to, and Compliance sits under Oversight. The setting is put back after.
+ * it belongs to (Refills and Complaints under Sell, Cash and shifts under Accounts, Staff credit and Staff performance under People, the Audit log and
+ * Compliance under Oversight), and the old Staff and quality drawer is gone. The setting is put back after.
  */
 import { test, expect } from '../fixtures/index.js';
 
@@ -55,8 +56,11 @@ test.describe.serial('Grouped menu', () => {
     expect(Object.keys(groups)).toEqual(['home', 'sell', 'stock', 'buy', 'accounts', 'people', 'oversight', 'admin', 'learn']);
     expect(groups.learn).toEqual(['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge', 'nav-feedback']);                       // the guides sit at the very bottom, below Setup
     expect(groups.home).toEqual(['nav-dashboard', 'nav-todos', 'nav-calendar', 'nav-reports']);        // My shift, My HR and My KPI are in the profile menu now
-    expect(groups.accounts).toEqual(['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-financials', 'nav-finance']);
-    expect(groups.oversight).toEqual(['nav-compliance', 'nav-review', 'nav-quality']);
+    expect(groups.accounts).toEqual(['nav-financials', 'nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance', 'nav-discrepancies']);
+    expect(groups.oversight).toEqual(['nav-compliance', 'nav-review', 'nav-audit']);                  // no "Staff and quality" drawer: each page sits under its job
+    expect(groups.sell).toEqual(expect.arrayContaining(['nav-refills', 'nav-grievances']));
+    expect(groups.people).toEqual(expect.arrayContaining(['nav-staff-credit', 'nav-staff-sales']));
+    await expect(page.getByTestId('nav-quality')).toHaveCount(0);
     await expect(page.getByTestId('nav-section-admin')).toHaveText('Setup');
   });
 });

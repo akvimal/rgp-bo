@@ -14,6 +14,7 @@ import { ShiftContextService } from "../@core/shift-context.service";
 import { AuthService } from "../@core/auth/auth.service";
 import { ConfigService } from "../shared/config.service";
 import { MenuGroup, MenuItem, buildCounterMenu, buildMenu, buildMyMenu, isCounterRole } from "./menu";
+import { MenuModeService } from "./menu-mode.service";
 import { QuickAction, buildQuickActions } from "./quick-actions";
 import { ThemeService } from "../shared/theme.service";
 
@@ -101,7 +102,8 @@ export class SecuredComponent {
       private authService: AuthService,
       private propsService: PropsService,
       private config: ConfigService,
-      public theme: ThemeService){
+      public theme: ThemeService,
+      private menuMode: MenuModeService){
         this.state$ = this.appStateService.state;
         this.readRailChoice();
     }
@@ -136,14 +138,17 @@ export class SecuredComponent {
     /** the guides, at the bottom of the sidebar for every role and both menus */
     get learnGroup(): MenuGroup | undefined { return this.menuGroups.find((g) => g.key === 'learn'); }
 
+    /** tells the pages that change with the menu (the old Staff and quality drawer) which sidebar is showing */
+    private syncMenuMode() { this.menuMode.grouped = this.groupedMenu; }
+
     groupVisible(g: MenuGroup): boolean {
       return g.items.some((m) => m.show());
     }
 
     private loadMenuChoice() {
       this.config.effective('views').subscribe({
-        next: (r) => { this.newMenu = r.items.find((i) => i.key === 'new_menu')?.value === true; },
-        error: () => { this.newMenu = false; },
+        next: (r) => { this.newMenu = r.items.find((i) => i.key === 'new_menu')?.value === true; this.syncMenuMode(); },
+        error: () => { this.newMenu = false; this.syncMenuMode(); },
       });
     }
 
@@ -173,6 +178,7 @@ export class SecuredComponent {
       this.userService.getCurrentUser().subscribe(data => {
         this.titleService.setTitle(`${data['platform'] ? (data['businessname'] || 'Back office') : 'RGP'} - ${data['fullname']}`)
         this.user = data;
+        this.syncMenuMode();
         this.theme.open(data['id']);
         this.setFavicon(data['businesslogo']);
         // Permissions are cached at sign-in; pick up role changes made since (new screens, revoked access).

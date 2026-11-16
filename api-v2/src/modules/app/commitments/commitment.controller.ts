@@ -3,12 +3,13 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { User } from 'src/core/decorator/user.decorator';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { CommitmentService } from './commitment.service';
+import { CustomerOrdersGuard, OpenToSignedIn } from './commitment.guard';
 
 /** Customer commitments: orders taken at the counter and paid in advance (see CommitmentService). */
 @ApiTags('Customer commitments')
 @Controller('commitments')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, CustomerOrdersGuard)
 export class CommitmentController {
   constructor(private readonly commitments: CommitmentService) {}
 
@@ -25,6 +26,7 @@ export class CommitmentController {
   }
 
   /** who is waiting for a product, so purchasing can link them to a request */
+  @OpenToSignedIn()
   @Get('waiting/:productid')
   waiting(@Param('productid', ParseIntPipe) productid: number, @Query('storeid') storeid: string, @User() user: any) {
     return this.commitments.waitingFor(productid, storeid ? Number(storeid) : null, user);

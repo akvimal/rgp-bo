@@ -25,6 +25,8 @@ export class PermissionGuard implements CanActivate {
       case 'managePricing':   await this.permissionService.assertCanManagePricing(roleid); break;
       case 'auditStock':      await this.permissionService.assertCanAuditStock(roleid); break;
       case 'manageBusinesses': await this.permissionService.assertCanManageBusinesses(roleid); break;
+      case 'manageDeliveryPartners': if (!(await this.permissionService.canManageDeliveryPartners(roleid))) throw new ForbiddenException('Delivery partner access denied'); break;
+      case 'useReports':      if (!(await this.permissionService.canUseReports(roleid))) throw new ForbiddenException('Reports access denied'); break;
       default: {
         const [resource, action] = permission.split(':');
         if (!resource || !action) throw new ForbiddenException(`Invalid permission key: ${permission}`);

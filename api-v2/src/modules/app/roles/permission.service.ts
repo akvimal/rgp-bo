@@ -147,6 +147,27 @@ export class PermissionService {
     return this.privilegedRoles.has(role.name) || this.normalizePermissions(role).some((p) => p.resource === 'outage');
   }
 
+  /**
+   * The Reports page and its sale report: the owner roles, and any role the Reports page is given to (the permission has no actions, only its
+   * presence, as the role editor saves it). The Store Head is not let in by name: the editor decides.
+   */
+  async canUseReports(roleid: number | string): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return role.name === 'Business Head' || role.name === 'Owner-operator' || this.normalizePermissions(role).some((p) => p.resource === 'reports');
+  }
+
+  /** Delivery partners (add, change, remove): the owner roles by name, any other role only with the deliverypartners manage permission. */
+  async canManageDeliveryPartners(roleid: number | string): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return role.name === 'Business Head' || role.name === 'Owner-operator' || this.hasPermission(role, 'deliverypartners', 'manage');
+  }
+
   async canManagePricing(roleid: number | string): Promise<boolean> {
     const role = await this.findRole(roleid);
     if (!role) {

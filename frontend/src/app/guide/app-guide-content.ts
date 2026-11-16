@@ -70,6 +70,12 @@ export const PAGES: PageGuide[] = [
     who: 'Everyone. Managers can give to-dos to the people and stores they look after.', watch: ['A to-do left undone can be raised to the manager after the number of days set on it.'], keywords: 'todo to-do reminder task repeat assign',
   },
   {
+    id: 'nav-calendar', group: 'home', title: 'Calendar', route: '/secure/calendar',
+    purpose: 'A month, week and day view of what is dated: leave, holidays, to-dos, licence expiries, stock audits, follow-ups and your own attendance.',
+    tasks: ['Switch between month, week and day, and pick the kinds of event to show.', 'Managers can look at one store or all.', 'Click a day or an event to see what it is.'],
+    who: 'Everyone who has the to-do list. It shows only what your role may already see elsewhere.', keywords: 'calendar month week day leave holiday licence audit schedule',
+  },
+  {
     id: 'nav-dashboard', group: 'home', title: 'Dashboard', route: '/secure/dashboard',
     purpose: 'Today at a glance, for the work your role does: sales, cash, and what needs attention.',
     tasks: ['See today\'s and this month\'s figures for your stores.', 'Read the Health card: the status comes from the worst open finding (Critical, Major or Minor), and Fix first lists the five to put right with the points each gains.', 'Open a finding to go to the page that fixes it; the Business Head can set a non-legal finding aside with a reason and an end date.', 'See when sales happen: by hour, weekday, day of the month and month of the year.', 'Open a number or an alert to go to the page behind it.', 'Change the period or the store where the page offers it.'],
@@ -126,7 +132,13 @@ export const PAGES: PageGuide[] = [
     who: 'Counter staff.', keywords: 'chronic refill call reminder',
   },
   {
-    id: 'nav-price-changes', group: 'sell', title: 'Price changes', route: '/secure/price-changes',
+    id: 'nav-grievances', group: 'sell', title: 'Complaints', route: '/secure/quality/grievances',
+    purpose: 'Customer complaints: who raised it, who is dealing with it and whether it was settled in time.',
+    tasks: ['Log a complaint and add notes as it moves.', 'Assign it, settle it and reopen it if it comes back.'],
+    who: 'The owner and store heads.', keywords: 'grievance complaint customer resolve overdue',
+  },
+  {
+    id: 'nav-price-changes', group: 'stock', title: 'Price changes', route: '/secure/price-changes',
     purpose: 'What changed in the shop\'s selling prices, for the counter, so you can tell a customer why a price moved.',
     tasks: ['Choose the days (7 or 14 days, this month or last month, or your own dates).', 'Hide small moves with "Changed by at least %", or find one product by name.', 'Print the sheet and keep it beside the till.', 'Only products in stock are listed: bought in the last year, not expired, with stock left.'],
     who: 'Everyone who serves at the counter. It shows selling prices only, never cost.', keywords: 'price change increase decrease mrp sheet print',
@@ -226,6 +238,12 @@ export const PAGES: PageGuide[] = [
     tasks: ['Import a bank statement from any bank.', 'Reconcile bank lines against payments and receipts.', 'Accounts: add or edit a bank account. One with no statement lines, imports, signed-off months or expenses can be deleted; any other is switched off instead.', 'Records: how long to keep accounts and drug records, and whether each month\'s records are complete.'],
     who: 'The owner and the accountant.', keywords: 'bank reconcile statement records retention',
   },
+  {
+    id: 'nav-discrepancies', group: 'accounts', title: 'Cash and shifts', route: '/secure/quality/discrepancies',
+    purpose: 'Shifts that did not balance, expenses without receipts and shifts that were never closed.',
+    tasks: ['Pick the days and the store.', 'Open a shift to see what was counted against what was expected.'],
+    who: 'The owner and store heads.', keywords: 'cash short over shift unclosed receipt discrepancy',
+  },
 
   // ---- people
   {
@@ -270,6 +288,18 @@ export const PAGES: PageGuide[] = [
     tasks: ['Choose a person and a month and give each measure a rating.', 'Finalise the month so payroll can use it.', 'The bell reminds you when last month\'s ratings are due, and when a person is behind pace.'],
     who: 'Store heads and the owner.', keywords: 'kpi rating review staff',
   },
+  {
+    id: 'nav-staff-credit', group: 'people', title: 'Staff credit', route: '/secure/quality/staff-credit',
+    purpose: 'What each person took on staff credit, their monthly limit and what was recovered from salary.',
+    tasks: ['See who is near their limit.', 'Set a limit and record a recovery.'],
+    who: 'The Business Head.', keywords: 'staff credit limit recovery salary',
+  },
+  {
+    id: 'nav-staff-sales', group: 'people', title: 'Staff performance', route: '/secure/quality/staff-sales',
+    purpose: 'Sales, bills, discounts, returns and edits for each person over the days you choose.',
+    tasks: ['Compare people on the same days.', 'Look for unusual discounts, returns or edits.'],
+    who: 'The owner and store heads.', keywords: 'staff sales discount returns edits performance',
+  },
 
   // ---- oversight
   {
@@ -285,10 +315,10 @@ export const PAGES: PageGuide[] = [
     who: 'The owner and store heads.', keywords: 'weekly review exception void edit',
   },
   {
-    id: 'nav-quality', group: 'oversight', title: 'Staff and quality', route: '/secure/quality',
-    purpose: 'Who did what, and where things went wrong: cash that did not balance, complaints and the audit trail.',
-    tasks: ['Audit log: who did what and when (it cannot be edited).', 'Cash and shift differences.', 'Customer complaints and whether they were settled in time.'],
-    who: 'The owner and store heads.', keywords: 'audit log grievance complaint cash difference',
+    id: 'nav-audit', group: 'oversight', title: 'Audit log', route: '/secure/quality/audit',
+    purpose: 'Who did what and when: sign-ins, edits to bills and changes made on behalf of someone else. It cannot be edited.',
+    tasks: ['Look up what happened to a bill or a record.', 'Filter by person, day or kind of event.'],
+    who: 'The owner and store heads.', keywords: 'audit log who did what history',
   },
 
   // ---- learn
