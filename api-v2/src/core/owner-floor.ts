@@ -8,6 +8,7 @@ import { isOwnerRole } from './roles';
 const OWNER_FLOOR: Array<{ resource: string; path: string; actions: string[] }> = [
   { resource: 'customerorders', path: '/secure/commitments', actions: ['view', 'manage'] },
   { resource: 'deliverypartners', path: '/secure/settings/delivery-partners', actions: ['manage'] },
+  { resource: 'reports', path: '/secure/reports', actions: ['sales', 'purchases', 'stock', 'margin', 'ask', 'export'] },
 ];
 
 export function withOwnerFloor(permissions: any[], roleName: string | null | undefined): any[] {

@@ -1,12 +1,13 @@
 import { ReportService } from "./report.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { BadRequestException, Body, Controller, Get, Post, Res, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, ForbiddenException, Controller, Get, Post, Res, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { PermissionGuard } from "src/core/guards/permission.guard";
 import { Permission } from "src/core/decorator/permission.decorator";
 import { User } from "src/core/decorator/user.decorator";
 import { Response } from 'express';
 import { GeneratorService } from "./generator.service";
+import { PermissionService } from "../roles/permission.service";
 
 @ApiTags('Reports')
 @Controller('reports')
@@ -14,7 +15,7 @@ import { GeneratorService } from "./generator.service";
 @UseGuards(AuthGuard, PermissionGuard)
 export class ReportController {
 
-    constructor(private service:ReportService, private generator:GeneratorService){}
+    constructor(private service:ReportService, private generator:GeneratorService, private permissions:PermissionService){}
 
     /** needs the Reports permission; only the stores the person may read are searched (see ReportService.saleQuery) */
     @Permission('useReports')
@@ -23,6 +24,9 @@ export class ReportController {
       // console.log(body);
       if(body?.action !== 'search' && body?.action !== 'export'){
         throw new BadRequestException("action must be 'search' or 'export'.");
+      }
+      if(body.action === 'export' && !(await this.permissions.canDoReports(currentUser.roleid, 'export'))){
+        throw new ForbiddenException('Exporting reports is not open to your role.');
       }
       const result = await this.service.saleQuery(body.criteria, currentUser.id);
 

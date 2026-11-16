@@ -10,6 +10,7 @@ import { AiCacheService, scopeOf } from '../alerts/ai-cache.service';
 import { briefFingerprint, fingerprint, questionFingerprint } from '../alerts/ai-cache-rules';
 import { ShiftDigestService } from '../messaging/shift-digest.service';
 import { InsightsData, REPORT_INFO, REPORT_KEYS, StoreScope } from './insights-data.service';
+import { REPORT_FAMILY } from './report-access';
 import {
   Brief, CoachingFacts, Narrative, PERIODS, PERIOD_LABELS, ReorderLine, RiskLine, addDays, change, cleanBrief, cleanCoaching, cleanNarrative, clip, list, periodRange, plainBrief,
   plainCoaching, plainWeekly, rupees, weekBounds,
@@ -112,18 +113,18 @@ export class InsightsService {
 
   // ------------------------------------------------------------------------------------------------ ask the shop
   async catalogue(user: any) {
-    const sc = await this.data.scope(user);
-    const reports = REPORT_KEYS.filter((k) => sc.owner || !REPORT_INFO[k].ownerOnly).map((k) => ({ key: k, ...REPORT_INFO[k] }));
+    const sc = await this.data.reportScope(user, 'ask');
+    const reports = REPORT_KEYS.filter((k) => sc.can(k)).map((k) => ({ key: k, ...REPORT_INFO[k] }));
     return { reports, periods: PERIODS.map((p) => ({ key: p, label: PERIOD_LABELS[p] })), assistant: !!(await this.modelFor('answer_question')) };
   }
 
   /** runs one report (no assistant needed): the buttons and the answer to a typed question both come here */
   async runReport(user: any, b: { report?: any; period?: any; limit?: any; days?: any }) {
-    const sc = await this.data.scope(user);
+    const sc = await this.data.reportScope(user, 'ask');
     const key = String(b?.report || '');
     const info = REPORT_INFO[key];
     if (!info || !(REPORT_KEYS as readonly string[]).includes(key)) throw new BadRequestException('Choose one of the reports.');
-    if (info.ownerOnly && !sc.owner) throw new ForbiddenException('Only the Business Head can see this report.');
+    if (!sc.can(key)) throw new ForbiddenException(REPORT_FAMILY[key] === 'margin' ? 'Only the Business Head can see this report.' : 'This report is not open to your role.');
     const today = await this.data.today();
     const p = periodRange(String(b?.period || 'last_30_days'), today) || periodRange('last_30_days', today)!;
     const limit = Math.min(50, Math.max(1, Math.round(Number(b?.limit) || 10)));
@@ -134,22 +135,23 @@ export class InsightsService {
   }
 
   async ask(user: any, question: any) {
-    const sc = await this.data.scope(user);
+    const sc = await this.data.reportScope(user, 'ask');
+    const openKeys = REPORT_KEYS.filter((k) => sc.can(k));
     const q = clip(question, 300);
     if (q.length < 3) throw new BadRequestException('Type your question.');
     const model = await this.modelFor('answer_question');
     if (!model) throw new ServiceUnavailableException('Typing a question needs the assistant, which the Business Head switches on under Settings > AI assistant. You can still use the report buttons.');
     const today = await this.data.today();
-    const catalogue = REPORT_KEYS.filter((k) => sc.owner || !REPORT_INFO[k].ownerOnly).map((k) => `- ${k}: ${REPORT_INFO[k].what}${REPORT_INFO[k].periodic ? ' (takes a period)' : ' (takes days)'}`).join('\n');
+    const catalogue = openKeys.map((k) => `- ${k}: ${REPORT_INFO[k].what}${REPORT_INFO[k].periodic ? ' (takes a period)' : ' (takes days)'}`).join('\n');
     // the same question on the same day is answered from what was kept, and a person may not make more than a few a minute
-    const askRes = await this.cache.run({ feature: 'answer_question', scope: `ask:${sc.owner ? 'owner' : 'store'}`, fingerprint: questionFingerprint(q, today, sc.owner), userId: user?.id ?? null, what: 'answer', model },
+    const askRes = await this.cache.run({ feature: 'answer_question', scope: `ask:${openKeys.join(',')}`, fingerprint: questionFingerprint(q, today, openKeys.join(',')), userId: user?.id ?? null, what: 'answer', model },
       () => this.ai.call(
       `${SYSTEM_BASE}\nYou do not answer questions yourself. You choose which report answers the question and for which period; the shop then runs it.\nToday is ${today} (India). Weeks run Monday to Sunday.\nReports:\n${catalogue}\nIf no report can answer, choose none.`,
       `Question: ${q}`, ASK_TOOL, model, 400));
     const out = askRes.value;
     const report = String(out?.report || 'none');
     const understood = clip(out?.understood, 200);
-    if (report === 'none' || !(REPORT_KEYS as readonly string[]).includes(report) || (REPORT_INFO[report].ownerOnly && !sc.owner)) {
+    if (report === 'none' || !(REPORT_KEYS as readonly string[]).includes(report) || !sc.can(report)) {
       return { answered: false, understood, reason: clip(out?.reason, 300) || 'No report can answer that. Try one of the report buttons.' };
     }
     const res = await this.runReport(user, { report, period: out?.period, limit: out?.limit, days: out?.days });
@@ -196,9 +198,7 @@ export class InsightsService {
 
   // ------------------------------------------------------------------------------------------------ the weekly summary
   private async owner(user: any) {
-    const sc = await this.data.scope(user);
-    if (!sc.owner) throw new ForbiddenException('Only the Business Head can use this.');
-    return sc;
+    return this.data.reportScope(user, 'margin');
   }
 
   private shape(r: any) {

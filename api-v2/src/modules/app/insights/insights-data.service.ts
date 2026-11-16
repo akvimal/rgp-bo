@@ -2,6 +2,8 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { isManagerRole, isOwnerRole } from 'src/core/roles';
+import { permsOf } from 'src/core/role-rules';
+import { ReportAction, canDoReports, canOpenReport } from './report-access';
 import { WeeklyFacts, expiryAction, unsoldBeforeExpiry } from './insights-rules';
 
 /** which stores a login may see: null is all of them, a list is a store head's own (an empty list sees nothing) */
@@ -26,6 +28,20 @@ export class InsightsData {
   async today(): Promise<string> {
     const [r] = await this.manager.query(`select to_char(now() at time zone 'Asia/Kolkata', 'YYYY-MM-DD') as d`);
     return r.d;
+  }
+
+  /**
+   * Ask the shop and the weekly summary: who may use them is the Reports permission (see report-access.ts), not the role name. `can(report)` says
+   * whether this person may open one report; `may(action)` one of the Reports actions. A person who is not an owner sees only their own stores.
+   */
+  async reportScope(user: any, need: ReportAction): Promise<{ role: string; owner: boolean; stores: StoreScope; can: (reportKey: string) => boolean; may: (a: ReportAction) => boolean }> {
+    const [r] = await this.manager.query(`select name, permissions from app_role where id = $1`, [user?.roleid || 0]);
+    const role = r?.name || '';
+    const perms = permsOf(r);
+    if (!canDoReports(role, perms, need)) throw new ForbiddenException(need === 'margin' ? 'Only the Business Head can use this.' : 'This is not open to your role.');
+    const owner = isOwnerRole(role);
+    const mine = owner ? null : (await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id])).map((m: any) => m.store_id);
+    return { role, owner, stores: mine, can: (k) => canOpenReport(role, perms, k), may: (a) => canDoReports(role, perms, a) };
   }
 
   /** the role of a login, and the stores it may see; throws unless it is an owner or a store head */

@@ -58,8 +58,8 @@ const set = (xs: any[]): string[] => [...new Set(xs.map((x) => String(x ?? '').t
 export const briefFingerprint = (reorderTitles: string[], riskProducts: string[], purchaseMarker: string): string =>
   fingerprint({ kind: 'brief', reorder: set(reorderTitles), risk: set(riskProducts), purchase: purchaseMarker });
 
-/** a question: the same words, on the same day (so "last week" means the same week), for the same kind of reader (an owner sees more reports) */
-export const questionFingerprint = (question: string, today: string, owner: boolean): string =>
+/** a question: the same words, on the same day (so "last week" means the same week), for the same kind of reader (the reports a reader may open decide what a question can pick) */
+export const questionFingerprint = (question: string, today: string, owner: boolean | string): string =>
   fingerprint({ kind: 'ask', q: normaliseQuestion(question), day: today, owner });
 
 export interface DecideInput {

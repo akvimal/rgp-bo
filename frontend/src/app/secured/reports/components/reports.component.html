@@ -24,7 +24,7 @@
           <button class="btn btn-primary" type="submit" [disabled]="loading">
             <i class="bi bi-search me-1"></i> Search
           </button>
-          <button class="btn btn-outline-primary" type="button" (click)="onSubmit('export')" [disabled]="loading || !data.length">
+          <button *isAuth="'reports.export'" class="btn btn-outline-primary" type="button" (click)="onSubmit('export')" [disabled]="loading || !data.length">
             <i class="bi bi-download me-1"></i> Export
           </button>
         </div>

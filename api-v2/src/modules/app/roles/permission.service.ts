@@ -1,5 +1,7 @@
 import { ForbiddenException, Injectable } from "@nestjs/common";
 import { RoleService } from "./role.service";
+import { permsOf } from 'src/core/role-rules';
+import { ReportAction, canDoReports as canDoReportsRule } from '../insights/report-access';
 
 type RolePermission = {
   resource?: string;
@@ -148,15 +150,20 @@ export class PermissionService {
   }
 
   /**
-   * The Reports page and its sale report: the owner roles, and any role the Reports page is given to (the permission has no actions, only its
-   * presence, as the role editor saves it). The Store Head is not let in by name: the editor decides.
+   * The Reports page and its sale report: the owner roles, and any role given the Reports `sales` action (step D split the old presence-only
+   * permission into actions, see insights/report-access.ts). The Store Head is not let in by name: the editor decides.
    */
   async canUseReports(roleid: number | string): Promise<boolean> {
+    return this.canDoReports(roleid, 'sales');
+  }
+
+  /** one of the Reports actions (sales, purchases, stock, margin, ask, export): the owner roles by name, else the grant */
+  async canDoReports(roleid: number | string, action: ReportAction): Promise<boolean> {
     const role = await this.findRole(roleid);
     if (!role) {
       return false;
     }
-    return role.name === 'Business Head' || role.name === 'Owner-operator' || this.normalizePermissions(role).some((p) => p.resource === 'reports');
+    return canDoReportsRule(role.name, permsOf(role), action);
   }
 
   /** Delivery partners (add, change, remove): the owner roles by name, any other role only with the deliverypartners manage permission. */

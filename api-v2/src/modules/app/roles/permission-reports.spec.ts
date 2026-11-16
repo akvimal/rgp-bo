@@ -8,8 +8,8 @@ describe('who may use the reports', () => {
     expect(await serviceWith({ name: 'Owner-operator', permissions: [] }).canUseReports(1)).toBe(true);
   });
 
-  it('lets in a role the Reports page was given to, as the role editor saves it (no actions, only its presence)', async () => {
-    const role = { name: 'Accountant', permissions: [{ resource: 'reports', path: ['/secure/reports'] }] };
+  it('lets in a role given the Reports sales action', async () => {
+    const role = { name: 'Accountant', permissions: [{ resource: 'reports', path: ['/secure/reports'], policies: [{ action: 'sales' }] }] };
     expect(await serviceWith(role).canUseReports(5)).toBe(true);
   });
 
@@ -17,6 +17,15 @@ describe('who may use the reports', () => {
     expect(await serviceWith({ name: 'Sales Staff', permissions: [{ resource: 'sales', policies: [{ action: 'add' }] }] }).canUseReports(2)).toBe(false);
     expect(await serviceWith({ name: 'Store Head', permissions: [] }).canUseReports(3)).toBe(false);
     expect(await serviceWith({ name: 'Personal', permissions: [{ resource: 'myhr', policies: [{ action: 'view' }] }] }).canUseReports(4)).toBe(false);
+  });
+
+  it('keeps out a role holding only a bare Reports entry (no actions): the split made the actions the permission', async () => {
+    expect(await serviceWith({ name: 'Accountant', permissions: [{ resource: 'reports', path: ['/secure/reports'] }] }).canUseReports(5)).toBe(false);
+  });
+
+  it('lets only a role given the export action export', async () => {
+    expect(await serviceWith({ name: 'Accountant', permissions: [{ resource: 'reports', policies: [{ action: 'sales' }] }] }).canDoReports(5, 'export')).toBe(false);
+    expect(await serviceWith({ name: 'Accountant', permissions: [{ resource: 'reports', policies: [{ action: 'export' }] }] }).canDoReports(5, 'export')).toBe(true);
   });
 
   it('keeps out a login whose role cannot be found', async () => {

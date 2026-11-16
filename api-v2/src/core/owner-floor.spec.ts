@@ -6,14 +6,14 @@ const actions = (p: any[], r: string) => (p.find((x) => x.resource === r)?.polic
 describe('what an owner role always holds', () => {
   it('adds Customer orders and Delivery partners to an owner role that was made without them', () => {
     const p = withOwnerFloor([{ resource: 'sales', policies: [{ action: 'add' }] }], 'Business Head');
-    expect(resources(p)).toEqual(['sales', 'customerorders', 'deliverypartners']);
+    expect(resources(p)).toEqual(['sales', 'customerorders', 'deliverypartners', 'reports']);
     expect(actions(p, 'customerorders')).toEqual(['view', 'manage']);
     expect(p.find((x) => x.resource === 'deliverypartners').path).toBe('/secure/settings/delivery-partners');
     expect(p.find((x) => x.resource === 'customerorders').path).toBe('/secure/commitments');
   });
 
   it('does the same for the Owner-operator', () => {
-    expect(resources(withOwnerFloor([], 'Owner-operator'))).toEqual(['customerorders', 'deliverypartners']);
+    expect(resources(withOwnerFloor([], 'Owner-operator'))).toEqual(['customerorders', 'deliverypartners', 'reports']);
   });
 
   it('fills in an action an owner role is missing and leaves the rest as it was', () => {
