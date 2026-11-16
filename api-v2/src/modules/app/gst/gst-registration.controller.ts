@@ -1,3 +1,4 @@
+import { GstFilingAction } from '../finance/accounts-access';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, ForbiddenException, Get, Put, UseGuards } from '@nestjs/common';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
@@ -13,10 +14,10 @@ import { GstRegistrationService } from './gst-registration.service';
 export class GstRegistrationController {
   constructor(private readonly registration: GstRegistrationService, private readonly permissions: PermissionService) {}
 
-  private async assertAllowed(user: any) {
-    if (!(await this.permissions.canUseGstFiling(user.roleid))) throw new ForbiddenException('GST is for the Business Head.');
+  private async assertAllowed(user: any, action: GstFilingAction = 'view') {
+    if (!(await this.permissions.canDoGstFiling(user.roleid, action))) throw new ForbiddenException(action === 'view' ? 'GST filing is not open to your role.' : 'You are not allowed to ' + action + ' in GST filing.');
   }
 
   @Get() async get(@User() u: any) { await this.assertAllowed(u); return this.registration.get(u); }
-  @Put() async save(@Body() b: any, @User() u: any) { await this.assertAllowed(u); return this.registration.save(u, b); }
+  @Put() async save(@Body() b: any, @User() u: any) { await this.assertAllowed(u, 'prepare'); return this.registration.save(u, b); }
 }

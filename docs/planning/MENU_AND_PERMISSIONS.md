@@ -1,6 +1,6 @@
 # Menu regrouping and fine-grained permissions
 
-Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the stock gate split (section 17); the full Purchasing split, and disposal, vault and cash, not built. Step E not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
+Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the stock gate split (section 17); the full Purchasing split, and disposal, vault and cash, not built. Step E: Accounts (section 18) built 2026-11-16; Sales, Customers, Setup and scope on the grant not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
 
 Scope of the review: `frontend/src/app/secured/menu.ts`, the Settings submenu in `secured.component.html`, the role editor's list (`settings/roles/permission-catalog.ts`), the route files, `auth.service.ts` (`isUrlAuthorized`), the API's `permission.guard.ts` / `permission.service.ts` / `role-rules.ts`, and `role-templates.ts`. **Not done:** a read of every API controller, so which endpoints enforce a permission and which only hide a button is still to be checked (step E0 below).
 
@@ -312,3 +312,19 @@ One gate, `auditStock`, opened quantity adjustments, audits (approve, recount, r
 | `transfer.receive` | receive a transfer (so a different person receives, as the transfer rules intend) |
 
 Decisions: only the `auditStock` gate was split; disposal (out-passes, write-offs), the vault and cash still decide by role name in their services. The owner roles hold the actions by name; the Store Head holds them by migration 212, not by name, so a Store Head role can be narrowed in the editor. Migration 212 gives all five to the same roles the gate let in (the three named roles, any role with store adjust, any role with stock adjust or audit; a role with no `store` block gets one with an empty path that opens no page). After this a role built with only `store.adjust` no longer changes stock; `store.adjust` now means managing shifts. QA RST-1..5.
+
+## 18. Step E, Accounts: Finance and GST filing (2026-11-16, migration 213, uncommitted)
+
+Finance and GST filing were each one presence check that opened everything. They now carry actions (rules in `finance/accounts-access.ts`; `view` stays what it was, holding the resource opens the pages; the owner roles hold every action by name):
+
+| Resource | Action | Covers |
+|---|---|---|
+| `finance` | `bank.import` | bank accounts (add, change, delete), statement preview and import |
+| `finance` | `reconcile` | tag a line, remove a rule, sign a month off, reopen it |
+| `finance` | `records` | the records check and attesting it |
+| `gstfiling` | `prepare` | rate changes (preview, create, cancel), HSN codes, supply kinds, the GST registration |
+| `gstfiling` | `export` | the sales register, report and filing pack as files |
+| `gstfiling` | `lock` | close a GST month |
+| `gstfiling` | `unlock` | reopen a closed GST month |
+
+Decisions: this area first; scope on the grant is a later step of its own. Migration 213 keeps every role's access (every role holding `finance` gets bank.import, reconcile and records; every role holding `gstfiling` gets prepare, export and lock) except `unlock`, which goes to the owner roles only. GST reconciliation (`gst`: read, import, reconcile, lock, which also covers unlocking a reconciliation period, and the Store Head holds it by name) and Digital payments (`paymentrecon`) already had enforced actions and are unchanged; splitting `gst` unlock from lock is left for later. The Finance and GST pages do not yet hide buttons a role lacks the action for (the API refuses). QA RAC-1..4.

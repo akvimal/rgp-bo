@@ -1059,7 +1059,11 @@
         {
           "key": "view",
           "label": "Open the GST pages"
-        }
+        },
+        { "key": "prepare", "label": "Rate changes, HSN codes, supply kinds and the GST registration" },
+        { "key": "export", "label": "Save the sales register, report and filing pack as files" },
+        { "key": "lock", "label": "Close a GST month" },
+        { "key": "unlock", "label": "Reopen a closed GST month (owner by default)" }
       ]
     },
     {
@@ -1098,7 +1102,10 @@
         {
           "key": "view",
           "label": "Open Finance and the financial dashboard"
-        }
+        },
+        { "key": "bank.import", "label": "Add or change bank accounts, and import statements" },
+        { "key": "reconcile", "label": "Tag lines, remove rules, sign a month off or reopen it" },
+        { "key": "records", "label": "Run the records check and attest it" }
       ]
     },
     {

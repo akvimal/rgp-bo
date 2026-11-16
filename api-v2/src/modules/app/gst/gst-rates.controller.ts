@@ -1,3 +1,4 @@
+import { GstFilingAction } from '../finance/accounts-access';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
@@ -13,18 +14,18 @@ import { GstRatesService } from './gst-rates.service';
 export class GstRatesController {
   constructor(private readonly rates: GstRatesService, private readonly permissions: PermissionService) {}
 
-  private async assertAllowed(user: any) {
-    if (!(await this.permissions.canUseGstFiling(user.roleid))) throw new ForbiddenException('GST is for the Business Head.');
+  private async assertAllowed(user: any, action: GstFilingAction = 'view') {
+    if (!(await this.permissions.canDoGstFiling(user.roleid, action))) throw new ForbiddenException(action === 'view' ? 'GST filing is not open to your role.' : 'You are not allowed to ' + action + ' in GST filing.');
   }
 
   @Get('rate-changes') async list(@User() u: any) { await this.assertAllowed(u); return this.rates.list(); }
-  @Post('rate-changes/preview') async preview(@Body() b: any, @User() u: any) { await this.assertAllowed(u); return this.rates.preview(b); }
-  @Post('rate-changes') async create(@Body() b: any, @User() u: any) { await this.assertAllowed(u); return this.rates.create(u, b); }
-  @Delete('rate-changes/:id') async cancel(@Param('id', ParseIntPipe) id: number, @User() u: any) { await this.assertAllowed(u); return this.rates.cancel(u, id); }
+  @Post('rate-changes/preview') async preview(@Body() b: any, @User() u: any) { await this.assertAllowed(u, 'prepare'); return this.rates.preview(b); }
+  @Post('rate-changes') async create(@Body() b: any, @User() u: any) { await this.assertAllowed(u, 'prepare'); return this.rates.create(u, b); }
+  @Delete('rate-changes/:id') async cancel(@Param('id', ParseIntPipe) id: number, @User() u: any) { await this.assertAllowed(u, 'prepare'); return this.rates.cancel(u, id); }
   @Get('rate-changes/:id/report') async report(@Param('id', ParseIntPipe) id: number, @User() u: any) { await this.assertAllowed(u); return this.rates.report(id); }
 
   @Get('hsn/missing') async missing(@User() u: any) { await this.assertAllowed(u); return this.rates.missingHsn(); }
-  @Put('hsn/products') async setHsn(@Body() b: any, @User() u: any) { await this.assertAllowed(u); return this.rates.setHsn(u, b); }
-  @Put('hsn/category') async setCategory(@Body() b: any, @User() u: any) { await this.assertAllowed(u); return this.rates.setCategoryHsn(u, b); }
-  @Post('hsn/category/apply') async applyCategory(@Body() b: any, @User() u: any) { await this.assertAllowed(u); return this.rates.applyCategoryHsn(u, b); }
+  @Put('hsn/products') async setHsn(@Body() b: any, @User() u: any) { await this.assertAllowed(u, 'prepare'); return this.rates.setHsn(u, b); }
+  @Put('hsn/category') async setCategory(@Body() b: any, @User() u: any) { await this.assertAllowed(u, 'prepare'); return this.rates.setCategoryHsn(u, b); }
+  @Post('hsn/category/apply') async applyCategory(@Body() b: any, @User() u: any) { await this.assertAllowed(u, 'prepare'); return this.rates.applyCategoryHsn(u, b); }
 }

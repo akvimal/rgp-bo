@@ -10,6 +10,8 @@ const OWNER_FLOOR: Array<{ resource: string; path: string; actions: string[]; on
   { resource: 'customerorders', path: '/secure/commitments', actions: ['view', 'manage'] },
   { resource: 'deliverypartners', path: '/secure/settings/delivery-partners', actions: ['manage'] },
   { resource: 'reports', path: '/secure/reports', actions: ['sales', 'purchases', 'stock', 'margin', 'ask', 'export'] },
+  { resource: 'finance', path: '/secure/finance', onlyIfPresent: true, actions: ['bank.import', 'reconcile', 'records'] },
+  { resource: 'gstfiling', path: '/secure/gst-filing', onlyIfPresent: true, actions: ['prepare', 'export', 'lock', 'unlock'] },
   { resource: 'store', path: '/secure/store/stock', onlyIfPresent: true, actions: ['qty.adjust', 'audit.approve', 'count.perform', 'transfer.request', 'transfer.receive'] },
   { resource: 'purchases', path: '/secure/purchases', onlyIfPresent: true, actions: ['payments.view', 'payments.record', 'payments.reverse', 'returns.manage', 'invoices.editcompleted', 'invoices.approvepay', 'invoices.recalculate'] },
   { resource: 'hr', path: '/secure/hr', onlyIfPresent: true, actions: ['staff.view', 'staff.manage', 'pay.view', 'pay.manage', 'payroll.view', 'payroll.run', 'payroll.approve', 'attendance.manage', 'leave.manage', 'kpi.setup', 'bonus.manage'] },

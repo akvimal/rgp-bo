@@ -4,6 +4,7 @@ import { permsOf } from 'src/core/role-rules';
 import { ReportAction, canDoReports as canDoReportsRule } from '../insights/report-access';
 import { PurchasingAction, canDoPurchasing as canDoPurchasingRule } from '../purchases/purchasing-access';
 import { StockAction, canDoStock as canDoStockRule } from '../stock/stock-access';
+import { FinanceAction, GstFilingAction, canDoFinance as canDoFinanceRule, canDoGstFiling as canDoGstFilingRule } from '../finance/accounts-access';
 
 type RolePermission = {
   resource?: string;
@@ -157,6 +158,18 @@ export class PermissionService {
    */
   async canUseReports(roleid: number | string): Promise<boolean> {
     return this.canDoReports(roleid, 'sales');
+  }
+
+  /** one of the Finance actions (view, bank.import, reconcile, records): the owner roles by name, else the grant; view is holding the page */
+  async canDoFinance(roleid: number | string, action: FinanceAction): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    return !!role && canDoFinanceRule(role.name, permsOf(role), action);
+  }
+
+  /** one of the GST filing actions (view, prepare, export, lock, unlock): the owner roles by name, else the grant; view is holding the page */
+  async canDoGstFiling(roleid: number | string, action: GstFilingAction): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    return !!role && canDoGstFilingRule(role.name, permsOf(role), action);
   }
 
   /** one of the stock actions (qty.adjust, audit.approve, count.perform, transfer.request, transfer.receive): the owner roles by name, else the grant on `store` */
