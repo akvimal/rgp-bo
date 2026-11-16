@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable } from "@nestjs/common";
 import { RoleService } from "./role.service";
 import { permsOf } from 'src/core/role-rules';
 import { ReportAction, canDoReports as canDoReportsRule } from '../insights/report-access';
+import { PurchasingAction, canDoPurchasing as canDoPurchasingRule } from '../purchases/purchasing-access';
 
 type RolePermission = {
   resource?: string;
@@ -155,6 +156,15 @@ export class PermissionService {
    */
   async canUseReports(roleid: number | string): Promise<boolean> {
     return this.canDoReports(roleid, 'sales');
+  }
+
+  /** one of the sensitive purchasing actions (payments, vendor returns, completed invoices, approval for payment, recalculating): the owner roles by name, else the grant */
+  async canDoPurchasing(roleid: number | string, action: PurchasingAction): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return canDoPurchasingRule(role.name, permsOf(role), action);
   }
 
   /** one of the Reports actions (sales, purchases, stock, margin, ask, export): the owner roles by name, else the grant */

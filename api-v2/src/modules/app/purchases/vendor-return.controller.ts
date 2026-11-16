@@ -1,7 +1,7 @@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
-import { PurchasingGuard } from '../roles/purchasing.guard';
+import { PurchasingGuard, PurchasingWriteAction } from '../roles/purchasing.guard';
 import { User } from 'src/core/decorator/user.decorator';
 import { VendorReturnService } from './vendor-return.service';
 
@@ -9,6 +9,7 @@ import { VendorReturnService } from './vendor-return.service';
 @Controller('vendor-returns')
 @ApiBearerAuth()
 @UseGuards(AuthGuard, PurchasingGuard)
+@PurchasingWriteAction('returns.manage')     // recording or cancelling a return, and taking a credit on or off an invoice (reads stay `read`)
 export class VendorReturnController {
   constructor(private service: VendorReturnService) {}
 

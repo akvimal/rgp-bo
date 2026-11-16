@@ -816,7 +816,14 @@
         {
           "key": "request",
           "label": "Raise purchase requests only"
-        }
+        },
+        { "key": "payments.view", "label": "See the payments made on an invoice" },
+        { "key": "payments.record", "label": "Record a vendor payment or a pay run, and change a payment" },
+        { "key": "payments.reverse", "label": "Reverse a vendor payment" },
+        { "key": "returns.manage", "label": "Record vendor returns and take a credit on or off an invoice" },
+        { "key": "invoices.editcompleted", "label": "Change an invoice that is already complete" },
+        { "key": "invoices.approvepay", "label": "Approve an invoice for payment, withdraw an approval, and change the approval rule" },
+        { "key": "invoices.recalculate", "label": "Check and correct invoice totals and line totals" }
       ]
     },
     {

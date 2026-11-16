@@ -1,6 +1,6 @@
 # Menu regrouping and fine-grained permissions
 
-Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14) and HR (section 15) built 2026-11-16; Purchasing and Stock not built. Step E not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
+Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the full Purchasing split and Stock not built. Step E not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
 
 Scope of the review: `frontend/src/app/secured/menu.ts`, the Settings submenu in `secured.component.html`, the role editor's list (`settings/roles/permission-catalog.ts`), the route files, `auth.service.ts` (`isUrlAuthorized`), the API's `permission.guard.ts` / `permission.service.ts` / `role-rules.ts`, and `role-templates.ts`. **Not done:** a read of every API controller, so which endpoints enforce a permission and which only hide a button is still to be checked (step E0 below).
 
@@ -280,3 +280,21 @@ The HR API let in only the role named Business Head and ignored the `hr` view an
 `hr.view` stays and opens the HR pages; each tab needs its own action (`hr-access.guard.ts`, which also sends a closed tab to the first open one). `hr.manage` stays only because the customer credit and dues screens read it as a UI flag. Decisions: migration 210 gives the actions to the owner roles only (a custom role with `hr` ticked never had API access, so nothing is granted for it); the Owner-operator now holds HR like the Business Head. `owner-floor.ts` fills in missing HR actions for an owner role that already holds the HR page and never adds the page (HR follows the module switch). QA RHA-1..6 (the older HR specs fail on a database where `sales2` already has a staff record with history; they need a fresh seed).
 
 Not in this pass: the other HR controllers (My HR, leave approvals, KPI rating, punch and attendance review) still decide by role name, and Coaching still follows the insights rule.
+
+## 16. Step D, Purchasing: the sensitive actions (2026-11-16, migration 211, uncommitted)
+
+Purchasing was already guarded by `PurchasingGuard` (read, add, edit, delete, request, vendors.edit; order approval by `purchaseorders:approve`). What could not be separated: payments, vendor returns, and four owner-by-name actions. Seven actions are added on the `purchases` permission (rules in `purchases/purchasing-access.ts`; the owner roles and the platform admin hold all by name):
+
+| Action | What it covers |
+|---|---|
+| `payments.view` | the payments made on an invoice (`PurchasingReadAction`, new in the guard) |
+| `payments.record` | record a payment, a pay run, change a payment |
+| `payments.reverse` | reverse a payment |
+| `returns.manage` | record or cancel a vendor return, take a credit on or off an invoice |
+| `invoices.editcompleted` | change or delete an invoice that is already complete |
+| `invoices.approvepay` | approve an invoice for payment, withdraw an approval, change the approval rule |
+| `invoices.recalculate` | check and correct invoice totals and line totals |
+
+Decisions: this pass covers the sensitive actions only; read, add and edit stay as they were, so the Purchase page and its tabs are untouched. Migration 211 keeps access for everyone who has it today (`payments.view` for roles with read, `payments.record` for add or edit, `returns.manage` for add or delete) except `payments.reverse`, which goes to the owner roles and the Store Head only (it was any role with add). The three invoice actions go to the owner roles. Putting an invoice on hold and releasing it were never owner-only and stay under add. The invoice list hides Pay, change payment and Reverse without the action. QA RPU-1..5.
+
+Not in this pass: splitting Orders, Invoices, Payables and Vendors into view, add and edit actions, and Purchasing as separate menu entries (the full split in section 5).

@@ -2,7 +2,8 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
-import { isOwnerRole, ROLE } from 'src/core/roles';
+import { permsOf } from 'src/core/role-rules';
+import { PurchasingAction, canDoPurchasing } from './purchasing-access';
 import { ApprovalPolicy, loadApprovalPolicy } from './invoice-approval';
 
 export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft', 'awaiting', 'approval', 'ready', 'ready_overdue', 'ready_due7', 'ready_later'] as const;
@@ -216,20 +217,23 @@ export class InvoiceViewService {
     return { id: invoiceId, on_hold: true };
   }
 
-  /** only an owner role may clear invoices for payment or change the rule */
-  private async needOwner(userid: number, what: string) {
-    const [r] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
-    if (!isOwnerRole(r?.name) && r?.name !== ROLE.SITE_ADMIN) throw new ForbiddenException(`Only a Business Head can ${what}.`);
+  /** clearing invoices for payment and changing the rule need the `invoices.approvepay` action (the owner roles hold it by name) */
+  private async needApprover(userid: number, what: string) {
+    if (!(await this.may(userid, 'invoices.approvepay'))) throw new ForbiddenException(`You are not allowed to ${what}.`);
+  }
+
+  private async may(userid: number, action: PurchasingAction): Promise<boolean> {
+    const [r] = await this.manager.query(`select r.name, r.permissions from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
+    return !!r && canDoPurchasing(r.name, permsOf(r), action);
   }
 
   /** the rule, and whether the person asking may approve invoices and change the rule */
   async approvalSettings(userid: number) {
-    const [r] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
-    return { ...(await loadApprovalPolicy(this.manager)), canmanage: isOwnerRole(r?.name) || r?.name === ROLE.SITE_ADMIN };
+    return { ...(await loadApprovalPolicy(this.manager)), canmanage: await this.may(userid, 'invoices.approvepay') };
   }
 
   async setApprovalSettings(body: any, userid: number) {
-    await this.needOwner(userid, 'change how invoices are approved for payment');
+    await this.needApprover(userid, 'change how invoices are approved for payment');
     const limit = Number(body?.limit ?? 0);
     if (!Number.isFinite(limit) || limit < 0 || limit > 100000000) throw new BadRequestException('The limit must be between 0 and 10,00,00,000.');
     const before = await loadApprovalPolicy(this.manager);
@@ -247,7 +251,7 @@ export class InvoiceViewService {
 
   /** Clears a received invoice for payment. The person who approves is recorded, with an optional note. */
   async approve(invoiceId: number, note: string | undefined, userid: number) {
-    await this.needOwner(userid, 'approve an invoice for payment');
+    await this.needApprover(userid, 'approve an invoice for payment');
     const [inv] = await this.manager.query(
       `select i.id, i.invoice_no, i.status, i.approved_on, i.total::numeric - coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::numeric as balance
          from purchase_invoice i where i.id = $1 and i.active and not i.archive`, [invoiceId]);
@@ -265,7 +269,7 @@ export class InvoiceViewService {
 
   /** Takes the approval back (before anything is paid on it): the invoice waits for approval again. */
   async unapprove(invoiceId: number, userid: number) {
-    await this.needOwner(userid, 'withdraw an approval');
+    await this.needApprover(userid, 'withdraw an approval');
     const [inv] = await this.manager.query(
       `select i.id, i.invoice_no, i.approved_on, coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::numeric as paid from purchase_invoice i where i.id = $1`, [invoiceId]);
     if (!inv) throw new NotFoundException('Invoice not found.');

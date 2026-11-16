@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { combineLatest } from "rxjs";
 import { InvoiceService } from "../invoices.service";
 import { VendorsService } from "../../vendors/vendors.service";
+import { AuthService } from "src/app/@core/auth/auth.service";
 
 /** the invoice date a year back: what the list shows by default (unpaid invoices stay in the list whatever their date) */
 export function yearAgo(today: Date = new Date()): string {
@@ -134,7 +135,11 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     /** what the list is filtered by, so opening a panel (which only adds ?peek=) does not reload the page or send it back to page one */
     private lastKey = '';
 
-    constructor(private service: InvoiceService, private route: ActivatedRoute, private router: Router, private vendorsService: VendorsService, private peekAddress: PeekAddressService) {}
+    constructor(private service: InvoiceService, private route: ActivatedRoute, private router: Router, private vendorsService: VendorsService, private peekAddress: PeekAddressService, private auth: AuthService) {}
+
+    /** recording and changing a payment, and reversing one, are their own actions (MENU_AND_PERMISSIONS step D, Purchasing) */
+    get mayRecord(): boolean { return this.auth.isActionAuthorized('purchases.payments.record'); }
+    get mayReverse(): boolean { return this.auth.isActionAuthorized('purchases.payments.reverse'); }
 
     /** the row of the open panel, from the page shown (an invoice on another page shows no panel) */
     get peekInvoice(): any { return this.peekId ? this.invoices.find((i: any) => i.id === this.peekId) || null : null; }
@@ -248,7 +253,7 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
 
     // ---------------------------------------------------------------- pay
     canPay(inv: any): boolean {
-        return ['Unpaid', 'Part Paid', 'Overdue'].includes(inv.payment_status) && inv.balance_amount > 0;
+        return this.mayRecord && ['Unpaid', 'Part Paid', 'Overdue'].includes(inv.payment_status) && inv.balance_amount > 0;
     }
 
     openPay(inv: any) {

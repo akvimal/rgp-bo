@@ -246,8 +246,8 @@
               <td class="small">{{p.remarks}}<span *ngIf="p.status === 'REVERSED'" class="badge bg-secondary ms-1">reversed</span><span *ngIf="p.reversesid" class="badge bg-light text-dark border ms-1">reversal</span></td>
               <td class="small">{{p.createdby}}<div class="text-muted">{{p.createdon | date:'dd MMM, HH:mm'}}</div></td>
               <td class="text-end text-nowrap">
-                <button class="btn btn-outline-primary btn-sm py-0" data-testid="inv-pay-edit" *ngIf="isEditable(p)" (click)="startEdit(p)">Edit</button>
-                <button class="btn btn-outline-danger btn-sm py-0 ms-1" data-testid="inv-pay-reverse" *ngIf="isEditable(p) && p.amount > 0" (click)="askReverse(p)">Reverse</button>
+                <button class="btn btn-outline-primary btn-sm py-0" data-testid="inv-pay-edit" *ngIf="isEditable(p) && mayRecord" (click)="startEdit(p)">Edit</button>
+                <button class="btn btn-outline-danger btn-sm py-0 ms-1" data-testid="inv-pay-reverse" *ngIf="isEditable(p) && p.amount > 0 && mayReverse" (click)="askReverse(p)">Reverse</button>
               </td>
             </ng-container>
             <ng-template #editing>

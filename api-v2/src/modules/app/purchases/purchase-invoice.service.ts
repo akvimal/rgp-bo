@@ -16,7 +16,8 @@ import { Product } from "src/entities/product.entity";
 import { Vendor } from "src/entities/vendor.entity";
 import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
-import { isOwnerRole, ROLE } from "src/core/roles";
+import { permsOf } from "src/core/role-rules";
+import { PurchasingAction, canDoPurchasing } from "./purchasing-access";
 import { isManagerRole } from "src/core/roles";
 import { cleanRef, gstPeriodFor } from "./receipt-rules";
 import { allocateCommitmentReceipts } from "../commitments/commitment-db";
@@ -994,13 +995,14 @@ export class PurchaseInvoiceService {
             where i.status = 'COMPLETE' and i.active and not i.archive
               and (i.id = any($1::int[]) or i.id in (select invoice_id from purchase_invoice_item where id = any($2::int[])))`,
           [(opts.invoiceIds ?? []).map(Number).filter(Number.isFinite), (opts.itemIds ?? []).map(Number).filter(Number.isFinite)]);
-        if(rows.length) await this.needOwner(userid, `change invoice ${rows[0].invoice_no ?? '#' + rows[0].id}, which is already complete`);
+        if(rows.length) await this.need(userid, 'invoices.editcompleted', `change invoice ${rows[0].invoice_no ?? '#' + rows[0].id}, which is already complete`);
       }
 
       // ---------------------------------------------------------------- invoice totals check
-      private async needOwner(userid:number, what:string){
-        const [r] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
-        if(!isOwnerRole(r?.name) && r?.name !== ROLE.SITE_ADMIN) throw new ForbiddenException(`Only a Business Head can ${what}.`);
+      /** a completed invoice is changed with `invoices.editcompleted`, and totals are checked and corrected with `invoices.recalculate` (the owner roles hold both by name) */
+      private async need(userid:number, action:PurchasingAction, what:string){
+        const [r] = await this.manager.query(`select r.name, r.permissions from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
+        if(!r || !canDoPurchasing(r.name, permsOf(r), action)) throw new ForbiddenException(`You are not allowed to ${what}.`);
       }
 
       /**
@@ -1009,7 +1011,7 @@ export class PurchaseInvoiceService {
        * paid. Business Head only. With an invoice id, that one invoice; otherwise every invoice still owing, newest first (at most 600).
        */
       async totalCheck(userid:number, invoiceid?:number){
-        await this.needOwner(userid, 'check invoice totals');
+        await this.need(userid, 'invoices.recalculate', 'check invoice totals');
         const rows = await this.manager.query(
           `select i.id, i.invoice_no, v.business_name as vendor, to_char(i.invoice_date, 'YYYY-MM-DD') as invoice_date, coalesce(i.total, 0)::float8 as total,
                   coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::float8 as paid_listed,
@@ -1041,7 +1043,7 @@ export class PurchaseInvoiceService {
        * lines come to is left alone, to be sorted out by hand. Every change is recorded in the audit trail with the old and the new total.
        */
       async totalFix(userid:number, ids:any, confirm:boolean){
-        await this.needOwner(userid, 'correct invoice totals');
+        await this.need(userid, 'invoices.recalculate', 'correct invoice totals');
         const list = Array.from(new Set((Array.isArray(ids) ? ids : []).map(Number).filter((n:number) => Number.isInteger(n) && n > 0))).slice(0, 200) as number[];
         if(!list.length) throw new BadRequestException('Choose the invoices to correct.');
         const results: any[] = [];
@@ -1077,7 +1079,7 @@ export class PurchaseInvoiceService {
        * an invoice's total and balance off. Business Head only. With an invoice id, that invoice; otherwise every completed invoice still owing (at most 600 lines).
        */
       async lineCheck(userid:number, invoiceid?:number){
-        await this.needOwner(userid, 'check line totals');
+        await this.need(userid, 'invoices.recalculate', 'check line totals');
         const rows = await this.manager.query(
           `select i.id as invoice_id, i.invoice_no, v.business_name as vendor, x.id as line_id, p.title as product, x.qty::float8 as qty, round(x.ptr_value::numeric, 2)::float8 as rate,
                   coalesce(x.disc_pcnt, 0)::float8 as disc, coalesce(x.tax_pcnt, 0)::float8 as tax, x.total::float8 as stored,
@@ -1098,7 +1100,7 @@ export class PurchaseInvoiceService {
        * alone. Every line changed is recorded in the audit trail with the old and the new total.
        */
       async lineFix(userid:number, invoiceIds:any, confirm:boolean){
-        await this.needOwner(userid, 'correct line totals');
+        await this.need(userid, 'invoices.recalculate', 'correct line totals');
         const list = Array.from(new Set((Array.isArray(invoiceIds) ? invoiceIds : []).map(Number).filter((n:number) => Number.isInteger(n) && n > 0))).slice(0, 200) as number[];
         if(!list.length) throw new BadRequestException('Choose the invoices to correct.');
         const results: any[] = [];
