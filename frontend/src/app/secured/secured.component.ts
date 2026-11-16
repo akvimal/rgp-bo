@@ -118,7 +118,8 @@ export class SecuredComponent {
     }
 
     /** the grouped menu is a per-business choice (dashboard settings, "The grouped menu"); off keeps the long-standing menu */
-    newMenu = false;
+    /** the grouped menu is the default; a business that saved the choice off keeps the old menu (read from the config below, true until then so the page does not flash the old one) */
+    newMenu = true;
     menuGroups: MenuGroup[] = buildMenu({ has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u), pack: (n: string) => this.authService.packOn(n) });
 
     readonly menuAccess = { has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u), pack: (n: string) => this.authService.packOn(n) };
@@ -147,8 +148,8 @@ export class SecuredComponent {
 
     private loadMenuChoice() {
       this.config.effective('views').subscribe({
-        next: (r) => { this.newMenu = r.items.find((i) => i.key === 'new_menu')?.value === true; this.syncMenuMode(); },
-        error: () => { this.newMenu = false; this.syncMenuMode(); },
+        next: (r) => { this.newMenu = r.items.find((i) => i.key === 'new_menu')?.value !== false; this.syncMenuMode(); },
+        error: () => { this.newMenu = true; this.syncMenuMode(); },
       });
     }
 

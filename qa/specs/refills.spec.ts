@@ -14,7 +14,7 @@ test.describe('Staff & Quality — Refill follow-up @p1', () => {
   test('REFILL-1 Business Head sees the refill list and counts that match it @happy', async ({ app, api }) => {
     const { page } = await app.open(OWNER, PAGE);
     await expectShell(page);
-    await expect(page.getByRole('heading', { name: 'Refill follow-up' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Refill follow-up' }).first()).toBeVisible();
     const res = await api.request('GET', '/refills', undefined, OWNER);
     expect(res.status).toBe(200);
     const c = res.body.counts;

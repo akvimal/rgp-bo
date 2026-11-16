@@ -20,7 +20,7 @@ test.describe('Staff & Quality — Grievances @p1', () => {
   test('GRV-1 Business Head logs a grievance from the screen and it shows in the list @happy', async ({ app, api }) => {
     const { page } = await app.open(OWNER, PAGE);
     await expectShell(page);
-    await expect(page.getByTestId('nav-quality')).toBeVisible();
+    await expect(page.getByTestId('nav-grievances')).toBeVisible();      // the grouped menu is the default: Complaints sits under Sell
     const summary = `QA grievance ${Date.now()}`;
     await page.getByTestId('gr-new').click();
     const storeSelect = page.getByTestId('gr-f-store');

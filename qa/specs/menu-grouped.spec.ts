@@ -1,8 +1,8 @@
 /**
- * The grouped menu - MG-1..2
- * The eight-group menu is a per-business choice: off, the long-standing menu stays; on, the Business Head sees the groups in order, each entry under the job
- * it belongs to (Refills and Complaints under Sell, Cash and shifts under Accounts, Staff credit and Staff performance under People, the Audit log and
- * Compliance under Oversight), and the old Staff and quality drawer is gone. The setting is put back after.
+ * The grouped menu - MG-1..3
+ * The eight-group menu is the default (a business may save the choice off and keep the long-standing menu, the way back for one release). On, the Business
+ * Head sees the groups in order, each entry under the job it belongs to (Refills and Complaints under Sell, Cash and shifts under Accounts, Staff credit and
+ * Staff performance under People, the Audit log and Compliance under Oversight), and the old Staff and quality drawer is gone. The setting is put back after.
  */
 import { test, expect } from '../fixtures/index.js';
 
@@ -12,12 +12,13 @@ const today = () => new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 
 test.describe.serial('Grouped menu', () => {
   test.afterAll(async ({ api }) => { await api.request('DELETE', '/config/views/new_menu', undefined, MGR); });
 
-  test('MG-1 off by default; the grouped menu is the Business Head\'s choice', async ({ api }) => {
+  test('MG-1 on by default; a business can save it off', async ({ api }) => {
     const r = await api.request('GET', '/config?scope=views', undefined, MGR);
-    expect(r.body.items.find((i: any) => i.key === 'new_menu')).toMatchObject({ value: false, source: 'default' });
+    expect(r.body.items.find((i: any) => i.key === 'new_menu')).toMatchObject({ value: true, source: 'default' });
   });
 
-  test('MG-1b the counter roles get the grouped menu in the order of their day even with the business switch off; the Business Head keeps the old menu', async ({ app }) => {
+  test('MG-1b the counter roles get the grouped menu in the order of their day even with the business switch off', async ({ api, app }) => {
+    expect((await api.request('PUT', '/config/views', { values: { new_menu: false }, effectiveFrom: today() }, MGR)).status).toBe(200);
     const sections = (page: any) => page.evaluate(() => {
       const out: Record<string, string[]> = {}; let cur = '';
       document.querySelectorAll('#sidebar-nav > li').forEach((li) => {
@@ -34,13 +35,14 @@ test.describe.serial('Grouped menu', () => {
     expect(Object.keys(g)).toEqual(['sell', 'stock', 'accounts', 'people', 'learn']);
     expect(g.sell.slice(0, 2)).toEqual(['nav-sales', 'nav-customers']);
     expect(g.learn).toEqual(['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge']);                // the guides sit at the bottom
+    // with the switch saved off the Business Head keeps the old menu
     const mgr = await app.open(MGR, '/secure/dashboard');
     await expect(mgr.page.getByTestId('nav-section-buy')).toBeVisible();
     expect(Object.keys(await sections(mgr.page))).toEqual(['sell', 'stock', 'buy', 'people', 'oversight', 'admin', 'learn']);
   });
 
-  test('MG-2 on, the menu shows the groups in order with each page under its job', async ({ api, app }) => {
-    expect((await api.request('PUT', '/config/views', { values: { new_menu: true }, effectiveFrom: today() }, MGR)).status).toBe(200);
+  test('MG-2 by default the menu shows the groups in order with each page under its job', async ({ api, app }) => {
+    await api.request('DELETE', '/config/views/new_menu', undefined, MGR);                // back to the default
     const { page } = await app.open(MGR, '/secure/dashboard');
     await expect(page.getByTestId('nav-section-home')).toBeVisible();
     const groups = await page.evaluate(() => {

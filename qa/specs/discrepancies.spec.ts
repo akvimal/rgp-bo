@@ -14,7 +14,7 @@ test.describe('Staff & Quality — Cash & shifts @p1', () => {
   test('DISC-1 Business Head sees the report and its totals match the lists @happy', async ({ app, api }) => {
     const { page } = await app.open(OWNER, PAGE);
     await expectShell(page);
-    await expect(page.getByRole('heading', { name: 'Cash & shifts' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Cash & shifts' }).first()).toBeVisible();
     await page.getByTestId('dc-preset-90d').click();
     const to = new Date().toISOString().slice(0, 10);
     const from = new Date(Date.now() - 89 * 86400000).toISOString().slice(0, 10);

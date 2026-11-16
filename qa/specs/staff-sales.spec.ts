@@ -14,7 +14,7 @@ test.describe('Staff & Quality — Staff sales @p1', () => {
   test('STAFF-1 Business Head sees per-person sales that add up to the API totals @happy', async ({ app, api }) => {
     const { page } = await app.open(OWNER, PAGE);
     await expectShell(page);
-    await expect(page.getByTestId('nav-quality')).toBeVisible();
+    await expect(page.getByTestId('nav-staff-sales')).toBeVisible();      // the grouped menu is the default: Staff performance sits under People
     await page.getByTestId('ss-from').fill('2000-01-01');
     await page.getByTestId('ss-from').dispatchEvent('change');
     const today = new Date().toISOString().slice(0, 10);

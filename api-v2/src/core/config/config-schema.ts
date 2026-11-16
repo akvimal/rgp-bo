@@ -117,7 +117,8 @@ export const CONFIG_DEFS: ConfigDef[] = [
   // views
   e('views', 'amounts', 'Sales figures show', 'with GST', ['with GST', 'without GST']),
   e('views', 'default_period', 'Dashboard opens on', 'month to date', ['month to date', 'last 7 days', 'today']),
-  b('views', 'new_menu', 'The grouped menu', false),
+  // the eight-group menu is the default (menu rollout, 2026-11-16); a business that saved this off keeps the old menu, which stays in the app for one release as the way back
+  b('views', 'new_menu', 'The grouped menu', true),
 
   // wording
   e('words', 'product_term', 'What a product is called', 'Medicine', ['Medicine', 'Item', 'Product'], { general: 'Item' }),

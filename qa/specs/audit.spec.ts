@@ -15,8 +15,8 @@ test.describe('Staff & Quality — Audit log @p1', () => {
   test('AUDIT-1 Business Head sees the audit log with their own sign-in @happy', async ({ app }) => {
     const { page } = await app.open(OWNER, PAGE);
     await expectShell(page);
-    await expect(page.getByRole('heading', { name: 'Audit log' })).toBeVisible();
-    await expect(page.getByTestId('nav-quality')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Audit log' }).first()).toBeVisible();
+    await expect(page.getByTestId('nav-audit')).toBeVisible();      // the grouped menu is the default: Audit log sits under Oversight
     await page.getByTestId('aud-action').selectOption({ label: 'Sign-ins' });
     await expect(page.getByTestId('aud-row').first()).toBeVisible();
   });
