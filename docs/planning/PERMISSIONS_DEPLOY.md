@@ -1,6 +1,6 @@
 # Deploy checklist: fine-grained permissions and the grouped menu
 
-Release of 2026-11-16 (branch `v3`, commits `671f3f848` to `56a058fbc`). Design and decisions: `MENU_AND_PERMISSIONS.md` (sections 7 to 23). This page is the order of work, what changes for people, how to check it, and how to undo it.
+Release of 2026-11-16 (branch `v3`, from commit `671f3f848`). Design and decisions: `MENU_AND_PERMISSIONS.md` (sections 7 to 23). This page is the order of work, what changes for people, how to check it, and how to undo it.
 
 ## 1. What this release does, in one paragraph
 
@@ -12,7 +12,7 @@ Permissions that were decided by role name inside the API, or by a bare "page op
 
 1. **Back up** the database.
 2. **Rehearse** on a copy.
-3. **Run the migrations 208 to 216** on the live database. Old code ignores the extra actions, so this step is safe to do first and is reversible.
+3. **Run the migrations 208 to 217** on the live database. Old code ignores the extra actions, so this step is safe to do first and is reversible.
 4. **Deploy the code** (api, then frontend).
 5. **Verify** (section 6).
 6. Keep the rollback ready for one day (section 8).
@@ -25,7 +25,7 @@ Permissions that were decided by role name inside the API, or by a bare "page op
   ```sql
   select name from schema_migrations order by name desc limit 20;   -- if the table exists
   ```
-  Anything below 208 that is missing will run too (for example 182, the purchase flow revision, was never applied). Read those files before you start; this release only vouches for 208 to 216.
+  Anything below 208 that is missing will run too (for example 182, the purchase flow revision, was never applied). Read those files before you start; this release only vouches for 208 to 217.
 - [ ] **The database you are about to change is the one you mean.** `api-v2/.env` points at the **production** database on the developer machine. Do not run a migration, a script or a test from there without naming the target explicitly (`PGDATABASE`, `PG_PREFIX`).
 - [ ] **Nobody is mid-shift** if you can help it (a role edit during a shift is harmless, but the check in section 6 is easier when the till is quiet).
 - [ ] The migrations are idempotent (each skips an action a role already has), so a repeat run changes nothing. They still belong in `schema_migrations` once run.
@@ -57,11 +57,12 @@ Each file is in `sql/migrations/`; the rollback sits beside it. `roles` below me
 | 214 | Setup: `modules.manage`, `transfer.export`, `transfer.import` (on Business Details); `mfareset` (on Users) | owner roles for the first three; every role with `users` edit for `mfareset` | `214_rollback.sql` |
 | 215 | Customers: `merge`, `creditlimit.set`, `credit.correct`, `households.manage`, `followup.wording`, `relationships.setup` (and `delete`) | owner roles all of them; Store Head `creditlimit.set`, `households.manage`, `followup.wording` | `215_rollback.sql` |
 | 216 | Sales: `batchstop.override`, `creditlimit.override`, `deliveries.manage`, `returns.settings` | owner roles all four; Store Head the first three | `216_rollback.sql` |
+| 217 | Customers day to day: `dues.view`, `dues.collect`, `audiences.use`, `worklist.use`, `consent.manage` | **every role holding the Customers page** gets all five | `217_rollback.sql` |
 
 Run them in numeric order:
 
 ```bash
-for n in 208 209 210 211 212 213 214 215 216; do
+for n in 208 209 210 211 212 213 214 215 216 217; do
   f=$(ls sql/migrations/${n}_*.sql | grep -v rollback)
   echo "== $f"
   docker exec -i rgp-db psql -v ON_ERROR_STOP=1 -U rgpapp -d rgpdb < "$f"
@@ -90,7 +91,7 @@ Check by eye:
 - [ ] **Store Head**: `reports` has `ask`; `purchases` has `payments.reverse`; `store` has the five stock actions; `customers` has `creditlimit.set`, `households.manage`, `followup.wording`; `sales` has `batchstop.override`, `creditlimit.override`, `deliveries.manage`.
 - [ ] A **custom role that handles payments** (e.g. Purchase Staff): `payments.view`, `payments.record`, `returns.manage` present, **no** `payments.reverse`.
 - [ ] A **role with the Finance or GST filing page** (e.g. Accountant): the finance actions and `prepare`, `export`, `lock` present, **no** `unlock`.
-- [ ] **Counter / Sales Staff**: no new override actions (they were never allowed them).
+- [ ] **Counter / Sales Staff**: no new override actions (they were never allowed them), but the five day-to-day customer actions are present (migration 217 gave them to every role with the Customers page).
 - [ ] No role holding a page ended up with an empty `policies` list that it did not have before.
 
 ### In the app (after the code is deployed), one login of each kind
@@ -116,6 +117,8 @@ These are the only behaviour changes; everything else is the same on day one.
 7. **A custom role with the Customers `delete` box ticked can now delete** (the API used to refuse everyone but managers).
 8. **A Reports role with the page but no actions opens nothing**; the migration gave every existing Reports role its actions, but a role created in the old way after the migration needs them ticked.
 9. **Roles created after this release** must be given the actions they need; the page alone no longer implies them.
+10. **A role without the Customers page can no longer see who owes, take a dues payment, or use the contact list and audiences** (any login could before). Roles with the page keep all of it. Billing on credit still works for any role that can add or bill a sale.
+11. **The "who owes" list works.** It returned an error for everyone before (a query bug fixed in this release).
 
 ## 8. Rollback
 
@@ -129,7 +132,7 @@ curl -X PUT $API/config/views -H "authorization: Bearer $TOKEN" -H 'content-type
 **Full rollback** (a day or less after deploy):
 
 1. Redeploy the previous code (api and frontend).
-2. Run the rollbacks **in reverse order**: `216_rollback.sql`, `215`, `214`, `213`, `212`, `211`, `210`, `209`, and `208` last (208 also takes the two pages off every role again). Each removes only the actions it added.
+2. Run the rollbacks **in reverse order**: `217_rollback.sql`, `216`, `215`, `214`, `213`, `212`, `211`, `210`, `209`, and `208` last (208 also takes the two pages off every role again). Each removes only the actions it added.
 3. Delete the matching names from `schema_migrations` so a later run applies them.
 4. Caveat: a rollback removes **every** stored action with those names, including ones an owner ticked in the editor in the meantime. Note down any role the owner edited before rolling back.
 

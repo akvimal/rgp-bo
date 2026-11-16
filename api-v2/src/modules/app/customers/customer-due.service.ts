@@ -121,7 +121,7 @@ export class CustomerDueService {
   async list() {
     const rows = await this.manager.query(
       `select min(c.id) as id, min(c.name) as name, min(c.mobile) as mobile, min(c.locality) as locality, coalesce(max(h.credit_limit), 0)::float8 as credit_limit, sum(e.amount)::float8 as balance
-         from customer_due_entry e join customer c on c.id = e.customer_id left join household h on h.id = e.household_id group by coalesce(e.household_id, -c.id) having sum(e.amount) > 0.004 order by c.name`);
+         from customer_due_entry e join customer c on c.id = e.customer_id left join household h on h.id = e.household_id group by coalesce(e.household_id, -c.id) having sum(e.amount) > 0.004 order by min(c.name)`);
     const today = isoToday();
     const out: any[] = [];
     for (const r of rows) {

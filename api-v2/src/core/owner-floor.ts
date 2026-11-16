@@ -11,7 +11,7 @@ const OWNER_FLOOR: Array<{ resource: string; path: string; actions: string[]; on
   { resource: 'deliverypartners', path: '/secure/settings/delivery-partners', actions: ['manage'] },
   { resource: 'reports', path: '/secure/reports', actions: ['sales', 'purchases', 'stock', 'margin', 'ask', 'export'] },
   { resource: 'sales', path: '/secure/sales/pos', onlyIfPresent: true, actions: ['batchstop.override', 'creditlimit.override', 'deliveries.manage', 'returns.settings'] },
-  { resource: 'customers', path: '/secure/customers', onlyIfPresent: true, actions: ['delete', 'merge', 'creditlimit.set', 'credit.correct', 'households.manage', 'followup.wording', 'relationships.setup'] },
+  { resource: 'customers', path: '/secure/customers', onlyIfPresent: true, actions: ['delete', 'merge', 'creditlimit.set', 'credit.correct', 'households.manage', 'followup.wording', 'relationships.setup', 'dues.view', 'dues.collect', 'audiences.use', 'worklist.use', 'consent.manage'] },
   { resource: 'businessprofile', path: '/secure/settings/business-profile', onlyIfPresent: true, actions: ['modules.manage', 'transfer.export', 'transfer.import'] },
   { resource: 'users', path: '/secure/settings/users', onlyIfPresent: true, actions: ['mfareset'] },
   { resource: 'finance', path: '/secure/finance', onlyIfPresent: true, actions: ['bank.import', 'reconcile', 'records'] },

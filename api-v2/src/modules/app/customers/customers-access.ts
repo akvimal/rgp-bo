@@ -11,10 +11,15 @@ import { isOwnerRole } from 'src/core/roles';
  *   households.manage  add and remove people in a household (was a manager)
  *   followup.wording   change the follow-up message wording (was a manager)
  *   relationships.setup  change the active-customer and contact-cap settings (was the Business Head)
+ *   dues.view          who owes, and a customer's dues (was any login)
+ *   dues.collect       take a payment against a customer's dues (was any login)
+ *   audiences.use      the audiences and their lists (was reveal, which still limits the full numbers)
+ *   worklist.use       the daily contact list, snooze, the contact log, review invites, a customer's care and profile (was any login)
+ *   consent.manage     record a customer's consent (was any login)
  * Seeing full contact details (`reveal`) and downloading lists (`export`) already had grants and are as before. The owner roles hold every action by
  * name, whatever their saved permissions say; the Store Head does not (migration 215 gave it the manager-level ones). Pure rule, tested without a database.
  */
-export const CUSTOMER_ACTIONS = ['delete', 'merge', 'creditlimit.set', 'credit.correct', 'households.manage', 'followup.wording', 'relationships.setup'] as const;
+export const CUSTOMER_ACTIONS = ['delete', 'merge', 'creditlimit.set', 'credit.correct', 'households.manage', 'followup.wording', 'relationships.setup', 'dues.view', 'dues.collect', 'audiences.use', 'worklist.use', 'consent.manage'] as const;
 export type CustomerAction = (typeof CUSTOMER_ACTIONS)[number];
 
 export function canDoCustomers(roleName: string | null | undefined, perms: Perm[], action: CustomerAction): boolean {

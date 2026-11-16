@@ -1,3 +1,4 @@
+import { CustomerActionGuard, NeedsCustomers } from './customer-action.guard';
 import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { User } from 'src/core/decorator/user.decorator';
@@ -11,7 +12,7 @@ import { buildAudienceCsv } from './customer-export';
 @ApiTags('Customer relationships')
 @Controller('customer-relations')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, CustomerActionGuard)
 export class CustomerRelationshipController {
   constructor(private readonly relations: CustomerRelationshipService, private readonly privacy: CustomerPrivacyService, private readonly followup: CustomerFollowupService) {}
 
@@ -21,30 +22,39 @@ export class CustomerRelationshipController {
   }
 
   /** the wording of the messages staff send from the contact list */
+  @NeedsCustomers('worklist.use')
   @Get('followup-templates')
   templates() { return this.followup.templates(); }
 
+  @NeedsCustomers('followup.wording')
   @Put('followup-templates')
   saveTemplates(@Body() body: any, @User() user: any) { return this.followup.save(user, body); }
 
+  @NeedsCustomers('followup.wording')
   @Post('followup-templates/reset')
   resetTemplates(@User() user: any) { return this.followup.reset(user); }
 
+  @NeedsCustomers('followup.wording')
   @Post('followup-templates/draft')
   draftTemplates(@User() user: any) { return this.followup.draft(user); }
 
+  @NeedsCustomers('worklist.use')
   @Get('summary')
   summary() { return this.relations.summary(); }
 
+  @NeedsCustomers('worklist.use')
   @Get('settings')
   settings() { return this.relations.settings(); }
 
+  @NeedsCustomers('relationships.setup')
   @Put('settings')
   saveSettings(@Body() body: any, @User() user: any) { return this.relations.saveSettings(body, user); }
 
+  @NeedsCustomers('audiences.use')
   @Get('audiences')
   async audiences(@User() user: any) { await this.needAll(user); return this.relations.audiences(); }
 
+  @NeedsCustomers('audiences.use')
   @Post('audience')
   async audience(@Body() body: any, @User() user: any) {
     await this.needAll(user);
@@ -57,6 +67,7 @@ export class CustomerRelationshipController {
    * The audience as a CSV to download: the Business Head (or a role granted customers "export") only, at most 2,000 customers, each one a
    * person who can be contacted. The download is kept with who took it and how many, and the file itself names who took it.
    */
+  @NeedsCustomers('audiences.use')
   @Post('audience/export')
   async exportAudience(@Body() body: any, @User() user: any) {
     await this.needAll(user);
@@ -70,6 +81,7 @@ export class CustomerRelationshipController {
   }
 
   /** today's list: numbers are masked for a login that may not read them all, who reveals one at a time to call */
+  @NeedsCustomers('worklist.use')
   @Get('worklist')
   async worklist(@User() user: any) {
     const out = await this.relations.worklist();
@@ -78,30 +90,39 @@ export class CustomerRelationshipController {
   }
 
   /** the bill screen asks whether to offer the review invitation for a bill, and gets the WhatsApp link ready */
+  @NeedsCustomers('worklist.use')
   @Get('review-invite/:saleId')
   reviewInvite(@Param('saleId', ParseIntPipe) saleId: number) { return this.relations.reviewInviteFor(saleId); }
 
+  @NeedsCustomers('worklist.use')
   @Post('review-invite')
   recordReviewInvite(@Body() body: any, @User() user: any) { return this.relations.recordReviewInvite(Number(body?.saleid), user); }
 
+  @NeedsCustomers('worklist.use')
   @Post(':id/snooze')
   snooze(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) { return this.relations.snooze(id, body, user); }
 
+  @NeedsCustomers('worklist.use')
   @Post(':id/unsnooze')
   unsnooze(@Param('id', ParseIntPipe) id: number) { return this.relations.unsnooze(id); }
 
+  @NeedsCustomers('worklist.use')
   @Get(':id/care')
   care(@Param('id', ParseIntPipe) id: number, @User() user: any) { return this.relations.care(id, user); }
 
+  @NeedsCustomers('worklist.use')
   @Get(':id/profile')
   profile(@Param('id', ParseIntPipe) id: number) { return this.relations.profileOf(id); }
 
+  @NeedsCustomers('worklist.use')
   @Get(':id/contacts')
   contacts(@Param('id', ParseIntPipe) id: number) { return this.relations.contacts(id); }
 
+  @NeedsCustomers('worklist.use')
   @Post(':id/contacts')
   record(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) { return this.relations.recordContact(id, body, user); }
 
+  @NeedsCustomers('consent.manage')
   @Put(':id/consent')
   consent(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) { return this.relations.setConsent(id, body, user); }
 }

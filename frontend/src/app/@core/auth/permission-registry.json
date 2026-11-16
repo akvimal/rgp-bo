@@ -948,7 +948,12 @@
         { "key": "credit.correct", "label": "Correct what a customer owes, or their store credit, with a reason" },
         { "key": "households.manage", "label": "Add and remove people in a household" },
         { "key": "followup.wording", "label": "Change the follow-up message wording" },
-        { "key": "relationships.setup", "label": "Change the active-customer and contact-cap settings" }
+        { "key": "relationships.setup", "label": "Change the active-customer and contact-cap settings" },
+        { "key": "dues.view", "label": "See who owes and what, and a customer's dues" },
+        { "key": "dues.collect", "label": "Take a payment against a customer's dues" },
+        { "key": "audiences.use", "label": "Use the audiences (groups of customers to contact) and their lists" },
+        { "key": "worklist.use", "label": "Use the daily contact list: snooze, the contact log, review invites, a customer's care and profile" },
+        { "key": "consent.manage", "label": "Record a customer's consent to be contacted" }
       ]
     },
     {

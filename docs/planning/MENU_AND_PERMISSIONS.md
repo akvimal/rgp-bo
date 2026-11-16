@@ -356,7 +356,7 @@ Seven customer actions were decided by role name in five services. They are now 
 | `followup.wording` | change the follow-up message wording | a manager |
 | `relationships.setup` | the active-customer and contact-cap settings | the Business Head |
 
-Seeing full contact details (`reveal`) and downloading lists (`export`) already had grants and are unchanged. Decisions: the owner roles by name, the Store Head by migration 215 (the three manager-level actions, so a Store Head role can be narrowed in the editor), the owner-level ones to the owner roles only. A custom role that already had the `delete` box ticked now really can delete (the API used to refuse everyone but the managers). The credit and dues screens read `customers.credit.correct` instead of `hr.manage`, which is gone from the role editor. Adding and editing a customer, `dues.view`/`dues.collect`, `worklist.use` and `consent.view` from the plan are not done: the till creates customers and collects dues, so they need their own pass with the Sales split. QA RCA-1..4.
+Seeing full contact details (`reveal`) and downloading lists (`export`) already had grants and are unchanged. Decisions: the owner roles by name, the Store Head by migration 215 (the three manager-level actions, so a Store Head role can be narrowed in the editor), the owner-level ones to the owner roles only. A custom role that already had the `delete` box ticked now really can delete (the API used to refuse everyone but the managers). The credit and dues screens read `customers.credit.correct` instead of `hr.manage`, which is gone from the role editor. QA RCA-1..4. The day-to-day surface is section 24.
 
 ## 21. Step E, Sales: the till overrides (2026-11-16, migration 216, uncommitted)
 
@@ -391,3 +391,19 @@ The grouped menu is now the default. `views.new_menu` (`api-v2/src/core/config/c
 Decisions: flip the default, keep the switch and the old menu (do not delete it yet). To put one business back on the old menu: Settings > Dashboards and compliance > Views, or `PUT /config/views { values: { new_menu: false } }`. To remove the old menu later: delete the `*ngIf="!groupedMenu"` branch and the `newMenu` switch once no business has saved it off, and the `MenuModeService` tab-strip fallback in the Quality pages.
 
 Checked: the 29 QA specs that touch the menu (`nav-` ids, the sidebar) give the same result before and after the flip: 160 passed and the same 36 failing, none of them new. Five specs assumed the old menu and were updated (`audit`, `grievances`, `staff-sales`, `refills` and `discrepancies`: they looked for the old "Staff and quality" entry or a heading that now shows twice, the page's own heading under the shell's); MG-1 now asserts the default is on, MG-1b switches it off to check the counter roles still get the grouped menu while the Business Head keeps the old one, and MG-2 checks the default groups. Known cosmetic: in the grouped menu the Quality pages show their title twice (the shell heading and the page card title). Still red before and after, unrelated to the menu: APPG-1, PACC-3, PACC-6, OM-14/19/20/24/25/27, XCUT-2, XCUT-4, EXP-4 and about 25 others, mostly data state of the QA database and rules newer than their specs.
+
+## 24. Step E, Customers: the day-to-day surface (2026-11-16, migration 217, uncommitted)
+
+The first Customers pass (section 20) covered the sensitive actions and left the everyday routes open to any signed-in login: who owes (`customer-dues`), taking a payment, the worklist, snooze, the contact log, consent, review invites, a customer's care and profile, the audiences. These now name an action on the `customers` permission (guard `customer-action.guard.ts`, `@NeedsCustomers('<action>')` on each route; a test fails if any route of the two controllers has none):
+
+| Action | Covers |
+|---|---|
+| `dues.view` | who owes (`owing/all`), a customer's dues and their brief |
+| `dues.collect` | take a payment against a customer's dues |
+| `audiences.use` | the audiences, an audience's members, the audience download (which still needs the `export` grant, and the full numbers still need `reveal`) |
+| `worklist.use` | the daily contact list, summary and settings reads, follow-up wording read, snooze and unsnooze, the contact log (read and write), review invites, a customer's care and profile |
+| `consent.manage` | record a customer's consent |
+
+The two routes that already had a service-level check now also name theirs (`creditlimit.set` on the limit, `credit.correct` on the adjustment). Decisions: every role that already holds the Customers page gets all five (migration 217), so nobody who uses the page loses anything; a role **without** the page no longer reaches them. The till's credit check (`:id/brief`) also lets through any role that can add or bill a sale, so billing on credit keeps working for a role with no Customers page. Owner roles hold all five by name. Not split further (read versus write per area), and adding and editing a customer is still open because the till creates customers.
+
+**Found on the way, fixed:** `GET /customer-dues/owing/all` (the "who owes" list) returned a 500 for everyone, the owner included: its query ordered by `c.name`, which is not in the `group by`, and Postgres refuses that. Now `order by min(c.name)`. QA RCD-1..4.
