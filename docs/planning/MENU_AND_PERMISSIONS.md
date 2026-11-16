@@ -1,6 +1,6 @@
 # Menu regrouping and fine-grained permissions
 
-Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Steps D and E not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
+Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14) and HR (section 15) built 2026-11-16; Purchasing and Stock not built. Step E not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
 
 Scope of the review: `frontend/src/app/secured/menu.ts`, the Settings submenu in `secured.component.html`, the role editor's list (`settings/roles/permission-catalog.ts`), the route files, `auth.service.ts` (`isUrlAuthorized`), the API's `permission.guard.ts` / `permission.service.ts` / `role-rules.ts`, and `role-templates.ts`. **Not done:** a read of every API controller, so which endpoints enforce a permission and which only hide a button is still to be checked (step E0 below).
 
@@ -258,3 +258,25 @@ A code review of the uncommitted work raised six points; each was checked agains
 - **`bootstrap-db.sh` applies every 3-digit migration from 123 in name order**, including 182. Intended for a fresh QA database (all 86 applied cleanly in the Docker bootstrap); it does not touch any other database, and a prefix that is not three digits is not matched.
 
 Checked: API suite 1,260 pass; focused QA run on the rebuilt stack 50 pass; the 2 failures are the known counter-menu check (MG-1b, fails at HEAD too) and DLVP-1, whose partner creation and listing pass and whose next step needs a verified stock row with a balance over 20 that the full run left too thin.
+
+## 14. Step D, Reports built (2026-11-16, migration 209, committed)
+
+The `reports` permission was a bare presence; Ask the shop and the weekly summary were decided by role name. It now carries six actions: `sales` (the sales report and Ask the shop's sales, payment, expense and top-product reports), `purchases`, `stock`, `margin` (profit, thin-margin, customer dues, the weekly summary), `ask` (the Ask the shop tab) and `export`. The owner roles hold all of them by name; migration 209 keeps every existing Reports role's access (sales, purchases, stock, export), gives the Store Head `ask`, and gives the owner roles `ask` and `margin`. Rules in `insights/report-access.ts`; QA RPA-1..6.
+
+## 15. Step D, HR built (2026-11-16, migration 210, uncommitted)
+
+The HR API let in only the role named Business Head and ignored the `hr` view and manage boxes. Now each of the 82 routes of `HrController` needs an action, matched by method and route in `hr/hr-access.ts` (a unit test fails if any route has no rule; an unnamed route is for the owner roles only):
+
+| Action | Routes |
+|---|---|
+| `staff.view` / `staff.manage` | staff records, positions, starter set, hiring, leaving, rejoining, linking a login |
+| `pay.view` / `pay.manage` | salary revisions, pay components, bank details; the staff list and record leave out earnings and revisions without `pay.view` |
+| `payroll.view` / `payroll.run` / `payroll.approve` | runs, stubs and export; generating and editing a run; approving and reopening it |
+| `attendance.manage` | the attendance grid and marking |
+| `leave.manage` | leave types, balances, requests, decisions, holidays |
+| `kpi.setup` | KPI measures, bands, scoring, finalising, the role assistant |
+| `bonus.manage` | bonuses |
+
+`hr.view` stays and opens the HR pages; each tab needs its own action (`hr-access.guard.ts`, which also sends a closed tab to the first open one). `hr.manage` stays only because the customer credit and dues screens read it as a UI flag. Decisions: migration 210 gives the actions to the owner roles only (a custom role with `hr` ticked never had API access, so nothing is granted for it); the Owner-operator now holds HR like the Business Head. `owner-floor.ts` fills in missing HR actions for an owner role that already holds the HR page and never adds the page (HR follows the module switch). QA RHA-1..6 (the older HR specs fail on a database where `sales2` already has a staff record with history; they need a fresh seed).
+
+Not in this pass: the other HR controllers (My HR, leave approvals, KPI rating, punch and attendance review) still decide by role name, and Coaching still follows the insights rule.

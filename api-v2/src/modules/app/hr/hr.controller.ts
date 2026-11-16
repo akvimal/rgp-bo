@@ -1,4 +1,4 @@
-import { Body, CanActivate, Controller, Delete, ExecutionContext, ForbiddenException, Get, Injectable, Param, ParseIntPipe, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
+import { Body, CanActivate, Controller, Delete, ExecutionContext, ForbiddenException, Get, Injectable, Param, ParseIntPipe, Post, Put, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -13,15 +13,21 @@ import { HrKpiService } from './hr-kpi.service';
 import { HrKpiEngine } from './hr-kpi-engine.service';
 import { HrAiService } from './hr-ai.service';
 import { HrKpiTodoService } from './hr-kpi-todo.service';
+import { permsOf } from 'src/core/role-rules';
+import { canDoHr, canUseHrRoute } from './hr-access';
 
-/** Salaries, bank details and attendance: the Business Head only. */
+/**
+ * Salaries, bank details, attendance and payroll: the owner roles, and any role given the HR action the route needs (see hr-access.ts). The route
+ * is matched as Nest registered it, so a new endpoint nobody has named is closed to everyone but the owner roles until a rule is added.
+ */
 @Injectable()
 export class HrGuard implements CanActivate {
   constructor(@InjectEntityManager() private readonly manager: EntityManager) {}
   async canActivate(ctx: ExecutionContext) {
     const req = ctx.switchToHttp().getRequest();
-    const [r] = await this.manager.query(`select name from app_role where id = $1`, [req.user?.roleid || 0]);
-    if (r?.name !== 'Business Head') throw new ForbiddenException('Only the Business Head can use HR.');
+    const [r] = await this.manager.query(`select name, permissions from app_role where id = $1`, [req.user?.roleid || 0]);
+    if (!r || !canUseHrRoute(r.name, permsOf(r), req.method, req.route?.path)) throw new ForbiddenException('HR is not open to your role for this.');
+    req.hrCan = (action: any) => canDoHr(r.name, permsOf(r), action);      // what the handlers use to leave out pay from what they return
     return true;
   }
 }
@@ -44,10 +50,11 @@ export class HrController {
   ) {}
 
   // ---------------------------------------------------------------- staff
-  @Get('staff') list() { return this.staff.list(); }
+  /** the staff list carries each person's monthly earnings; without the pay view it does not */
+  @Get('staff') async list(@Req() req: any) { const rows = await this.staff.list(); return req.hrCan('pay.view') ? rows : rows.map(({ monthly_earnings, ...rest }: any) => rest); }
   @Get('staff/candidates') candidates(@User() u: any) { return this.staff.candidates(u); }
   @Get('stores') stores() { return this.staff.stores(); }
-  @Get('staff/:id') get(@Param('id', ParseIntPipe) id: number) { return this.staff.get(id); }
+  @Get('staff/:id') async get(@Param('id', ParseIntPipe) id: number, @Req() req: any) { const e = await this.staff.get(id); return req.hrCan('pay.view') ? e : { ...e, revisions: [] }; }
   @Post('staff') create(@Body() b: any, @User() u: any) { return this.staff.create(b, u); }
   @Put('staff/:id') update(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.update(id, b, u); }
   @Delete('staff/:id') removeStaff(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.staff.remove(id, u); }

@@ -5,6 +5,7 @@ import { RouterModule, Routes } from "@angular/router";
 import { AuthGuard } from "../../@core/auth/auth.guard";
 import { SharedModule } from "../../shared/shared.module";
 import { HrShellComponent } from "./hr-shell.component";
+import { HrAccessGuard } from "./hr-access.guard";
 import { HrStaffComponent } from "./hr-staff.component";
 import { HrAttendanceComponent } from "./hr-attendance.component";
 import { HrLeaveComponent } from "./hr-leave.component";
@@ -22,15 +23,15 @@ import { HrCoachingComponent } from "./hr-coaching.component";
 const routes: Routes = [
   { path: "", component: HrShellComponent, children: [
     { path: "", redirectTo: "staff", pathMatch: "full" },
-    { path: "staff", component: HrStaffComponent, canActivate: [AuthGuard] },
-    { path: "attendance", component: HrAttendanceComponent, canActivate: [AuthGuard] },
-    { path: "leave", component: HrLeaveComponent, canActivate: [AuthGuard] },
-    { path: "kpi", component: HrKpiComponent, canActivate: [AuthGuard] },
-    { path: "bonus", component: HrBonusComponent, canActivate: [AuthGuard] },
-    { path: "payroll", component: HrPayrollComponent, canActivate: [AuthGuard] },
-    { path: "assistant", component: HrAssistantComponent, canActivate: [AuthGuard] },
-    { path: "coaching", component: HrCoachingComponent, canActivate: [AuthGuard] },
-    { path: "setup", component: HrSetupComponent, canActivate: [AuthGuard], canDeactivate: [HrSetupLeaveGuard] },
+    { path: "staff", component: HrStaffComponent, canActivate: [AuthGuard, HrAccessGuard], data: { needs: ["hr.staff.view"] } },
+    { path: "attendance", component: HrAttendanceComponent, canActivate: [AuthGuard, HrAccessGuard], data: { needs: ["hr.attendance.manage"] } },
+    { path: "leave", component: HrLeaveComponent, canActivate: [AuthGuard, HrAccessGuard], data: { needs: ["hr.leave.manage"] } },
+    { path: "kpi", component: HrKpiComponent, canActivate: [AuthGuard, HrAccessGuard], data: { needs: ["hr.kpi.setup"] } },
+    { path: "bonus", component: HrBonusComponent, canActivate: [AuthGuard, HrAccessGuard], data: { needs: ["hr.bonus.manage"] } },
+    { path: "payroll", component: HrPayrollComponent, canActivate: [AuthGuard, HrAccessGuard], data: { needs: ["hr.payroll.view"] } },
+    { path: "assistant", component: HrAssistantComponent, canActivate: [AuthGuard, HrAccessGuard], data: { needs: ["hr.kpi.setup"] } },
+    { path: "coaching", component: HrCoachingComponent, canActivate: [AuthGuard, HrAccessGuard], data: { needs: ["hr.staff.view"] } },
+    { path: "setup", component: HrSetupComponent, canActivate: [AuthGuard, HrAccessGuard], data: { needs: ["hr.staff.manage", "hr.pay.manage", "hr.leave.manage"] }, canDeactivate: [HrSetupLeaveGuard] },
   ]},
 ];
 

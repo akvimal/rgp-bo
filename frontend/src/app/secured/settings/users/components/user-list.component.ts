@@ -75,7 +75,7 @@ export class UserListComponent {
         this.loadDetails();
         this.loadMfa();
         // the staff link is the Business Head's HR data; only ask when the role may see it
-        if (this.auth.isActionAuthorized('hr.view')) {
+        if (this.auth.isActionAuthorized('hr.staff.view')) {
             this.hr.get('staff').subscribe((rows:any[]) => {
                 this.staffByUser = {};
                 (rows || []).forEach(r => this.staffByUser[r.user_id] = r);

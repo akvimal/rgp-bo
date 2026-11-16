@@ -5,10 +5,12 @@ import { isOwnerRole } from './roles';
  * later by provisioning, a seed or a config import may not carry the block), so the app is told the same: without this the menu and the page
  * would be closed to an owner the API would let in. Pure; appended after the module narrowing.
  */
-const OWNER_FLOOR: Array<{ resource: string; path: string; actions: string[] }> = [
+/** `onlyIfPresent`: fill in the missing actions of a resource the role already holds, but never add the resource (HR is offered only where the module is on) */
+const OWNER_FLOOR: Array<{ resource: string; path: string; actions: string[]; onlyIfPresent?: boolean }> = [
   { resource: 'customerorders', path: '/secure/commitments', actions: ['view', 'manage'] },
   { resource: 'deliverypartners', path: '/secure/settings/delivery-partners', actions: ['manage'] },
   { resource: 'reports', path: '/secure/reports', actions: ['sales', 'purchases', 'stock', 'margin', 'ask', 'export'] },
+  { resource: 'hr', path: '/secure/hr', onlyIfPresent: true, actions: ['staff.view', 'staff.manage', 'pay.view', 'pay.manage', 'payroll.view', 'payroll.run', 'payroll.approve', 'attendance.manage', 'leave.manage', 'kpi.setup', 'bonus.manage'] },
 ];
 
 export function withOwnerFloor(permissions: any[], roleName: string | null | undefined): any[] {
@@ -17,6 +19,7 @@ export function withOwnerFloor(permissions: any[], roleName: string | null | und
   for (const f of OWNER_FLOOR) {
     const have = out.find((p) => p?.resource === f.resource);
     if (!have) {
+      if (f.onlyIfPresent) continue;
       out.push({ resource: f.resource, path: f.path, policies: f.actions.map((action) => ({ action })) });
     } else {
       const missing = f.actions.filter((a) => !(have.policies || []).some((p: any) => p?.action === a));

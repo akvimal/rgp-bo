@@ -610,21 +610,24 @@
     {
       "key": "hr",
       "label": "HR",
-      "description": "Staff records, salary and revisions, leave, attendance, KPI and monthly payroll with pay stubs. Business Head only.",
+      "description": "Staff records, salary, leave, attendance, KPI, bonuses and monthly payroll with pay stubs. Open the HR pages with the first action; each tab also needs its own action below.",
       "group": "People",
       "path": "/secure/hr",
       "availability": "hr",
-      "bundle": true,
-      "bundleLabel": "Can manage HR and payroll",
       "actions": [
-        {
-          "key": "view",
-          "label": "View"
-        },
-        {
-          "key": "manage",
-          "label": "Change staff, pay and leave"
-        }
+        { "key": "view", "label": "Open the HR pages (each tab also needs its own action)" },
+        { "key": "manage", "label": "Adjust customer credit and dues limits" },
+        { "key": "staff.view", "label": "See staff records, positions and the starter set" },
+        { "key": "staff.manage", "label": "Add, change, end and rejoin staff; link a login; set positions" },
+        { "key": "pay.view", "label": "See salary, pay revisions, pay components and bank details" },
+        { "key": "pay.manage", "label": "Revise salary, change pay components and bank details" },
+        { "key": "payroll.view", "label": "See payroll runs and pay stubs, and save the run as a file" },
+        { "key": "payroll.run", "label": "Generate a payroll run and edit its lines" },
+        { "key": "payroll.approve", "label": "Approve a payroll run, or reopen an approved one" },
+        { "key": "attendance.manage", "label": "See and mark attendance" },
+        { "key": "leave.manage", "label": "Leave types, balances, requests and decisions, and the holiday list" },
+        { "key": "kpi.setup", "label": "KPI measures, bands and scoring, and the role assistant" },
+        { "key": "bonus.manage", "label": "Give, change and remove bonuses" }
       ]
     },
     {

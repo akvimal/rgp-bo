@@ -23,6 +23,13 @@ describe('what an owner role always holds', () => {
     expect(stored[0].policies.length).toBe(1);                      // the stored role is not changed
   });
 
+  it('fills in the HR actions of an owner role that holds the HR page, and does not add HR to one that has it off', () => {
+    const held = withOwnerFloor([{ resource: 'hr', path: '/secure/hr', policies: [{ action: 'view' }] }], 'Business Head');
+    expect(actions(held, 'hr')).toEqual(expect.arrayContaining(['view', 'staff.view', 'pay.manage', 'payroll.approve', 'bonus.manage']));
+    expect(resources(withOwnerFloor([{ resource: 'sales' }], 'Business Head'))).not.toContain('hr');
+    expect(actions(withOwnerFloor([{ resource: 'hr', policies: [{ action: 'view' }] }], 'Store Head'), 'hr')).toEqual(['view']);
+  });
+
   it('adds nothing twice', () => {
     const once = withOwnerFloor([], 'Business Head');
     expect(withOwnerFloor(once, 'Business Head')).toEqual(once);
