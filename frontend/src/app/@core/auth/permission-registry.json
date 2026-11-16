@@ -868,7 +868,7 @@
         },
         {
           "key": "adjust",
-          "label": "Adjust stock & cash"
+          "label": "Manage shifts (assign and run other people's). Stock changes use their own actions below"
         },
         {
           "key": "shift.open",
@@ -879,7 +879,12 @@
           "key": "shift.close",
           "label": "Close a shift",
           "hint": "Count the drawer and close the cash drawer session."
-        }
+        },
+        { "key": "qty.adjust", "label": "Change stock quantities", "hint": "Adjustments, returns to stock, bulk changes, deleting an adjustment, raising an audit." },
+        { "key": "audit.approve", "label": "Approve, recount or reject a stock audit" },
+        { "key": "count.perform", "label": "Start, fill in and submit a stock count" },
+        { "key": "transfer.request", "label": "Dispatch and cancel store-to-store transfers, and see them" },
+        { "key": "transfer.receive", "label": "Receive a transfer at the other store" }
       ]
     },
     {

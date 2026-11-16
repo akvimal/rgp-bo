@@ -3,6 +3,7 @@ import { RoleService } from "./role.service";
 import { permsOf } from 'src/core/role-rules';
 import { ReportAction, canDoReports as canDoReportsRule } from '../insights/report-access';
 import { PurchasingAction, canDoPurchasing as canDoPurchasingRule } from '../purchases/purchasing-access';
+import { StockAction, canDoStock as canDoStockRule } from '../stock/stock-access';
 
 type RolePermission = {
   resource?: string;
@@ -156,6 +157,15 @@ export class PermissionService {
    */
   async canUseReports(roleid: number | string): Promise<boolean> {
     return this.canDoReports(roleid, 'sales');
+  }
+
+  /** one of the stock actions (qty.adjust, audit.approve, count.perform, transfer.request, transfer.receive): the owner roles by name, else the grant on `store` */
+  async canDoStock(roleid: number | string, action: StockAction): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return canDoStockRule(role.name, permsOf(role), action);
   }
 
   /** one of the sensitive purchasing actions (payments, vendor returns, completed invoices, approval for payment, recalculating): the owner roles by name, else the grant */

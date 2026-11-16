@@ -18,35 +18,35 @@ export class StoreStockTransferController {
 
     @Get()
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:transfer.request')
     findAll(@Query() query: { storeid?: string; status?: string }) {
         return this.service.findAll(query);
     }
 
     @Get('available')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:transfer.request')
     available(@Query('itemid') itemid: string, @Query('storeid') storeid: string) {
         return this.service.availableAtStore(Number(itemid), Number(storeid));
     }
 
     @Post()
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:transfer.request')
     dispatch(@Body() dto: CreateStoreStockTransferDto, @User() currentUser: any) {
         return this.service.dispatch(dto, currentUser.id);
     }
 
     @Put(':id/receive')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:transfer.receive')
     receive(@Param('id') id: string, @Body() dto: ReceiveStoreStockTransferDto, @User() currentUser: any) {
         return this.service.receive(Number(id), dto, currentUser.id);
     }
 
     @Put(':id/cancel')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:transfer.request')
     cancel(@Param('id') id: string, @User() currentUser: any) {
         return this.service.cancel(Number(id), currentUser.id);
     }

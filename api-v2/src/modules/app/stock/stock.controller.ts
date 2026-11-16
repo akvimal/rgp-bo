@@ -68,7 +68,7 @@ export class StockController {
 
     @Get('/adjust/qty')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:qty.adjust')
     async findAllQtyAdjust(@Query('audit') audit?: string) {
       return (await this.service.findAllQtyAdjust(Number(audit) || undefined)).map((data: any) => ({
         id: data.id,
@@ -98,7 +98,7 @@ export class StockController {
 
     @Put('/adjust/qty/:id')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:qty.adjust')
     async updateQtyAdjustment(@Param('id') id: string, @Body() dto: any, @User() currentUser: any) {
       return this.service.updateQtyAdjustment(id, dto, currentUser.id);
     }
@@ -113,14 +113,14 @@ export class StockController {
 
     @Post('/adjust/qty')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:qty.adjust')
     async updateQty(@Body() createDto: CreateProductQtyChangeDto, @User() currentUser: any) {
       return this.service.createQty(createDto, currentUser.id);
     }
 
     @Post('/adjust/qty/bulk')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:qty.adjust')
     async updateQtyBulkToZero(@Body() obj: any, @User() currentUser: any) {
       const data = await this.service.findPurchaseItemsWithAvailable(obj.ids);
       for (const element of data) {
@@ -135,84 +135,84 @@ export class StockController {
 
     @Post('/adjust/returns')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:qty.adjust')
     async adjustReturnItems(@Body() items: CreateProductQtyChangeDto[], @User() currentUser: any) {
       return this.service.createStockAdjustments(items, currentUser.id);
     }
 
     @Get('/audit')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:audit.approve')
     async findPendingAudits() {
       return this.service.findQtyAudits();
     }
 
     @Post('/audit')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:qty.adjust')
     async createAudit(@Body() items: any[], @User() currentUser: any) {
       return this.service.createStockAudit(items, currentUser.id);
     }
 
     @Put('/audit/:id/approve')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:audit.approve')
     async approveAudit(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
       return this.service.approveQtyAudit(id, currentUser.id, body);
     }
 
     @Put('/audit/:id/recount')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:audit.approve')
     async recountAudit(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
       return this.service.recountQtyAudit(id, body?.qty, currentUser.id);
     }
 
     @Put('/audit/:id/reject')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:audit.approve')
     async rejectAudit(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
       return this.service.rejectQtyAudit(id, currentUser.id, body);
     }
 
     @Post('/counts')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:count.perform')
     async startCount(@Body() body: any, @User() currentUser: any) {
       return this.service.startCount(body, currentUser.id);
     }
 
     @Get('/counts')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:count.perform')
     async findCounts() {
       return this.service.findCounts();
     }
 
     @Get('/counts/open-items')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:count.perform')
     async openCountItems(@Query('storeid') storeid: string) {
       return this.service.openCountItems(/^\d+$/.test(storeid ?? '') ? +storeid : null);
     }
 
     @Get('/counts/:id')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:count.perform')
     async findCountDetail(@Param('id') id: string) {
       return this.service.findCountDetail(+id);
     }
 
     @Post('/counts/:id/submit')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:count.perform')
     async submitCount(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
       return this.service.submitCount(+id, body.items, currentUser.id, body.finishedat);
     }
 
     @Delete('/adjust/qty/:id')
     @UseGuards(PermissionGuard)
-    @Permission('auditStock')
+    @Permission('stockDo:qty.adjust')
     async remove(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
       return this.service.deleteQtyAdjustment(id, currentUser.id, body);
     }

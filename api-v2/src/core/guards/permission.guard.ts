@@ -1,3 +1,4 @@
+import { STOCK_PERMISSION_PREFIX, isStockAction } from 'src/modules/app/stock/stock-access';
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSION_KEY } from '../decorator/permission.decorator';
@@ -19,6 +20,13 @@ export class PermissionGuard implements CanActivate {
     if (!user?.roleid) throw new ForbiddenException();
 
     const roleid = user.roleid;
+
+    // the stock actions (stock/stock-access.ts): `stockDo:qty.adjust`
+    if (permission.startsWith(STOCK_PERMISSION_PREFIX)) {
+      const action = permission.slice(STOCK_PERMISSION_PREFIX.length);
+      if (!isStockAction(action) || !(await this.permissionService.canDoStock(roleid, action))) throw new ForbiddenException(`Permission denied: ${action}`);
+      return true;
+    }
 
     switch (permission) {
       case 'viewCost':        await this.permissionService.assertCanViewCost(roleid); break;

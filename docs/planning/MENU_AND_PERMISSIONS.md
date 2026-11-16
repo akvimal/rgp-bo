@@ -1,6 +1,6 @@
 # Menu regrouping and fine-grained permissions
 
-Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the full Purchasing split and Stock not built. Step E not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
+Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the stock gate split (section 17); the full Purchasing split, and disposal, vault and cash, not built. Step E not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
 
 Scope of the review: `frontend/src/app/secured/menu.ts`, the Settings submenu in `secured.component.html`, the role editor's list (`settings/roles/permission-catalog.ts`), the route files, `auth.service.ts` (`isUrlAuthorized`), the API's `permission.guard.ts` / `permission.service.ts` / `role-rules.ts`, and `role-templates.ts`. **Not done:** a read of every API controller, so which endpoints enforce a permission and which only hide a button is still to be checked (step E0 below).
 
@@ -298,3 +298,17 @@ Purchasing was already guarded by `PurchasingGuard` (read, add, edit, delete, re
 Decisions: this pass covers the sensitive actions only; read, add and edit stay as they were, so the Purchase page and its tabs are untouched. Migration 211 keeps access for everyone who has it today (`payments.view` for roles with read, `payments.record` for add or edit, `returns.manage` for add or delete) except `payments.reverse`, which goes to the owner roles and the Store Head only (it was any role with add). The three invoice actions go to the owner roles. Putting an invoice on hold and releasing it were never owner-only and stay under add. The invoice list hides Pay, change payment and Reverse without the action. QA RPU-1..5.
 
 Not in this pass: splitting Orders, Invoices, Payables and Vendors into view, add and edit actions, and Purchasing as separate menu entries (the full split in section 5).
+
+## 17. Step D, Stock: the auditStock gate split (2026-11-16, migration 212, uncommitted)
+
+One gate, `auditStock`, opened quantity adjustments, audits (approve, recount, reject), counts and store-to-store transfers together: the Business Head, Owner-operator and Store Head by name, or any role with store adjust, stock adjust or stock audit. It is split into five actions on the `store` permission (rules in `stock/stock-access.ts`, read by the guard as `@Permission('stockDo:<action>')`):
+
+| Action | Routes |
+|---|---|
+| `qty.adjust` | `/stock/adjust/*` (list, change, bulk, returns, delete) and raising an audit (`POST /stock/audit`) |
+| `audit.approve` | the pending audits list, approve, recount, reject |
+| `count.perform` | start, list, open items, detail and submit a stock count |
+| `transfer.request` | list and availability of transfers, dispatch, cancel |
+| `transfer.receive` | receive a transfer (so a different person receives, as the transfer rules intend) |
+
+Decisions: only the `auditStock` gate was split; disposal (out-passes, write-offs), the vault and cash still decide by role name in their services. The owner roles hold the actions by name; the Store Head holds them by migration 212, not by name, so a Store Head role can be narrowed in the editor. Migration 212 gives all five to the same roles the gate let in (the three named roles, any role with store adjust, any role with stock adjust or audit; a role with no `store` block gets one with an empty path that opens no page). After this a role built with only `store.adjust` no longer changes stock; `store.adjust` now means managing shifts. QA RST-1..5.
