@@ -1,3 +1,4 @@
+import { grantedScope, isGrantScope, scopeRank } from './scope-grant';
 import { MANAGER_ROLES, OWNER_ROLES, ROLE } from './roles';
 
 /**
@@ -5,7 +6,7 @@ import { MANAGER_ROLES, OWNER_ROLES, ROLE } from './roles';
  * An owner builds roles freely (anything in the catalogue except what only the platform holds); a manager can only hand out what they hold
  * themselves, so a role can never be a way to more access than the person making it has.
  */
-export type Perm = { resource?: string; policies?: { action?: string }[] };
+export type Perm = { resource?: string; policies?: { action?: string; scope?: string }[] };
 
 /** roles only the platform admin sets up: the first login of a business */
 export const RESERVED_ROLES: string[] = [ROLE.BUSINESS_HEAD, ROLE.OWNER_OPERATOR, ROLE.SITE_ADMIN];
@@ -40,7 +41,15 @@ export function overreach(giverRole: string | null | undefined, giverPerms: Perm
     if (!p.resource) continue;
     if (PLATFORM_ONLY.includes(p.resource)) { out.push(p.resource); continue; }
     if (isOwner(giverRole)) continue;
-    for (const x of p.policies || []) if (x.action && !grants(giverPerms, p.resource, x.action)) out.push(`${p.resource}.${x.action}`);
+    for (const x of p.policies || []) {
+      if (!x.action) continue;
+      if (!grants(giverPerms, p.resource, x.action)) { out.push(`${p.resource}.${x.action}`); continue; }
+      // scope on the grant: a manager gives the scope they hold (their stores unless their own grant says business), and none wider
+      if (x.scope !== undefined && x.scope !== null) {
+        const held = grantedScope(giverPerms, p.resource, x.action) ?? 'store';
+        if (!isGrantScope(x.scope) || scopeRank(x.scope) > scopeRank(held)) out.push(`${p.resource}.${x.action}:${x.scope}`);
+      }
+    }
   }
   return out;
 }

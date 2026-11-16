@@ -73,6 +73,17 @@
                   <label class="form-check-label" [for]="'act-' + resource.key + '-' + action.key">{{action.label}}</label>
                 </div>
 
+                <div class="permission-scope small mt-1 ms-4" *ngIf="action.scoped && selection[resource.key]?.actions?.[action.key]">
+                  <label class="text-muted me-2" [for]="'scope-' + resource.key + '-' + action.key">Reaches</label>
+                  <select class="form-select form-select-sm d-inline-block w-auto" [id]="'scope-' + resource.key + '-' + action.key"
+                    [attr.data-testid]="'role-f-scope-' + resource.key + '-' + action.key"
+                    [value]="scopeOf(resource, action.key)" (change)="setScope(resource, action.key, $any($event.target).value)">
+                    <option value="">As the screen shows by default</option>
+                    <option value="store">Their own stores</option>
+                    <option value="business">Every store of the business</option>
+                  </select>
+                </div>
+
                 <div class="permission-properties" *ngIf="action.properties?.length && selection[resource.key]?.actions?.[action.key]">
                   <div class="form-check form-check-inline" *ngFor="let prop of action.properties">
                     <input class="form-check-input" type="checkbox" [id]="'prop-' + resource.key + '-' + action.key + '-' + prop.key"

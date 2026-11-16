@@ -1,3 +1,4 @@
+import { Scope, scopeOf } from 'src/core/scope-grant';
 import { BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
@@ -14,7 +15,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 const text = (v: any, max: number) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim().slice(0, max));
 const iso = (d: any) => (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10);
 
-type Ctx = { id: number; role: string; stores: number[]; limit: number; self: (storeId: number | null) => boolean };
+type Ctx = { id: number; role: string; stores: number[]; limit: number; self: (storeId: number | null) => boolean; scope: Scope };
 
 /**
  * The expense ledger. Business Head: raises anything, approved on the spot, approves everything. Store Head: raises for
@@ -33,7 +34,9 @@ export class ExpenseService {
     const [ub] = await this.manager.query(`select b.approval_mode as mode from app_user u join business b on b.id = ${BUSINESS_OF_USER_SQL} where u.id = $1`, [user.id]);
     const byStore = new Map<number, string>(modes.map((m: any) => [m.id, m.mode]));
     const self = (storeId: number | null) => (storeId === null ? ub?.mode : byStore.get(storeId)) === 'self';
-    return { id: user.id, role: r?.name || '', stores: s.map((x: any) => x.store_id), limit: await this.limit(), self };
+    // how much the ledger shows: the owner roles the business, the Store Head their stores, staff what they raised; a `scope` on the view grant widens it
+    const { scope } = await scopeOf(this.manager, user, 'expenses', 'view', (role) => (role === 'Store Head' ? 'store' : 'own'));
+    return { id: user.id, role: r?.name || '', stores: s.map((x: any) => x.store_id), limit: await this.limit(), self, scope };
   }
 
   async limit(): Promise<number> {
@@ -171,8 +174,8 @@ export class ExpenseService {
     const where: string[] = [];
     const args: any[] = [];
     const add = (sql: string, v: any) => { args.push(v); where.push(sql.replace('?', `$${args.length}`)); };
-    if (isOwnerRole(c.role)) { /* everything */ }
-    else if (c.role === 'Store Head') { args.push(c.stores); args.push(c.id); where.push(`(e.store_id = any($${args.length - 1}) or e.raised_by = $${args.length})`); }
+    if (c.scope === 'business') { /* everything */ }
+    else if (c.scope === 'store') { args.push(c.stores); args.push(c.id); where.push(`(e.store_id = any($${args.length - 1}) or e.raised_by = $${args.length})`); }
     else add('e.raised_by = ?', c.id);
     if (q.period && PERIOD.test(q.period)) add(`to_char(e.expense_date, 'YYYY-MM') = ?`, q.period);
     if (q.status) add('e.status = ?', String(q.status).toUpperCase());
@@ -370,7 +373,7 @@ export class ExpenseService {
     const to = DATE.test(q?.to || '') ? q.to : new Date().toISOString().slice(0, 10);
     const args: any[] = [from, to];
     let scopeL = '', scopeT = '';
-    if (!isOwnerRole(c.role)) {
+    if (c.scope !== 'business') {
       args.push(c.stores);
       scopeL = ` and ex.store_id = any($3)`;
       scopeT = ` and l.store_id = any($3)`;

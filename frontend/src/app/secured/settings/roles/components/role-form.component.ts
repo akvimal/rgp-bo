@@ -9,6 +9,8 @@ interface ResourceSelection {
   enabled: boolean;
   actions: { [actionKey: string]: boolean };
   properties: { [actionKey: string]: { [propKey: string]: boolean } };
+  /** the scope written on a grant (store or business); none means the screen's own default */
+  scopes: { [actionKey: string]: string };
   pages: { [pathKey: string]: boolean };
 }
 
@@ -59,7 +61,7 @@ export class RoleFormComponent {
       private resetSelection(){
         this.selection = {};
         this.catalog.forEach(r => {
-          this.selection[r.key] = { enabled: false, actions: {}, properties: {}, pages: {} };
+          this.selection[r.key] = { enabled: false, actions: {}, properties: {}, scopes: {}, pages: {} };
         });
       }
 
@@ -94,6 +96,7 @@ export class RoleFormComponent {
         if (!checked) {
           sel.actions = {};
           sel.properties = {};
+          sel.scopes = {};
           sel.pages = {};
           if (this.landingPath === this.firstPath(resource.path)) {
             this.landingPath = '/secure/dashboard';
@@ -115,8 +118,20 @@ export class RoleFormComponent {
       toggleAction(resource: PermissionResource, actionKey: string, checked: boolean){
         const sel = this.selection[resource.key];
         sel.actions[actionKey] = checked;
+        if (!checked) delete sel.scopes[actionKey];
         sel.enabled = Object.values(sel.actions).some(v => v);
         this.refreshPreview();
+      }
+
+      /** the scope written on an action's grant: '' leaves it to the screen's default, 'store' their stores, 'business' every store */
+      setScope(resource: PermissionResource, actionKey: string, scope: string){
+        const sel = this.selection[resource.key];
+        if (scope === 'store' || scope === 'business') sel.scopes[actionKey] = scope; else delete sel.scopes[actionKey];
+        this.refreshPreview();
+      }
+
+      scopeOf(resource: PermissionResource, actionKey: string): string {
+        return this.selection[resource.key]?.scopes?.[actionKey] || '';
       }
 
       toggleProperty(resource: PermissionResource, actionKey: string, propKey: string, checked: boolean){
@@ -165,6 +180,7 @@ export class RoleFormComponent {
           sel.enabled = true;
           (block.policies || []).forEach((policy: any) => {
             sel.actions[policy.action] = true;
+            if (policy.scope === 'store' || policy.scope === 'business') sel.scopes[policy.action] = policy.scope;
             const actionDef = catalogEntry.actions.find(a => a.key === policy.action);
             if (actionDef?.properties && Array.isArray(policy.properties)) {
               sel.properties[policy.action] = {};
@@ -214,6 +230,7 @@ export class RoleFormComponent {
             .filter(a => sel.actions[a.key])
             .map(a => {
               const policy: any = { action: a.key };
+              if (a.scoped && sel.scopes[a.key]) policy.scope = sel.scopes[a.key];
               if (a.properties) {
                 policy.properties = a.properties
                   .filter(p => sel.properties[a.key]?.[p.key])

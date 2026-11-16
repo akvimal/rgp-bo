@@ -1,3 +1,4 @@
+import { Scope, scopeOf } from 'src/core/scope-grant';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -12,7 +13,7 @@ const NEEDS_NOTE = ['NO_RESPONSE', 'DROPPED'];
 const text = (v: any, max: number) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim().slice(0, max));
 const iso = (d: any) => (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10);
 
-type Ctx = { id: number; role: string; stores: number[]; manage: boolean };
+type Ctx = { id: number; role: string; stores: number[]; manage: boolean; scope: Scope };
 
 /**
  * Customer inquiries: recorded at the counter, assigned with a due date, closed with an outcome.
@@ -26,15 +27,17 @@ export class InquiryService {
     const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
     const role = r?.name || '';
-    return { id: user.id, role, stores: s.map((x: any) => x.store_id), manage: isManagerRole(role) };
+    // what the list shows: the owner roles everything, the Store Head their stores, staff what they raised or were given; a `scope` on the view grant widens it
+    const { scope } = await scopeOf(this.manager, user, 'inquiries', 'view', (name) => (name === 'Store Head' ? 'store' : 'own'));
+    return { id: user.id, role, stores: s.map((x: any) => x.store_id), manage: isManagerRole(role), scope };
   }
 
   /** SQL that limits rows (alias q) to what the caller may see */
   private visible(c: Ctx, args: any[]): string {
-    if (isOwnerRole(c.role)) return 'true';
+    if (c.scope === 'business') return 'true';
     args.push(c.id);
     const me = `$${args.length}`;
-    if (c.role === 'Store Head') {
+    if (c.scope === 'store') {
       args.push(c.stores.length ? c.stores : [0]);
       return `(q.store_id = any($${args.length}::int[]) or q.assigned_to = ${me} or q.raised_by = ${me})`;
     }
@@ -42,9 +45,9 @@ export class InquiryService {
   }
 
   private canSee(c: Ctx, q: { store_id: number; assigned_to: number; raised_by: number }) {
-    if (isOwnerRole(c.role)) return true;
+    if (c.scope === 'business') return true;
     if (q.assigned_to === c.id || q.raised_by === c.id) return true;
-    return c.role === 'Store Head' && c.stores.includes(q.store_id);
+    return c.scope === 'store' && c.stores.includes(q.store_id);
   }
 
   private async load(id: number) {

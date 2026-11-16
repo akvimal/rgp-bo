@@ -1,3 +1,4 @@
+import { Scope, scopeOf } from 'src/core/scope-grant';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -132,9 +133,10 @@ export class PaymentReconService {
   constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService) {}
 
   private async scope(user: any) {
-    const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
-    return { id: user.id as number, all: isOwnerRole(r?.name), stores: s.map((x: any) => x.store_id) as number[] };
+    // the owner roles see every bill and the statement; everyone else their stores; a `scope` on the view grant widens it
+    const { scope } = await scopeOf(this.manager, user, 'paymentrecon', 'view', () => 'store');
+    return { id: user.id as number, all: scope === 'business', stores: s.map((x: any) => x.store_id) as number[] };
   }
 
   // ------------------------------------------------------------------ the statement

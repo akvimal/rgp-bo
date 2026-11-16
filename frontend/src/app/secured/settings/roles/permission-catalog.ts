@@ -8,6 +8,8 @@ export interface PermissionAction {
   label: string;
   hint?: string;
   properties?: PermissionProperty[];
+  /** the grant may carry a scope (store or business): how much of the screen's records it reaches */
+  scoped?: boolean;
   fixedProperties?: string[];
 }
 

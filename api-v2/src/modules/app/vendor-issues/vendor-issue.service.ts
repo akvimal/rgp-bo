@@ -1,3 +1,4 @@
+import { Scope, scopeOf } from 'src/core/scope-grant';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -15,7 +16,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 const text = (v: any, max: number) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim().slice(0, max));
 const today = () => new Date().toISOString().slice(0, 10);
 
-type Ctx = { id: number; role: string; stores: number[]; manage: boolean };
+type Ctx = { id: number; role: string; stores: number[]; manage: boolean; scope: Scope };
 
 /** how much of a batch the store still holds: received there, less sold there, plus approved adjustments there */
 const AVAILABLE_AT_STORE = `
@@ -37,17 +38,19 @@ export class VendorIssueService {
     const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
     const role = r?.name || '';
-    return { id: user.id, role, stores: s.map((x: any) => x.store_id), manage: isOwnerRole(role) };
+    // what the list shows: the owner roles everything, everyone else their stores and what they raised; a `scope` on the view grant widens it (managing stays the owner's)
+    const { scope } = await scopeOf(this.manager, user, 'vendorissues', 'view', () => 'store');
+    return { id: user.id, role, stores: s.map((x: any) => x.store_id), manage: isOwnerRole(role), scope };
   }
 
   private visible(c: Ctx, args: any[]): string {
-    if (c.manage) return 'true';
+    if (c.scope === 'business') return 'true';
     args.push(c.id, c.stores.length ? c.stores : [0]);
     return `(q.raised_by = $${args.length - 1} or q.store_id = any($${args.length}::int[]))`;
   }
 
   private canSee(c: Ctx, q: { raised_by: number; store_id: number | null }) {
-    return c.manage || q.raised_by === c.id || (q.store_id !== null && c.stores.includes(q.store_id));
+    return c.scope === 'business' || q.raised_by === c.id || (q.store_id !== null && c.stores.includes(q.store_id));
   }
 
   private async load(id: number) {

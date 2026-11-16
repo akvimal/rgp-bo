@@ -295,6 +295,7 @@
       "actions": [
         {
           "key": "view",
+          "scoped": true,
           "label": "View (own, or their store)"
         },
         {
@@ -321,6 +322,7 @@
       "actions": [
         {
           "key": "view",
+          "scoped": true,
           "label": "View (all bills, or their store)"
         },
         {
@@ -376,6 +378,7 @@
       "actions": [
         {
           "key": "view",
+          "scoped": true,
           "label": "View (own, or their store)"
         },
         {
@@ -565,6 +568,7 @@
       "actions": [
         {
           "key": "view",
+          "scoped": true,
           "label": "View (own, or their store)"
         },
         {
