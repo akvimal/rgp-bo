@@ -1,3 +1,4 @@
+import { mayCustomers } from './customers-access';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -21,8 +22,7 @@ export class CustomerCreditService {
   }
 
   async adjust(customerId: number, body: { amount: any; note: string }, user: any) {
-    const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-    if (!isOwnerRole(role?.name)) throw new ForbiddenException('Only the Business Head corrects store credit.');
+    if (!(await mayCustomers(this.manager, user, 'credit.correct'))) throw new ForbiddenException('Correcting store credit is not open to your role.');
     const amount = Math.round(Number(body?.amount) * 100) / 100;
     if (!Number.isFinite(amount) || amount === 0) throw new BadRequestException('Enter the amount to add (positive) or take off (negative).');
     const note = String(body?.note || '').trim();

@@ -1,3 +1,4 @@
+import { mayCustomers } from './customers-access';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -22,7 +23,7 @@ export class CustomerHouseholdService {
     return r?.name;
   }
   private async needManager(user: any, what: string) {
-    if (!isManagerRole(await this.role(user))) throw new ForbiddenException(`Only a Store Head or Business Head can ${what}.`);
+    if (!(await mayCustomers(this.manager, user, 'households.manage'))) throw new ForbiddenException(`You are not allowed to ${what}.`);
   }
 
   private async person(tm: EntityManager, id: number) {
@@ -103,7 +104,7 @@ export class CustomerHouseholdService {
 
   /** Two households become one (the same family on two numbers). The kept number stays; the other goes into the history; balances add up. */
   async merge(body: { keepcustomerid: number; mergecustomerid: number }, user: any) {
-    if (!isOwnerRole(await this.role(user))) throw new ForbiddenException('Only the Business Head merges two accounts.');
+    if (!(await mayCustomers(this.manager, user, 'merge'))) throw new ForbiddenException('Merging two accounts is not open to your role.');
     const out = await this.manager.transaction(async (tm) => {
       const a = await this.person(tm, Number(body?.keepcustomerid));
       const b = await this.person(tm, Number(body?.mergecustomerid));

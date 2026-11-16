@@ -618,7 +618,6 @@
       "availability": "hr",
       "actions": [
         { "key": "view", "label": "Open the HR pages (each tab also needs its own action)" },
-        { "key": "manage", "label": "Adjust customer credit and dues limits" },
         { "key": "staff.view", "label": "See staff records, positions and the starter set" },
         { "key": "staff.manage", "label": "Add, change, end and rejoin staff; link a login; set positions" },
         { "key": "pay.view", "label": "See salary, pay revisions, pay components and bank details" },
@@ -939,7 +938,13 @@
           "key": "export",
           "label": "Download customer lists",
           "fixedProperties": []
-        }
+        },
+        { "key": "merge", "label": "Merge two customers or two households" },
+        { "key": "creditlimit.set", "label": "Set a customer's credit limit" },
+        { "key": "credit.correct", "label": "Correct what a customer owes, or their store credit, with a reason" },
+        { "key": "households.manage", "label": "Add and remove people in a household" },
+        { "key": "followup.wording", "label": "Change the follow-up message wording" },
+        { "key": "relationships.setup", "label": "Change the active-customer and contact-cap settings" }
       ]
     },
     {

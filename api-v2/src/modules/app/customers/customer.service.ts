@@ -1,3 +1,4 @@
+import { mayCustomers } from './customers-access';
 import { userError } from 'src/core/db-error';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
@@ -135,8 +136,7 @@ export class CustomerService {
      * bills keep the name and number). The NIL walk-in is never touched. Business Head and Store Head only.
      */
     async remove(id: number, user: any) {
-        const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-        if (!isManagerRole(role?.name)) throw new ForbiddenException('Only a manager can delete a customer.');
+        if (!(await mayCustomers(this.manager, user, 'delete'))) throw new ForbiddenException('Deleting a customer is not open to your role.');
         const c = await this.customerRepository.findOne({ where: { id } });
         if (!c) throw new NotFoundException('Customer not found.');
         if (c.mobile === NIL_MOBILE) throw new BadRequestException('The NIL walk-in customer cannot be deleted.');
@@ -164,8 +164,7 @@ export class CustomerService {
     }
 
     private async assertBusinessHead(user: any) {
-        const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-        if (!isOwnerRole(role?.name)) throw new ForbiddenException('Only the Business Head can merge customers.');
+        if (!(await mayCustomers(this.manager, user, 'merge'))) throw new ForbiddenException('Merging customers is not open to your role.');
     }
 
     /** Numbers held by more than one customer, most likely duplicates first. The NIL walk-in and blank numbers are left out. */

@@ -83,7 +83,7 @@ export class CustomerDuesComponent implements OnInit {
   today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
 
   constructor(private http: HttpClient, auth: AuthService, private storeContext: StoreContextService) {
-    this.canAdjust = auth.isActionAuthorized("hr.manage");     // the Business Head holds this
+    this.canAdjust = auth.isActionAuthorized("customers.credit.correct");     // the owner roles hold this by name
   }
 
   ngOnInit() { this.load(); }

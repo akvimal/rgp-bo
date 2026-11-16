@@ -1,3 +1,4 @@
+import { mayCustomers } from './customers-access';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -44,7 +45,7 @@ export class CustomerDueService {
   }
 
   async setLimit(customerId: number, body: { limit: any }, user: any) {
-    if (!isManagerRole(await this.roleName(user))) throw new ForbiddenException('Only a Store Head or Business Head sets a credit limit.');
+    if (!(await mayCustomers(this.manager, user, 'creditlimit.set'))) throw new ForbiddenException('Setting a credit limit is not open to your role.');
     const limit = money(Number(body?.limit));
     if (!Number.isFinite(limit) || limit < 0 || limit > 10000000) throw new BadRequestException('Enter the limit in rupees (0 for no credit).');
     const [c] = await this.manager.query(`select c.id, c.name, c.mobile, coalesce(h.credit_limit, 0)::float8 as before, c.household_id from customer c left join household h on h.id = c.household_id where c.id = $1`, [customerId]);
@@ -103,7 +104,7 @@ export class CustomerDueService {
 
   /** a correction up or down with a reason (a bill written off, a mistake); the Business Head only */
   async adjust(customerId: number, body: { amount: any; note: string }, user: any) {
-    if (!isOwnerRole(await this.roleName(user))) throw new ForbiddenException('Only the Business Head corrects what a customer owes.');
+    if (!(await mayCustomers(this.manager, user, 'credit.correct'))) throw new ForbiddenException('Correcting what a customer owes is not open to your role.');
     const amount = money(Number(body?.amount));
     if (!Number.isFinite(amount) || amount === 0) throw new BadRequestException('Enter the amount to add (positive) or take off (negative).');
     const note = String(body?.note || '').trim();

@@ -44,7 +44,7 @@ export class CustomerCreditComponent implements OnInit {
   canAdjust = false;
 
   constructor(private http: HttpClient, auth: AuthService) {
-    this.canAdjust = auth.isActionAuthorized("hr.manage");     // the Business Head holds this
+    this.canAdjust = auth.isActionAuthorized("customers.credit.correct");     // the owner roles hold this by name
   }
 
   ngOnInit() { this.load(); }

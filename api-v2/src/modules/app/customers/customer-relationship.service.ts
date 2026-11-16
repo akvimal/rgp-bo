@@ -1,3 +1,4 @@
+import { mayCustomers } from './customers-access';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -42,8 +43,7 @@ export class CustomerRelationshipService {
   }
 
   async saveSettings(body: { activeDays?: any; contactCapDays?: any }, user: any) {
-    const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-    if (!isOwnerRole(role?.name)) throw new ForbiddenException('Only the Business Head changes these settings.');
+    if (!(await mayCustomers(this.manager, user, 'relationships.setup'))) throw new ForbiddenException('Changing these settings is not open to your role.');
     const put = async (key: string, raw: any, min: number, max: number, label: string, description: string) => {
       if (raw === undefined) return;
       const n = Number(raw);

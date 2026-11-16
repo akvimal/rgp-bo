@@ -1,3 +1,4 @@
+import { mayCustomers } from './customers-access';
 import { BadRequestException, ForbiddenException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -50,8 +51,7 @@ export class CustomerFollowupService {
   }
 
   private async manager_(user: any) {
-    const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-    if (!isManagerRole(r?.name)) throw new ForbiddenException('Only the Business Head and Store Heads can change the message wording.');
+    if (!(await mayCustomers(this.manager, user, 'followup.wording'))) throw new ForbiddenException('Changing the message wording is not open to your role.');
   }
 
   private async put(templates: Templates, userId: number) {

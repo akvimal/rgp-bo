@@ -1,6 +1,6 @@
 # Menu regrouping and fine-grained permissions
 
-Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the stock gate split (section 17); the full Purchasing split, and disposal, vault and cash, not built. Step E: Accounts (section 18) and Setup (section 19) built 2026-11-16; Sales, Customers and scope on the grant not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
+Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the stock gate split (section 17); the full Purchasing split, and disposal, vault and cash, not built. Step E: Accounts (section 18), Setup (section 19) and Customers (section 20) built 2026-11-16; Sales and scope on the grant not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
 
 Scope of the review: `frontend/src/app/secured/menu.ts`, the Settings submenu in `secured.component.html`, the role editor's list (`settings/roles/permission-catalog.ts`), the route files, `auth.service.ts` (`isUrlAuthorized`), the API's `permission.guard.ts` / `permission.service.ts` / `role-rules.ts`, and `role-templates.ts`. **Not done:** a read of every API controller, so which endpoints enforce a permission and which only hide a button is still to be checked (step E0 below).
 
@@ -277,7 +277,7 @@ The HR API let in only the role named Business Head and ignored the `hr` view an
 | `kpi.setup` | KPI measures, bands, scoring, finalising, the role assistant |
 | `bonus.manage` | bonuses |
 
-`hr.view` stays and opens the HR pages; each tab needs its own action (`hr-access.guard.ts`, which also sends a closed tab to the first open one). `hr.manage` stays only because the customer credit and dues screens read it as a UI flag. Decisions: migration 210 gives the actions to the owner roles only (a custom role with `hr` ticked never had API access, so nothing is granted for it); the Owner-operator now holds HR like the Business Head. `owner-floor.ts` fills in missing HR actions for an owner role that already holds the HR page and never adds the page (HR follows the module switch). QA RHA-1..6 (the older HR specs fail on a database where `sales2` already has a staff record with history; they need a fresh seed).
+`hr.view` stays and opens the HR pages; each tab needs its own action (`hr-access.guard.ts`, which also sends a closed tab to the first open one). `hr.manage` was kept only because the customer credit and dues screens read it as a UI flag; step E (section 20) moved them to `customers.credit.correct` and dropped `manage` from the role editor. Decisions: migration 210 gives the actions to the owner roles only (a custom role with `hr` ticked never had API access, so nothing is granted for it); the Owner-operator now holds HR like the Business Head. `owner-floor.ts` fills in missing HR actions for an owner role that already holds the HR page and never adds the page (HR follows the module switch). QA RHA-1..6 (the older HR specs fail on a database where `sales2` already has a staff record with history; they need a fresh seed).
 
 Not in this pass: the other HR controllers (My HR, leave approvals, KPI rating, punch and attendance review) still decide by role name, and Coaching still follows the insights rule.
 
@@ -341,3 +341,19 @@ Four Setup actions were the owner roles by name only. Three sit on the Business 
 | `users` | `mfareset` | unlink someone's authenticator, on top of being allowed to manage that person |
 
 Decisions: no new pages (the actions ride on the existing Business Details page); the business details themselves (`businessprofile.manage`) are still the owner roles by name in the API, which this pass does not change. The Business Details box is no longer a one-tick bundle, so the actions can be chosen. Migration 214 gives the three businessprofile actions to the owner roles only (they were owner-only), and `mfareset` to every role holding `users` edit (a Store Head could reset the authenticator of their own staff before). There is no admin password reset in the app, so there is no `users.resetpassword`. The Site Admin still resets authenticators by name. QA RSU-1..4.
+
+## 20. Step E, Customers (2026-11-16, migration 215, uncommitted)
+
+Seven customer actions were decided by role name in five services. They are now actions on the `customers` permission (rules in `customers/customers-access.ts`; the owner roles hold every one by name):
+
+| Action | Covers | Was |
+|---|---|---|
+| `delete` | delete or archive a customer | a manager (the box already existed and the list showed the icon from it) |
+| `merge` | merge two customers, or two households | the Business Head |
+| `creditlimit.set` | set a customer's credit limit | a manager |
+| `credit.correct` | correct what a customer owes, or store credit, with a reason | the Business Head |
+| `households.manage` | change a household number, give someone their own account, move people | a manager |
+| `followup.wording` | change the follow-up message wording | a manager |
+| `relationships.setup` | the active-customer and contact-cap settings | the Business Head |
+
+Seeing full contact details (`reveal`) and downloading lists (`export`) already had grants and are unchanged. Decisions: the owner roles by name, the Store Head by migration 215 (the three manager-level actions, so a Store Head role can be narrowed in the editor), the owner-level ones to the owner roles only. A custom role that already had the `delete` box ticked now really can delete (the API used to refuse everyone but the managers). The credit and dues screens read `customers.credit.correct` instead of `hr.manage`, which is gone from the role editor. Adding and editing a customer, `dues.view`/`dues.collect`, `worklist.use` and `consent.view` from the plan are not done: the till creates customers and collects dues, so they need their own pass with the Sales split. QA RCA-1..4.
