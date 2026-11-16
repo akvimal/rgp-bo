@@ -1,3 +1,4 @@
+import { maySales } from './sales-access';
 import { SaleService } from "./sale.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Query, UseGuards, NotFoundException } from "@nestjs/common";
@@ -87,10 +88,9 @@ export class SaleController {
       }
 
       /** the store a bill is for: the one it names, else the business's first (same fallback as saving it) */
-      /** a Store Head, Business Head or owner (may bill past a customer's credit limit) */
+      /** may bill past a customer's credit limit (the `creditlimit.override` action; the owner roles hold it by name) */
       private async isManagerUser(currentUser: any): Promise<boolean> {
-        const [role] = await this.manager.query(`select name from app_role where id = $1`, [currentUser?.roleid || 0]);
-        return isManagerRole(role?.name);
+        return maySales(this.manager, currentUser, 'creditlimit.override');
       }
 
       private async billStore(sale: any): Promise<number | null> {
@@ -109,8 +109,7 @@ export class SaleController {
        */
       private async checkBatches(sale: any, currentUser: any): Promise<(saleId: number | null) => Promise<void>> {
         const warnings = await findBatchWarnings(this.manager, sale, await this.billStore(sale));
-        const [role] = await this.manager.query(`select name from app_role where id = $1`, [currentUser?.roleid || 0]);
-        const isManager = isManagerRole(role?.name);
+        const isManager = await maySales(this.manager, currentUser, 'batchstop.override');
         const overridden = enforceBatchWarnings(warnings, sale?.ackwarnings === true, isManager);
         return async (saleId: number | null) => {
           if (!overridden.length) return;
@@ -233,7 +232,7 @@ export class SaleController {
     async saveReturnRule(@Body() body: any, @User() currentUser: any) {
       const [u] = await this.manager.query(
         `select u.business_id, r.name as role from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [currentUser.id]);
-      if (!u || !['Business Head', 'Owner-operator'].includes(u.role)) throw new ForbiddenException('Only the business owner sets what may be returned.');
+      if (!u || !(await maySales(this.manager, currentUser, 'returns.settings'))) throw new ForbiddenException('Setting what may be returned is not open to your role.');
       const category = String(body?.category || '').trim();
       if (!category) throw new BadRequestException('Choose a category.');
       const rule = body?.rule === null || body?.rule === '' || body?.rule === undefined ? null : String(body.rule).toUpperCase();

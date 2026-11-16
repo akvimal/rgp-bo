@@ -1,6 +1,6 @@
 # Menu regrouping and fine-grained permissions
 
-Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the stock gate split (section 17); the full Purchasing split, and disposal, vault and cash, not built. Step E: Accounts (section 18), Setup (section 19) and Customers (section 20) built 2026-11-16; Sales and scope on the grant not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
+Status: **review and proposal; steps A, B and C built, the controller audit (E0) done and its first finding (the sales report) fixed 2026-11-16, uncommitted** (sections 7 to 11). Step D: Reports (section 14), HR (section 15) and the sensitive Purchasing actions (section 16) built 2026-11-16; the stock gate split (section 17); the full Purchasing split, and disposal, vault and cash, not built. Step E: Accounts (section 18), Setup (section 19), Customers (section 20) and the till overrides of Sales (section 21) built 2026-11-16; the rest of the Sales keys and scope on the grant not built. Related: `DASHBOARD_AND_MENU_DESIGN.md` (the eight-group menu this refines), `BUSINESS_TYPES_AND_PACKS.md` (packs and modules), `RECOGNITION_AND_COMPLIANCE.md` (waivers).
 
 Scope of the review: `frontend/src/app/secured/menu.ts`, the Settings submenu in `secured.component.html`, the role editor's list (`settings/roles/permission-catalog.ts`), the route files, `auth.service.ts` (`isUrlAuthorized`), the API's `permission.guard.ts` / `permission.service.ts` / `role-rules.ts`, and `role-templates.ts`. **Not done:** a read of every API controller, so which endpoints enforce a permission and which only hide a button is still to be checked (step E0 below).
 
@@ -357,3 +357,16 @@ Seven customer actions were decided by role name in five services. They are now 
 | `relationships.setup` | the active-customer and contact-cap settings | the Business Head |
 
 Seeing full contact details (`reveal`) and downloading lists (`export`) already had grants and are unchanged. Decisions: the owner roles by name, the Store Head by migration 215 (the three manager-level actions, so a Store Head role can be narrowed in the editor), the owner-level ones to the owner roles only. A custom role that already had the `delete` box ticked now really can delete (the API used to refuse everyone but the managers). The credit and dues screens read `customers.credit.correct` instead of `hr.manage`, which is gone from the role editor. Adding and editing a customer, `dues.view`/`dues.collect`, `worklist.use` and `consent.view` from the plan are not done: the till creates customers and collects dues, so they need their own pass with the Sales split. QA RCA-1..4.
+
+## 21. Step E, Sales: the till overrides (2026-11-16, migration 216, uncommitted)
+
+Void and force void already were permission-driven (`sales.void`, `sales.forcevoid`). Four more things the till decided by role name are now actions on the `sales` permission (rules in `sales/sales-access.ts`; the owner roles hold each by name):
+
+| Action | Covers | Was |
+|---|---|---|
+| `batchstop.override` | sell through a batch stop (expired or blocked batch), written to the audit log | a manager |
+| `creditlimit.override` | bill a customer on credit past their limit or while dues are overdue | a manager |
+| `deliveries.manage` | change the delivery of someone else's bill or one whose shift is closed, and pay a delivery charge from another open shift | a manager |
+| `returns.settings` | set what a category does on return | the owner roles |
+
+Decisions: only what was already decided by role name was converted, so the till behaves the same on day one. Migration 216 gives the first three to the owner roles and the Store Head (by grant, not by name) and `returns.settings` to the owner roles. NOT done, because they have no enforcement today and adding keys would need every sales role to hold them first: `discount`, `pricing.override`, `creditsale`, `reprint`, `edit` (completed bill), `returns.view/add/approve`, `deliveries.view`, `export`, and (with Customers) adding and editing a customer, `dues.collect`, `worklist.use`, `consent.view`. A person's own-bills-only view is a data scope (shift mode), not a permission. The QA suite checks `returns.settings` through the API and the migration; the other three change what a bill is allowed to do and are covered by the unit tests, not by a till flow in QA. QA RSA-1..3.

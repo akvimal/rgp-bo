@@ -1020,7 +1020,11 @@
         {
           "key": "forcevoid",
           "label": "Force void a bill even after its shift is closed (Business Head)"
-        }
+        },
+        { "key": "batchstop.override", "label": "Sell through a batch stop (an expired or blocked batch); it is written to the audit log" },
+        { "key": "creditlimit.override", "label": "Bill a customer on credit past their limit or while their dues are overdue" },
+        { "key": "deliveries.manage", "label": "Change the delivery of a bill someone else rang up, and pay a delivery charge from another open shift" },
+        { "key": "returns.settings", "label": "Set what a category does on return (free, inspected first, not accepted)" }
       ]
     },
     {

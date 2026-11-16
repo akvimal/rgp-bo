@@ -1,3 +1,4 @@
+import { maySales } from './sales-access';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
@@ -103,7 +104,7 @@ export class SaleDeliveryService {
             const problem = deliveryModeProblem({
                 status: sale.status, currentType: sale.delivery_type, target, shiftId: sale.shift_id ? +sale.shift_id : null, shiftStatus: sale.shift_status,
                 deliveryStatus: sale.delivery_status, isOwn: [sale.created_by, sale.acting_user_id].some((u: any) => u && +u === +user.id),
-                isManager: isManagerRole(role?.name), outsideState: body?.outsidestate === true, reason: body?.reason,
+                isManager: await maySales(this.manager, user, 'deliveries.manage'), outsideState: body?.outsidestate === true, reason: body?.reason,
             });
             if (problem) throw new BadRequestException(problem);
             const before = sale.delivery_type || 'Counter';
@@ -150,7 +151,7 @@ export class SaleDeliveryService {
         const storeId = query?.storeid ? Number(query.storeid) : null;
         const q = String(query?.q || '').trim();
         const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-        const manager = isManagerRole(role?.name);
+        const manager = await maySales(this.manager, user, 'deliveries.manage');
         return this.manager.query(
             `select s.id, s.bill_no as billno, s.bill_date as billdate, s.total, s.order_type as ordertype, coalesce(s.delivery_type, 'Counter') as deliverytype,
                     c.name as custname, c.mobile as custmobile
@@ -321,7 +322,7 @@ export class SaleDeliveryService {
               where sh.store_id = $1 and sh.status = 'OPEN' and not sh.archive order by sh.id`, [sale.store_id]);
         const own = await this.store.findOpenShiftFor(+sale.store_id, user.id);
         const rows = shifts.map((r:any) => ({ id: +r.id, name: r.name, openedon: r.opened_on, shiftdate: r.shift_date, openedby: r.opened_by || null, accountable: r.accountable || null, mine: !!own && +own.id === +r.id }));
-        const canChoose = isManagerRole(role?.name) && rows.length > 0 && (rows.length > 1 || !own);
+        const canChoose = (await maySales(this.manager, user, 'deliveries.manage')) && rows.length > 0 && (rows.length > 1 || !own);
         return { shift: rows.find((r:any) => r.mine) || null, shifts: canChoose ? rows : [], canChoose };
     }
 
@@ -507,7 +508,7 @@ export class SaleDeliveryService {
                     const [chosen] = await this.manager.query(`select id, assigned_user_id from store_shifts where id = $1 and store_id = $2 and status = 'OPEN' and not archive`, [req.shiftId, sale.store_id]);
                     if(!chosen) throw new BadRequestException('That shift is not open at this store.');
                     const own = await this.store.findOpenShiftFor(+sale.store_id, user.id);
-                    if(!isManagerRole(role?.name) && !(own && +own.id === +chosen.id)) throw new ForbiddenException('Only a Store Head or above can pay from another shift.');
+                    if(!(await maySales(this.manager, user, 'deliveries.manage')) && !(own && +own.id === +chosen.id)) throw new ForbiddenException('Paying from another shift is not open to your role.');
                     shift = chosen;
                 } else {
                     shift = await this.store.findOpenShiftFor(+sale.store_id, user.id);
