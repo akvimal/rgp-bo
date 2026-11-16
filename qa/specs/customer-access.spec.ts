@@ -63,12 +63,20 @@ test.describe('Customer day-to-day actions @p1', () => {
         else expect(code, `${action} must not open ${r.method} ${r.path}`).toBe(403);
       }
     }
-    // audiences list full numbers, so the audiences also need the reveal grant they always needed
+    // audiences.use alone opens the audiences; the numbers in them are masked unless the role may read them all
     const aud = await loginWith(api, [customers('read', 'audiences.use')]);
-    expect(await status(api, 'GET', '/customer-relations/audiences', aud)).toBe(403);               // no reveal
+    const list = await api.request('GET', '/customer-relations/audiences', undefined, aud);
+    expect(list.status).toBe(200);
+    expect(await status(api, 'GET', '/customer-relations/worklist', aud)).toBe(403);                // another action
+    expect(await status(api, 'POST', '/customer-relations/audience/export', aud, {})).toBe(403);    // the download needs the reveal and export grants
+    const key = list.body.audiences[0].key;
+    const masked = await api.request('POST', '/customer-relations/audience', { audience: key }, aud);
+    expect(masked.status).toBeLessThan(300);
+    (masked.body.members as any[]).filter((m) => m.mobile).forEach((m) => expect(m.masked, `member ${m.id} is masked`).toBe(true));
     const both = await loginWith(api, [customers('read', 'audiences.use', 'reveal')]);
-    expect(await status(api, 'GET', '/customer-relations/audiences', both)).toBe(200);
-    expect(await status(api, 'GET', '/customer-relations/worklist', both)).toBe(403);               // another action
+    const full = await api.request('POST', '/customer-relations/audience', { audience: key }, both);
+    expect(full.status).toBeLessThan(300);
+    (full.body.members as any[]).forEach((m) => expect(m.masked, `member ${m.id} is not masked`).toBeFalsy());
   });
 
   test('RCD-3 the till still reads a customer\'s limit and balance; a role with no sales and no dues access does not @permission', async ({ api }) => {
@@ -84,5 +92,23 @@ test.describe('Customer day-to-day actions @p1', () => {
     for (const r of ROUTES) expect(await status(api, r.method, r.path, MGR, r.body), `owner ${r.method} ${r.path}`).not.toBe(403);
     for (const r of ROUTES) expect(await status(api, r.method, r.path, COUNTER, r.body), `counter ${r.method} ${r.path}`).not.toBe(403);
     expect(await status(api, 'GET', '/customer-dues/owing/all', COUNTER)).toBe(200);
+  });
+
+  test('RCD-5 audiences.use alone shows the Audiences link and the page, with numbers hidden behind Show number @happy', async ({ app, api }) => {
+    const only = await loginWith(api, [customers('read')]);
+    const a = await app.open(only, '/secure/customers/cust/list');
+    await expect(a.page.getByTestId('cust-audiences-link')).toHaveCount(0);                          // no audiences action, no link
+    const email = await loginWith(api, [customers('read', 'audiences.use')]);
+    const { page } = await app.open(email, '/secure/customers/cust/list');
+    await expect(page.getByTestId('cust-audiences-link')).toBeVisible();
+    await page.getByTestId('cust-audiences-link').click();
+    await page.waitForURL(/customers\/cust\/audiences/);
+    // an audience with someone who can be contacted: their number is masked, with Show number instead of the WhatsApp and Call links
+    const open = ((await api.request('GET', '/customer-relations/audiences', undefined, email)).body.audiences as any[]).find((a) => a.reachable > 0);
+    test.skip(!open, 'no audience has a customer who can be contacted in this database');
+    await page.getByTestId(`aud-${open.key}`).click();
+    await expect(page.getByTestId('aud-table')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('aud-reveal').first()).toBeVisible();
+    await expect(page.getByTestId('aud-wa')).toHaveCount(0);
   });
 });

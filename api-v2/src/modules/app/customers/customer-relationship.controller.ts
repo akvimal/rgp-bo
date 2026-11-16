@@ -16,7 +16,7 @@ import { buildAudienceCsv } from './customer-export';
 export class CustomerRelationshipController {
   constructor(private readonly relations: CustomerRelationshipService, private readonly privacy: CustomerPrivacyService, private readonly followup: CustomerFollowupService) {}
 
-  /** the audiences list whole numbers and feed the CSV: only those who may read all contact details */
+  /** the audience download carries whole numbers: only those who may read all contact details (the audiences screen itself masks them) */
   private async needAll(user: any) {
     if (!(await this.privacy.canRevealAll(user))) throw new ForbiddenException('Audiences list full contact details: ask a manager.');
   }
@@ -52,14 +52,16 @@ export class CustomerRelationshipController {
 
   @NeedsCustomers('audiences.use')
   @Get('audiences')
-  async audiences(@User() user: any) { await this.needAll(user); return this.relations.audiences(); }
+  async audiences() { return this.relations.audiences(); }
 
   @NeedsCustomers('audiences.use')
   @Post('audience')
   async audience(@Body() body: any, @User() user: any) {
-    await this.needAll(user);
     const out = await this.relations.audience(body);
-    await this.privacy.logBulk(user, 'audience', `${out.audience.label}: ${out.members.length} customers listed`, { audience: out.audience.key, count: out.members.length });
+    // a login that may not read every number sees them masked and shows one at a time to call (as on the contact list); the choice to contact is unchanged
+    const masked = !(await this.privacy.canRevealAll(user));
+    out.members = await this.privacy.protectAll(out.members as any[], user) as any;
+    await this.privacy.logBulk(user, 'audience', `${out.audience.label}: ${out.members.length} customers listed${masked ? ' (numbers masked)' : ''}`, { audience: out.audience.key, count: out.members.length, masked });
     return out;
   }
 

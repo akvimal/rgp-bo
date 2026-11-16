@@ -400,10 +400,12 @@ The first Customers pass (section 20) covered the sensitive actions and left the
 |---|---|
 | `dues.view` | who owes (`owing/all`), a customer's dues and their brief |
 | `dues.collect` | take a payment against a customer's dues |
-| `audiences.use` | the audiences, an audience's members, the audience download (which still needs the `export` grant, and the full numbers still need `reveal`) |
+| `audiences.use` | the audiences and an audience's members. On its own it opens the screen with the numbers **masked** (the person shows one at a time, counted and capped per day, as on the contact list); `reveal` shows them all. The audience download still needs both `reveal` and `export` |
 | `worklist.use` | the daily contact list, summary and settings reads, follow-up wording read, snooze and unsnooze, the contact log (read and write), review invites, a customer's care and profile |
 | `consent.manage` | record a customer's consent |
 
 The two routes that already had a service-level check now also name theirs (`creditlimit.set` on the limit, `credit.correct` on the adjustment). Decisions: every role that already holds the Customers page gets all five (migration 217), so nobody who uses the page loses anything; a role **without** the page no longer reaches them. The till's credit check (`:id/brief`) also lets through any role that can add or bill a sale, so billing on credit keeps working for a role with no Customers page. Owner roles hold all five by name. Not split further (read versus write per area), and adding and editing a customer is still open because the till creates customers.
 
 **Found on the way, fixed:** `GET /customer-dues/owing/all` (the "who owes" list) returned a 500 for everyone, the owner included: its query ordered by `c.name`, which is not in the `group by`, and Postgres refuses that. Now `order by min(c.name)`. QA RCD-1..4.
+
+**Correction (same day):** the first version of this pass still required the old `reveal` grant to open the audiences, so a role given `audiences.use` alone saw nothing (the Customers page link also waited for `reveal`). Now `audiences.use` is enough: the link follows it, the API lists the members with numbers masked unless the role may read them all, and the screen offers Show number instead of the WhatsApp and Call links until a number is shown. QA RCD-2 and RCD-5 cover it.

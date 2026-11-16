@@ -79,12 +79,15 @@
           <td class="small">{{m.reason}}</td>
           <td class="text-end">{{m.spend12 | number:'1.0-0'}}</td>
           <td class="text-nowrap">
-            <ng-container *ngIf="m.canContact; else blocked">
+            <ng-container *ngIf="m.canContact && m.masked">
+              <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="revealing.has(m.id) || dailyLimitReached" (click)="reveal(m)" data-testid="aud-reveal">Show number</button>
+            </ng-container>
+            <ng-container *ngIf="m.canContact && !m.masked">
               <a class="btn btn-sm btn-outline-success me-1" [href]="whatsapp(m)" target="_blank" rel="noopener" data-testid="aud-wa">WhatsApp</a>
               <a class="btn btn-sm btn-outline-secondary me-1" [href]="'tel:' + m.mobile" data-testid="aud-call">Call</a>
               <button type="button" class="btn btn-sm" [ngClass]="logged.has(m.id) ? 'btn-success' : 'btn-outline-primary'" [disabled]="logging.has(m.id) || logged.has(m.id)" (click)="markSent(m, 'WHATSAPP')" data-testid="aud-sent">{{logged.has(m.id) ? 'Logged' : 'Mark sent'}}</button>
             </ng-container>
-            <ng-template #blocked><span class="small" data-testid="aud-why">{{m.why}}</span></ng-template>
+            <span class="small" *ngIf="!m.canContact" data-testid="aud-why">{{m.why}}</span>
           </td>
         </tr>
       </tbody>

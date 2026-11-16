@@ -39,11 +39,13 @@ export class CustomerAudiencesComponent implements OnInit {
     note = '';
     logging = new Set<number>();
     logged = new Set<number>();
+    revealing = new Set<number>();
+    privacy:any = null;
 
     constructor(private service:CustomersService){}
 
     ngOnInit(){
-        this.service.privacy().subscribe(p => this.canExport = !!p.canExport, () => this.canExport = false);
+        this.service.privacy().subscribe(p => { this.privacy = p; this.canExport = !!p.canExport; }, () => this.canExport = false);
         this.service.audiences().subscribe(r => { this.audiences = r.audiences; this.capDays = r.contactCapDays; },
             err => this.error = this.say(err, 'Could not load the audiences.'));
     }
@@ -101,6 +103,22 @@ export class CustomerAudiencesComponent implements OnInit {
 
     get contactable():any[]{
         return (this.result?.members || []).filter((m:any) => m.canContact);
+    }
+
+    get dailyLimitReached():boolean{
+        return !!this.privacy && this.privacy.left === 0;
+    }
+
+    /** numbers arrive masked for a login that may not read them all: showing one is counted and kept (as on the contact list) */
+    reveal(m:any){
+        this.error = '';
+        this.revealing.add(m.id);
+        this.service.reveal(m.id).subscribe(d => {
+            this.revealing.delete(m.id);
+            m.mobile = d.mobile;
+            m.masked = false;
+            this.service.privacy().subscribe(p => this.privacy = p, () => undefined);
+        }, err => { this.revealing.delete(m.id); this.error = this.say(err, 'Could not show the number.'); });
     }
 
     markSent(m:any, channel:'WHATSAPP'|'CALL'){
