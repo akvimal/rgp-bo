@@ -3,6 +3,7 @@ import { Router } from "@angular/router";
 import { Subscription, timer } from "rxjs";
 import { AuthService } from "src/app/@core/auth/auth.service";
 import { AlertsService } from "./alerts.service";
+import { DesktopNotifyService } from "./desktop-notify.service";
 
 /** The bell in the header: how many alerts are waiting, and the latest few. It asks again every minute. */
 @Component({
@@ -37,10 +38,10 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
   unread = 0;
   private subs = new Subscription();
 
-  constructor(private alerts: AlertsService, private router: Router, private auth: AuthService, private host: ElementRef) {}
+  constructor(private alerts: AlertsService, private router: Router, private auth: AuthService, private host: ElementRef, private desktop: DesktopNotifyService) {}
 
   ngOnInit() {
-    this.subs.add(this.alerts.items$.subscribe((i) => this.items = i));
+    this.subs.add(this.alerts.items$.subscribe((i) => { this.items = i; this.desktop.onItems(i); }));
     this.subs.add(this.alerts.unread$.subscribe((n) => this.unread = n));
     this.subs.add(timer(0, 60000).subscribe(() => this.alerts.refresh()));
   }

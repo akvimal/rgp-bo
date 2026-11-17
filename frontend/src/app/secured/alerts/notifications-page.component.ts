@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from "@angular/core";
 import { Router } from "@angular/router";
 import { AuthService } from "src/app/@core/auth/auth.service";
 import { AlertsService } from "./alerts.service";
+import { DesktopNotifyService } from "./desktop-notify.service";
 
 /** Everything that needs the person's attention, with what to do about it; and the language the alerts are written in. */
 @Component({
@@ -25,6 +26,25 @@ import { AlertsService } from "./alerts.service";
         </div>
         <button class="btn btn-sm btn-outline-secondary" type="button" (click)="markAll()" [disabled]="!unread" data-testid="np-read-all">Mark all read</button>
       </div>
+    </div>
+
+    <!-- Chrome notifications while the app is open -->
+    <div class="border rounded p-3 mb-3" *ngIf="dn.available && dn.supported" data-testid="np-desktop">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <i class="bi bi-bell fs-5 text-primary"></i>
+        <span class="fw-semibold">Notifications on this computer</span>
+        <span class="badge bg-success" *ngIf="dn.on" data-testid="np-desktop-on">On</span>
+        <span class="small text-muted" *ngIf="!dn.on">Get a Chrome notification when something needs you while you are in another tab or window.</span>
+        <span class="ms-auto d-flex flex-wrap gap-2 align-items-center">
+          <select class="form-select form-select-sm w-auto" *ngIf="dn.on" [ngModel]="dn.level" (ngModelChange)="desktop.setLevel($event)" aria-label="Which alerts" data-testid="np-desktop-level">
+            <option value="warning">Warnings and critical</option><option value="critical">Critical only</option></select>
+          <button class="btn btn-sm btn-outline-secondary" type="button" *ngIf="dn.on" (click)="desktop.test()" data-testid="np-desktop-test">Show a test</button>
+          <button class="btn btn-sm btn-primary" type="button" *ngIf="!dn.on" (click)="enableDesktop()" data-testid="np-desktop-enable">Turn on</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" *ngIf="dn.on" (click)="desktop.disable()" data-testid="np-desktop-off">Turn off</button>
+        </span>
+      </div>
+      <div class="small text-muted mt-2" *ngIf="dn.on">Only the headline is shown, never the details. It works while the app is open in a tab; it is kept for this browser only.</div>
+      <div class="small text-danger mt-2" *ngIf="desktopError" data-testid="np-desktop-error">{{desktopError}}</div>
     </div>
 
     <!-- alerts on the person's own Telegram -->
@@ -101,15 +121,23 @@ export class NotificationsPageComponent implements OnInit, OnDestroy {
   language = 'en';
   snoozeFor = 0;
 
-  constructor(private alerts: AlertsService, private auth: AuthService, private router: Router) {}
+  constructor(private alerts: AlertsService, private auth: AuthService, private router: Router, public desktop: DesktopNotifyService) {}
+
+  dn: any = { supported: false, available: false, permission: 'default', on: false, level: 'warning' };
+  desktopError = '';
+  private dnSub: any = null;
+
+  async enableDesktop() { this.desktopError = (await this.desktop.enable()) || ''; }
 
   ngOnInit() {
     this.alerts.prefs().subscribe((p) => this.language = p.language, () => {});
+    this.desktop.load();
+    this.dnSub = this.desktop.state$.subscribe((s) => this.dn = s);
     this.load();
     this.loadTelegram();
   }
 
-  ngOnDestroy() { clearInterval(this.tgTimer); }
+  ngOnDestroy() { clearInterval(this.tgTimer); this.dnSub?.unsubscribe(); }
 
   // ------------------------------------------------------------ Telegram
   tg: any = null;
