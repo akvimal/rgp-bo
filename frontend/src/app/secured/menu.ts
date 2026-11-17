@@ -14,7 +14,9 @@ export interface MenuAccess { has: (...keys: string[]) => boolean; canOpen: (url
  * The "My ..." pages (My shift, My HR, My KPI) are about the signed-in person, not about the shop's work: they live in the profile menu at the top right
  * (buildMyMenu), not in the sidebar. buildMenu leaves them out; they are still defined here, once, with the same ids and permissions.
  */
-export const MY_MENU_IDS = ['nav-shift', 'nav-my-hr', 'nav-kpi-mine'];
+const CASH_SIDE = ['store.shift.open', 'store.shift.close', 'store.adjust'];
+
+export const MY_MENU_IDS =['nav-shift', 'nav-my-hr', 'nav-kpi-mine'];
 
 /** the signed-in person's own pages, for the profile menu, in this order */
 export function buildMyMenu(a: MenuAccess): MenuItem[] {
@@ -56,6 +58,12 @@ function allMenuGroups(a: MenuAccess): MenuGroup[] {
       item('nav-stock-audits', 'Stock audits', 'stock-audits', 'bi-clipboard-data', ['stockaudit.view']),
       item('nav-outage', 'Outage kit', 'outage', 'bi-lightning-charge', ['outage.view']),
       item('nav-schedule-register', 'Drug register', 'schedule-register', 'bi-capsule', ['scheduleregister.view']),
+    ] },
+    // the shop's cash: the drawer shifts, the cash book and the vault. They share a permission group with Stock but are their own pages
+    { key: 'cash', label: 'Cash', items: [
+      item('nav-shifts', 'Shifts', 'store/shifts', 'bi-clock-history', CASH_SIDE),
+      item('nav-cash-book', 'Cash book', 'store/cash', 'bi-cash-stack', CASH_SIDE),
+      item('nav-vault', 'Vault', 'store/vault', 'bi-safe', CASH_SIDE),
     ] },
     { key: 'buy', label: 'Purchasing', items: [
       item('nav-purchases', 'Purchase', 'purchases', 'bi-bag-check', ['purchases.add']),
@@ -111,7 +119,7 @@ const COUNTER_LAYOUT: { key: string; label: string; ids: string[] }[] = [
   { key: 'home', label: '', ids: ['nav-dashboard', 'nav-todos', 'nav-calendar'] },
   { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-commitments', 'nav-refills', 'nav-grievances', 'nav-inquiries', 'nav-whatsapp'] },
   { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-price-changes', 'nav-outage', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
-  { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance', 'nav-discrepancies'] },
+  { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance', 'nav-discrepancies', 'nav-shifts', 'nav-cash-book', 'nav-vault'] },
   { key: 'people', label: 'People', ids: ['nav-hr', 'nav-leave-approvals', 'nav-attendance-punch', 'nav-attendance-review', 'nav-kpi-rate', 'nav-staff-credit', 'nav-staff-sales'] },
   { key: 'learn', label: 'Learn', ids: ['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge', 'nav-feedback'] },
 ];

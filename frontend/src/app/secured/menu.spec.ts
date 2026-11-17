@@ -21,6 +21,14 @@ describe('the sidebar and the profile menu', () => {
     expect(counter.some((g) => g.key === 'more' && g.items.some((i) => MY_MENU_IDS.includes(i.id)))).toBeFalse();
   });
 
+  it('keeps Shifts, Cash book and Vault in their own Cash group, for a role that runs a drawer and not for a stock-only role', () => {
+    const cash = (granted: string[]) => buildMenu(access(granted)).filter((g) => g.key === 'cash').reduce((a: string[], g) => a.concat(g.items.filter((i) => i.show()).map((i) => i.id)), []);
+    expect(cash(['store.qty.adjust', 'store.read'])).toEqual([]);
+    expect(cash(['store.shift.open'])).toEqual(['nav-shifts', 'nav-cash-book', 'nav-vault']);
+    expect(ids(buildCounterMenu(access(['store.shift.open']))).filter((i) => i === 'nav-shifts').length).toBe(1);
+    expect(buildCounterMenu(access(['store.shift.open'])).some((g) => g.key === 'more' && g.items.some((i) => i.id === 'nav-shifts'))).toBeFalse();
+  });
+
   it('offers them in the profile menu, in this order, each for the permission it needs', () => {
     expect(buildMyMenu(everything).map((i) => i.id)).toEqual(['nav-shift', 'nav-my-hr', 'nav-kpi-mine']);
     expect(buildMyMenu(everything).map((i) => i.label)).toEqual(['My shift', 'My HR', 'My KPI']);

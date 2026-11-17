@@ -65,6 +65,13 @@ describe('the pages that are a rule, not a path some role carries', () => {
     expect(pageRuleDecides('/secure/financials', ctx())).toBeFalse();
     expect(pageRuleDecides('/secure/financials', ctx(['finance.view']))).toBeTrue();
     expect(pageRuleDecides('/secure/financials', ctx(['expenses.approve']))).toBeTrue();
+    // Shifts, Cash and Vault: only a role that runs or manages a cash drawer
+    for (const p of ['/secure/store/shifts', '/secure/store/cash', '/secure/store/vault']) {
+      expect(pageRuleDecides(p, ctx(['store.qty.adjust', 'store.count.perform']))).toBeFalse();
+      expect(pageRuleDecides(p, ctx(['store.shift.open']))).toBeTrue();
+      expect(pageRuleDecides(p, ctx(['store.adjust']))).toBeTrue();
+    }
+    expect(pageRuleDecides('/secure/store/stock', ctx())).toBeNull();
   });
 
   it('open the pharmacy guide in a pharmacy business only', () => {

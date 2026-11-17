@@ -38,6 +38,9 @@ export interface PageContext {
   packOn: (pack: string) => boolean;
 }
 
+/** a role that opens or closes a shift, or manages other people's shifts */
+const cashSide = (c: PageContext) => c.has('store.shift.open') || c.has('store.shift.close') || c.has('store.adjust');
+
 /**
  * Pages whose access is not a path some role carries. `allow` decides; a url no rule matches is decided by the role's own paths.
  * `exact` matches the page only; otherwise the page and everything under it.
@@ -53,6 +56,10 @@ const PAGE_RULES: Array<{ path: string; exact?: boolean; allow: (c: PageContext)
   { path: '/secure/knowledge', exact: true, allow: () => true },
   // the financial dashboard (money by category, cost ratios, cash, stock value): the same people the menu shows it to; no role carries this path
   { path: '/secure/financials', exact: true, allow: (c) => c.has('finance.view') || c.has('expenses.approve') },
+  // Shifts, Cash and Vault share the Stock & Cash resource with the stock pages; they open only for a role that runs or manages a cash drawer
+  { path: '/secure/store/shifts', allow: (c) => cashSide(c) },
+  { path: '/secure/store/cash', allow: (c) => cashSide(c) },
+  { path: '/secure/store/vault', allow: (c) => cashSide(c) },
   // the pharmacy guide is for everyone who works in a pharmacy business, whatever their role
   { path: '/secure/pharmacy-guide', exact: true, allow: (c) => c.packOn('pharmacy') },
 ];

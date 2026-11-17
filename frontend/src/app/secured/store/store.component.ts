@@ -9,26 +9,28 @@ import { StockService } from "./stock/stock.service";
 @Component({
     template: `
         <div class="page-head">
-            <h1>Store</h1>
+            <h1>{{ onCash ? 'Cash' : 'Stock' }}</h1>
             <nav class="page-menu navbar navbar-light bg-light non-print m-0 p-0">
-                <ul class="nav">
+                <ul class="nav" *ngIf="onCash">
+                    <li class="nav-item" *ngIf="cashSide">
+                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="shifts">Shifts</a>
+                    </li>
+                    <li class="nav-item" *ngIf="cashSide">
+                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="cash">Cash</a>
+                    </li>
+                    <li class="nav-item" *ngIf="vaultOn">
+                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="vault" data-testid="store-tab-vault">Vault</a>
+                    </li>
+                </ul>
+                <ul class="nav" *ngIf="!onCash">
                     <li class="nav-item" *isNavAuth>
                         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock">Stock</a>
-                    </li>
-                    <li class="nav-item" *isNavAuth>
-                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="shifts">Shifts</a>
                     </li>
                     <ng-container *ngIf="transfersOn">
                         <li class="nav-item" *isNavAuth>
                             <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="transfers" data-testid="store-tab-transfers">Transfers</a>
                         </li>
                     </ng-container>
-                    <li class="nav-item" *isNavAuth>
-                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="cash">Cash</a>
-                    </li>
-                    <li class="nav-item" *ngIf="vaultOn">
-                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="vault" data-testid="store-tab-vault">Vault</a>
-                    </li>
                 </ul>
             </nav>
             <div class="page-head-actions">
@@ -63,6 +65,11 @@ export class StoreComponent implements OnInit, OnDestroy {
     /** stock moves between stores: the Transfers tab shows only when the business has transfers switched on and more than one store to move between */
     transfersOn = false;
     private subs = new Subscription();
+
+    /** Shifts, Cash and Vault are for a role that runs or manages a cash drawer; a stock-only role does not see them */
+    /** on one of the cash pages: the page shows the cash tabs, not the stock ones */
+    get onCash(): boolean { return /\/store\/(shifts|cash|vault)(\/|$|\?)/.test(this.router.url); }
+    get cashSide(): boolean { return this.auth.isUrlAuthorized('/secure/store/cash'); }
 
     constructor(private intentService: PurchaseIntentService, private stockService: StockService, private router: Router, private storeContext: StoreContextService, private auth: AuthService) {}
 
