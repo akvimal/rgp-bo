@@ -70,7 +70,7 @@ export class AlertRulesComponent implements OnInit {
   }
 
   /** the shift opening and closing messages, and whether the store group gets the full version */
-  setShift(field: 'open' | 'close' | 'group_full', on: boolean) {
+  setShift(field: 'open' | 'close' | 'day' | 'group_full', on: boolean) {
     this.clearMessages();
     this.alerts.tgShift({ [field]: on }).subscribe((d) => { this.delivery = d; this.message = 'Shift messages updated.'; }, (e) => this.error = this.msg(e));
   }

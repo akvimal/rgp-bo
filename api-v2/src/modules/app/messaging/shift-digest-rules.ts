@@ -73,7 +73,7 @@ export function startNote(f: { start: string | null; openedAt: string }): string
 const hours = (f: { start: string | null; end: string | null }) => (f.start && f.end ? ` (${f.start}-${f.end})` : '');
 
 /** the facts both versions share */
-function body(f: ShiftFacts): string[] {
+export function body(f: ShiftFacts): string[] {
   const out: string[] = [];
   out.push(`${f.bills} bill${f.bills === 1 ? '' : 's'} · ${f.items} item${f.items === 1 ? '' : 's'} · sales ${rupees(f.sales)}`);
   const split = [`cash ${rupees(f.cashSales)}`, `UPI/card ${rupees(f.digitalSales)}`];
@@ -89,7 +89,7 @@ function body(f: ShiftFacts): string[] {
 }
 
 /** the sections only the full version carries: who served how much, cash against UPI/card, deliveries, expenses */
-function detail(f: ShiftFacts): string[] {
+export function detail(f: ShiftFacts): string[] {
   const out: string[] = [];
   const staff = (f.byStaff ?? []).filter((x) => x.bills > 0);
   if (staff.length) {
@@ -126,7 +126,7 @@ export function formatShiftGroup(f: ShiftFacts, full = false): string {
   ].join('\n');
 }
 
-const signed = (v: number) => (Math.abs(v) <= TOLERANCE ? 'matches' : v < 0 ? `short ${rupees(-v)}` : `over ${rupees(v)}`);
+export const signed = (v: number) => (Math.abs(v) <= TOLERANCE ? 'matches' : v < 0 ? `short ${rupees(-v)}` : `over ${rupees(v)}`);
 
 /** for the people who run the shop: the same facts, then the drawer, the terminals and the money that moved */
 export function formatShiftManager(f: ShiftFacts): string {

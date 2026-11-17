@@ -270,10 +270,10 @@ export class MessagingService implements OnApplicationBootstrap, OnApplicationSh
   }
 
   /** the shift messages: on for each of opening and closing unless set to off; the full version for the store group is off unless set to on */
-  private async shiftSwitches(): Promise<{ open: boolean; close: boolean; group_full: boolean }> {
-    const rows = await this.manager.query(`select setting_key, setting_value from app_setting where setting_key in ('shift_open_message', 'shift_close_message', 'shift_group_full') and active and not archive`);
+  private async shiftSwitches(): Promise<{ open: boolean; close: boolean; day: boolean; group_full: boolean }> {
+    const rows = await this.manager.query(`select setting_key, setting_value from app_setting where setting_key in ('shift_open_message', 'shift_close_message', 'day_summary_message', 'shift_group_full') and active and not archive`);
     const get = (k: string, d: string) => String(rows.find((r: any) => r.setting_key === k)?.setting_value ?? d).toLowerCase();
-    return { open: get('shift_open_message', 'on') !== 'off', close: get('shift_close_message', 'on') !== 'off', group_full: get('shift_group_full', 'off') === 'on' };
+    return { open: get('shift_open_message', 'on') !== 'off', close: get('shift_close_message', 'on') !== 'off', day: get('day_summary_message', 'on') !== 'off', group_full: get('shift_group_full', 'off') === 'on' };
   }
 
   async saveShiftSwitches(user: any, body: any) {
@@ -281,14 +281,15 @@ export class MessagingService implements OnApplicationBootstrap, OnApplicationSh
     if (!w.owner) throw new ForbiddenException('Only the owner can switch this.');
     const cur = await this.shiftSwitches();
     const pick = (v: any, d: boolean) => (typeof v === 'boolean' ? v : d);
-    const next = { open: pick(body?.open, cur.open), close: pick(body?.close, cur.close), group_full: pick(body?.group_full, cur.group_full) };
+    const next = { open: pick(body?.open, cur.open), close: pick(body?.close, cur.close), day: pick(body?.day, cur.day), group_full: pick(body?.group_full, cur.group_full) };
     const put = (k: string, v: string, d: string) => this.manager.query(
       `insert into app_setting (category, setting_key, setting_value, description, created_by, updated_by) values ('alerts', $1, $2, $3, $4, $4)
        on conflict (setting_key) do update set setting_value = excluded.setting_value, active = true, archive = false, updated_on = now(), updated_by = excluded.updated_by`, [k, v, d, user.id]);
     await put('shift_open_message', next.open ? 'on' : 'off', 'Telegram message when a shift opens');
     await put('shift_close_message', next.close ? 'on' : 'off', 'Telegram message when a shift closes');
+    await put('day_summary_message', next.day ? 'on' : 'off', 'Telegram day summary when the end-of-day shift closes');
     await put('shift_group_full', next.group_full ? 'on' : 'off', 'The store group gets the full shift message (names and amounts)');
-    await this.audit.record({ userId: user.id, action: 'telegram.shift_messages', summary: `shift messages: open ${next.open ? 'on' : 'off'}, close ${next.close ? 'on' : 'off'}, full version for the group ${next.group_full ? 'on' : 'off'}`, details: next });
+    await this.audit.record({ userId: user.id, action: 'telegram.shift_messages', summary: `shift messages: open ${next.open ? 'on' : 'off'}, close ${next.close ? 'on' : 'off'}, day summary ${next.day ? 'on' : 'off'}, full version for the group ${next.group_full ? 'on' : 'off'}`, details: next });
     return this.overview(user);
   }
 

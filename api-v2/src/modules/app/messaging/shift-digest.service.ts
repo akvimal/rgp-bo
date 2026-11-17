@@ -6,18 +6,21 @@ import { BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
 import { isManagerRole, isOwnerRole } from 'src/core/roles';
 import { inQuiet, istMinute, quietEnds } from './messaging-rules';
 import { MessagingService } from './messaging.service';
-import { OpenFacts, ShiftFacts, formatOpenGroup, formatOpenManager, formatShiftGroup, formatShiftManager } from './shift-digest-rules';
+import { DayFacts, formatDayGroup, formatDayManager, sumDigital } from './day-summary-rules';
+import { OpenFacts, ShiftFacts, TOLERANCE, formatOpenGroup, formatOpenManager, formatShiftGroup, formatShiftManager } from './shift-digest-rules';
 import { TelegramAdapter } from './telegram.adapter';
 
 const CHANNEL = 'TELEGRAM';
 const KIND = 'SHIFT_CLOSE';
 const OPEN_KIND = 'SHIFT_OPEN';
+const DAY_KIND = 'DAY_SUMMARY';
 
 /**
  * Tells the shop a shift has opened or closed. The store's group (the chat id kept for its daily digest) gets the plain version (bills and takings, no cash amounts
  * and no names) unless the owner chose the full version for it; each person who runs the shop and has connected Telegram gets a personal message with the full
  * sales summary: bills by staff, cash against UPI/card, deliveries, expenses, the drawer, the terminals and what was paid out. It never
  * holds up or fails the close: anything that goes wrong is logged and the close stands. One message per shift and recipient, so a repeat does nothing.
+ * When the shift closed is the day's last (the end-of-day close), a day summary follows: the whole day's shifts in one message, in the same two versions.
  */
 @Injectable()
 export class ShiftDigestService {
@@ -27,7 +30,10 @@ export class ShiftDigestService {
 
   /** called after a shift closes; does not wait and never throws */
   notifyClosed(shiftId: number): void {
-    void this.run(shiftId).catch((e) => this.log.warn(`Shift close message for shift ${shiftId} failed: ${e?.message}`));
+    void this.run(shiftId)
+      .catch((e) => this.log.warn(`Shift close message for shift ${shiftId} failed: ${e?.message}`))
+      .then(() => this.runDay(shiftId))
+      .catch((e) => this.log.warn(`Day summary for shift ${shiftId} failed: ${e?.message}`));
   }
 
   /** called after a shift opens; does not wait and never throws */
@@ -48,6 +54,19 @@ export class ShiftDigestService {
     return { group, direct };
   }
 
+  /** the day summary, when this shift closed the day; public so a test can run it and wait */
+  async runDay(shiftId: number): Promise<{ group: boolean; direct: number }> {
+    if (!this.telegram.configured) return { group: false, direct: 0 };
+    const d = await this.dayFacts(shiftId);
+    if (!d) return { group: false, direct: 0 };
+    const sw = await this.switches(d.ids.businessId);
+    if (!sw.on || !sw.day) return { group: false, direct: 0 };
+    const group = await this.toGroup(DAY_KIND, shiftId, d.ids.storeId, formatDayGroup(d.facts, sw.groupFull));
+    const [title, ...rest] = formatDayManager(d.facts).split('\n');
+    const direct = await this.queueToManagers({ businessId: d.ids.businessId, storeId: d.ids.storeId, kind: DAY_KIND, refType: 'shift', refId: shiftId, title: title.replace(/^\S+\s/, ''), body: rest.join('\n').trim() });
+    return { group, direct };
+  }
+
   async runOpen(shiftId: number): Promise<{ group: boolean; direct: number }> {
     if (!this.telegram.configured) return { group: false, direct: 0 };
     const o = await this.openFacts(shiftId);
@@ -62,13 +81,14 @@ export class ShiftDigestService {
 
   /**
    * The owner's switches, all kept in app_setting: Telegram alerts as a whole (alerts_telegram), the shift-close message (shift_close_message) and the shift-open
-   * message (shift_open_message) are on unless set to off; the full version for the store group (shift_group_full) is off unless set to on.
+   * message (shift_open_message) and the day summary at the end-of-day close (day_summary_message) are on unless set to off; the full version for the store group
+   * (shift_group_full) is off unless set to on.
    */
-  async switches(businessId: number | null): Promise<{ on: boolean; close: boolean; open: boolean; groupFull: boolean }> {
-    if (!businessId) return { on: false, close: false, open: false, groupFull: false };
-    const rows = await this.manager.query(`select setting_key, setting_value from app_setting where setting_key in ('alerts_telegram', 'shift_close_message', 'shift_open_message', 'shift_group_full') and active and not archive`);
+  async switches(businessId: number | null): Promise<{ on: boolean; close: boolean; open: boolean; day: boolean; groupFull: boolean }> {
+    if (!businessId) return { on: false, close: false, open: false, day: false, groupFull: false };
+    const rows = await this.manager.query(`select setting_key, setting_value from app_setting where setting_key in ('alerts_telegram', 'shift_close_message', 'shift_open_message', 'day_summary_message', 'shift_group_full') and active and not archive`);
     const get = (k: string, dflt: string) => String(rows.find((r: any) => r.setting_key === k)?.setting_value ?? dflt).toLowerCase();
-    return { on: get('alerts_telegram', 'on') !== 'off', close: get('shift_close_message', 'on') !== 'off', open: get('shift_open_message', 'on') !== 'off', groupFull: get('shift_group_full', 'off') === 'on' };
+    return { on: get('alerts_telegram', 'on') !== 'off', close: get('shift_close_message', 'on') !== 'off', open: get('shift_open_message', 'on') !== 'off', day: get('day_summary_message', 'on') !== 'off', groupFull: get('shift_group_full', 'off') === 'on' };
   }
 
   private async facts(shiftId: number): Promise<{ facts: ShiftFacts; ids: { businessId: number | null; storeId: number } } | null> {
@@ -127,6 +147,99 @@ export class ShiftDigestService {
         expectedCash: s.expected ?? 0, countedCash: s.counted ?? null, digital, expensesCount: e.exp_count, expensesTotal: e.exp_total, refunds: e.refunds, deposits: e.deposits,
         byStaff, digitalByProvider, deliveries: { total: dv?.total ?? 0, delivered: dv?.delivered ?? 0, pending: dv?.pending ?? 0, failed: dv?.failed ?? 0 }, expenseLines,
       },
+    };
+  }
+
+  /**
+   * The facts of the whole day for the shift that closed it: every closed shift of the store on that shift date, added up. Null when this shift was a handover, is not closed,
+   * or when another shift of the same day is still open (the day is not over yet).
+   */
+  private async dayFacts(shiftId: number): Promise<{ facts: DayFacts; ids: { businessId: number | null; storeId: number } } | null> {
+    const [s] = await this.manager.query(
+      `select sh.id, sh.store_id, sh.status, sh.close_type, sh.shift_date, to_char(sh.shift_date, 'Dy DD Mon YYYY') as date_label, to_char(sh.shift_date, 'FMDay') as weekday,
+              st.location, st.business_id
+         from store_shifts sh join stores st on st.id = sh.store_id where sh.id = $1`, [shiftId]);
+    if (!s || s.status !== 'CLOSED' || s.close_type === 'HANDOVER' || !s.shift_date) return null;
+    const shifts = await this.manager.query(
+      `select sh.id, sh.name, sh.status, sh.start_time, sh.end_time, sh.close_type, sh.opened_on, sh.closed_on, sh.expected_cash::float as expected, sh.counted_cash::float as counted, sh.closing_digital,
+              nullif(btrim(cu.full_name), '') as closed_by
+         from store_shifts sh left join app_user cu on cu.id = coalesce(sh.closed_operator_id, sh.closed_by)
+        where sh.store_id = $1 and sh.shift_date = $2 and not sh.archive order by sh.opened_on, sh.id`, [s.store_id, s.shift_date]);
+    if (shifts.some((x: any) => x.status === 'OPEN')) return null;
+    const closed = shifts.filter((x: any) => x.status === 'CLOSED');
+    const ids: number[] = closed.map((x: any) => +x.id);
+    if (!ids.length) return null;
+    const [t] = await this.manager.query(
+      `select count(*)::int as bills, coalesce(sum(total), 0)::float as sales, coalesce(sum(cash_amount), 0)::float as cash, coalesce(sum(digi_amount), 0)::float as digital,
+              coalesce(sum(credit_amount), 0)::float as credit, count(*) filter (where customer_id is null)::int as no_customer
+         from sale where shift_id = any($1::int[]) and status = 'COMPLETE' and active = true`, [ids]);
+    const [i] = await this.manager.query(
+      `select coalesce(sum(si.qty), 0)::int as items from sale_item si join sale sa on sa.id = si.sale_id where sa.shift_id = any($1::int[]) and sa.status = 'COMPLETE' and sa.active = true and si.active = true`, [ids]);
+    const [c] = await this.manager.query(
+      `with first_here as (select customer_id, min(bill_date) as d from sale where shift_id = any($1::int[]) and status = 'COMPLETE' and active = true and customer_id is not null group by 1)
+       select count(*) filter (where not exists (select 1 from sale p where p.customer_id = f.customer_id and p.status = 'COMPLETE' and p.active = true and p.bill_date < f.d and (p.shift_id is null or p.shift_id <> all($1::int[]))))::int as new_c,
+              count(*)::int as known from first_here f`, [ids]);
+    const first = closed[0].opened_on ?? closed[0].closed_on, last = closed[closed.length - 1].closed_on;
+    const [r] = await this.manager.query(
+      `select count(*)::int as n from sale_return_item ri join sale_item si on si.id = ri.sale_item_id join sale sa on sa.id = si.sale_id
+        where sa.store_id = $1 and ri.active = true and ri.created_on >= $2 and ri.created_on <= coalesce($3, now())`, [s.store_id, first, last]);
+    const [e] = await this.manager.query(
+      `select coalesce(sum(withdraw) filter (where category = 'EXPENSE'), 0)::float as exp_total, count(*) filter (where category = 'EXPENSE')::int as exp_count,
+              coalesce(sum(withdraw) filter (where category = 'REFUND'), 0)::float as refunds, coalesce(sum(withdraw) filter (where category = 'BANK_DEPOSIT'), 0)::float as deposits
+         from store_cash_accounts where shift_id = any($1::int[])`, [ids]);
+    let scheduled: number | null = null;
+    try {
+      const [x] = await this.manager.query(`select count(*)::int as n from schedule_register where sale_id in (select id from sale where shift_id = any($1::int[])) and superseded_on is null`, [ids]);
+      scheduled = x?.n || null;
+    } catch { scheduled = null; }
+    const byStaff = await this.manager.query(
+      `select coalesce(nullif(btrim(u.full_name), ''), 'Unknown') as name, count(*)::int as bills, coalesce(sum(sa.total), 0)::float as sales
+         from sale sa left join app_user u on u.id = coalesce(sa.acting_user_id, sa.created_by)
+        where sa.shift_id = any($1::int[]) and sa.status = 'COMPLETE' and sa.active = true group by 1 order by sales desc, name`, [ids]);
+    const prov: Record<string, { provider: string; bills: number; amount: number }> = {};
+    for (const id of ids) {
+      const rows = await this.manager.query(`select provider, sum(bills)::int as bills, coalesce(sum(amount), 0)::float as amount from (${SHIFT_DIGITAL_SQL}) x where amount > 0 group by 1`, [id, DIGITAL_PROVIDER]);
+      for (const x of rows) { const p = prov[x.provider] || (prov[x.provider] = { provider: x.provider, bills: 0, amount: 0 }); p.bills += x.bills; p.amount += x.amount; }
+    }
+    const digitalByProvider = Object.values(prov).sort((a, b) => b.amount - a.amount);
+    const [dv] = await this.manager.query(
+      `select count(*)::int as total, count(*) filter (where d.status = 'Delivered')::int as delivered, count(*) filter (where d.status = 'Failed')::int as failed,
+              count(*) filter (where coalesce(d.status, 'Pending') = 'Pending')::int as pending
+         from sale sa left join sale_deliveries d on d."saleId" = sa.id
+        where sa.shift_id = any($1::int[]) and sa.status = 'COMPLETE' and sa.active = true and sa.delivery_type = 'Delivery'`, [ids]);
+    const expenseLines = await this.manager.query(
+      `select coalesce(nullif(btrim(expense_category), ''), nullif(btrim(description), ''), 'Expense') as label, sum(withdraw)::float as amount
+         from store_cash_accounts where shift_id = any($1::int[]) and category = 'EXPENSE' group by 1 order by amount desc`, [ids]);
+    const [lw] = await this.manager.query(
+      `select count(*)::int as bills, coalesce(sum(sa.total), 0)::float as sales
+         from sale sa join store_shifts x on x.id = sa.shift_id where x.store_id = $1 and x.shift_date = ($2::date - 7) and sa.status = 'COMPLETE' and sa.active = true`, [s.store_id, s.shift_date]);
+
+    const perShiftDigital = closed.map((x: any) => (Array.isArray(x.closing_digital) ? x.closing_digital : []).map((d: any) => ({ provider: String(d.provider), system: Number(d.system) || 0, counted: Number(d.counted) || 0, variance: Number(d.variance) || 0 })));
+    const billsOf = async (id: number) => (await this.manager.query(`select count(*)::int as bills, coalesce(sum(total), 0)::float as sales from sale where shift_id = $1 and status = 'COMPLETE' and active = true`, [id]))[0];
+    const dayShifts: DayFacts['shifts'] = [];
+    for (let k = 0; k < closed.length; k++) {
+      const x = closed[k];
+      const b = await billsOf(+x.id);
+      const dig = perShiftDigital[k] as { variance: number }[];
+      dayShifts.push({
+        name: x.name, start: x.start_time ?? null, end: x.end_time ?? null, closedBy: x.closed_by ?? null, handover: x.close_type === 'HANDOVER', bills: b.bills, sales: b.sales,
+        cashVariance: x.counted === null || x.counted === undefined ? null : Math.round((x.counted - (x.expected ?? 0)) * 100) / 100,
+        digitalOff: dig.some((d) => Math.abs(d.variance) > TOLERANCE),
+      });
+    }
+    const expected = closed.reduce((n: number, x: any) => n + (x.expected ?? 0), 0);
+    const counted = closed.every((x: any) => x.counted !== null && x.counted !== undefined) ? closed.reduce((n: number, x: any) => n + x.counted, 0) : null;
+    const total: ShiftFacts = {
+      store: s.location, shiftName: 'The day', start: null, end: null, handover: false, closedBy: null,
+      bills: t.bills, items: i.items, sales: t.sales, cashSales: t.cash, digitalSales: t.digital, creditSales: t.credit, returns: r.n,
+      customersNew: c.new_c, customersReturning: c.known - c.new_c, billsWithoutCustomer: t.no_customer, scheduledEntries: scheduled,
+      expectedCash: Math.round(expected * 100) / 100, countedCash: counted === null ? null : Math.round(counted * 100) / 100, digital: sumDigital(perShiftDigital),
+      expensesCount: e.exp_count, expensesTotal: e.exp_total, refunds: e.refunds, deposits: e.deposits,
+      byStaff, digitalByProvider, deliveries: { total: dv?.total ?? 0, delivered: dv?.delivered ?? 0, pending: dv?.pending ?? 0, failed: dv?.failed ?? 0 }, expenseLines,
+    };
+    return {
+      ids: { businessId: s.business_id ?? null, storeId: s.store_id },
+      facts: { total, dateLabel: s.date_label, shifts: dayShifts, lastWeek: lw && lw.sales > 0 ? { label: String(s.weekday).trim(), sales: lw.sales, bills: lw.bills } : null },
     };
   }
 

@@ -55,10 +55,11 @@
       <ng-container *ngIf="delivery.configured">
         <div class="border rounded p-2 mt-2" *ngIf="delivery.shift" data-testid="al-shift">
           <div class="fw-semibold small mb-1">Shift messages</div>
-          <div class="small text-muted mb-1">When a shift opens or closes, owners and store heads who connected get a message: bills by staff, cash against UPI/card, deliveries and expenses. The store group (if set under Settings &gt; Notifications) gets a short version without names or cash amounts.</div>
+          <div class="small text-muted mb-1">When a shift opens or closes, owners and store heads who connected get a message (and a summary of the whole day when the end-of-day shift closes): bills by staff, cash against UPI/card, deliveries and expenses. The store group (if set under Settings &gt; Notifications) gets a short version without names or cash amounts.</div>
           <div class="d-flex flex-wrap gap-3">
             <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="al-sh-open" [checked]="delivery.shift.open" (change)="setShift('open', $any($event.target).checked)" data-testid="al-shift-open"><label class="form-check-label small" for="al-sh-open">Message when a shift opens</label></div>
             <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="al-sh-close" [checked]="delivery.shift.close" (change)="setShift('close', $any($event.target).checked)" data-testid="al-shift-close"><label class="form-check-label small" for="al-sh-close">Message when a shift closes</label></div>
+            <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="al-sh-day" [checked]="delivery.shift.day" (change)="setShift('day', $any($event.target).checked)" data-testid="al-shift-day"><label class="form-check-label small" for="al-sh-day">Day summary when the day ends</label></div>
             <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="al-sh-full" [checked]="delivery.shift.group_full" (change)="setShift('group_full', $any($event.target).checked)" data-testid="al-shift-full"><label class="form-check-label small" for="al-sh-full">Send the full version to the store group too</label></div>
           </div>
         </div>
