@@ -5,7 +5,9 @@
  */
 export const FOLLOWUP_AUDIENCES = ['due_back', 'at_risk', 'new_second_visit', 'dues'] as const;
 export type FollowupAudience = (typeof FOLLOWUP_AUDIENCES)[number];
-export const FOLLOWUP_LANGS = ['en', 'ta'] as const;
+/** where the shop's saved wording is kept (app_setting) */
+export const FOLLOWUP_KEY = 'followup.templates';
+export const FOLLOWUP_LANGS =['en', 'ta'] as const;
 export type FollowupLang = (typeof FOLLOWUP_LANGS)[number];
 
 export const AUDIENCE_LABELS: Record<FollowupAudience, string> = {

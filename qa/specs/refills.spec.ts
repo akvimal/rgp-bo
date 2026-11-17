@@ -84,4 +84,37 @@ test.describe('Staff & Quality — Refill follow-up @p1', () => {
     const old = await app.open(OWNER, '/secure/sales/reminders');
     await expect(old.page).toHaveURL(/\/secure\/quality\/refills/);
   });
+
+  test('REFILL-5 each row carries the shop\'s reminder; sending it opens WhatsApp with the text and notes it @happy', async ({ app, api }) => {
+    const res = await api.request('GET', '/refills', undefined, OWNER);
+    expect(res.status).toBe(200);
+    const row = res.body.rows.find((r: any) => r.messages);
+    test.skip(!row, 'no customer is due in this data set');
+    expect(row.messages.en).toContain('Sir/Madam');
+    expect(row.messages.en).not.toContain('{');
+    expect(row.messages.ta).not.toContain('{');
+    expect(['en', 'ta']).toContain(row.language);
+    expect('message_language' in row || 'do_not_contact' in row).toBe(false);
+
+    const { page } = await app.open(OWNER, PAGE);
+    await expect(page.getByTestId('rf-row').first()).toBeVisible();
+    const popup = page.waitForEvent('popup');
+    await page.getByTestId('rf-row').filter({ hasText: row.name }).first().getByTestId('rf-message').click();
+    await expect(page.getByTestId('rf-msg')).toBeVisible();
+    await page.getByTestId('rf-msg-en').click();
+    await expect(page.getByTestId('rf-msg-text')).toHaveValue(row.messages.en);
+    await page.getByTestId('rf-msg-ta').click();
+    await expect(page.getByTestId('rf-msg-text')).toHaveValue(row.messages.ta);
+    await page.getByTestId('rf-msg-en').click();
+    await page.getByTestId('rf-msg-text').fill(row.messages.en + ' QA');
+    await page.getByTestId('rf-msg-send').click();
+    const wa = await popup;
+    expect(wa.url()).toMatch(new RegExp(`(wa.me/|phone=)91${row.mobile}`));   // wa.me may redirect to api.whatsapp.com
+    expect(decodeURIComponent(wa.url()).replace(/\+/g, ' ')).toContain(' QA');
+    await wa.close();
+    // it is on record, and the customer leaves the due list
+    await expect.poll(async () => (await api.request('GET', '/refills', undefined, OWNER)).body.rows.some((r: any) => r.customer_id === row.customer_id)).toBe(false);
+    const again = await api.request('GET', '/refills?showsnoozed=true', undefined, OWNER);
+    expect(again.body.rows.find((r: any) => r.customer_id === row.customer_id)?.last_outcome).toBe('MESSAGED');
+  });
 });

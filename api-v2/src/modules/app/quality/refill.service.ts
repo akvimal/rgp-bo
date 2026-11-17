@@ -3,9 +3,12 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { GrievanceScope } from './grievance.service';
 
-export const REFILL_OUTCOMES = ['WILL_BUY', 'NO_ANSWER', 'CALLBACK', 'BOUGHT_ELSEWHERE', 'NOT_NEEDED'];
+import { FOLLOWUP_KEY } from '../customers/customer-followup-rules';
+import { refillLang, refillMessages } from './refill-message';
+
+export const REFILL_OUTCOMES = ['WILL_BUY', 'NO_ANSWER', 'CALLBACK', 'BOUGHT_ELSEWHERE', 'NOT_NEEDED', 'MESSAGED'];
 // how long a follow-up hides the customer from the due list
-const SNOOZE_DAYS: Record<string, number> = { NO_ANSWER: 2, CALLBACK: 3, WILL_BUY: 14, BOUGHT_ELSEWHERE: 30, NOT_NEEDED: 90 };
+const SNOOZE_DAYS: Record<string, number> = { NO_ANSWER: 2, CALLBACK: 3, MESSAGED: 3, WILL_BUY: 14, BOUGHT_ELSEWHERE: 30, NOT_NEEDED: 90 };
 
 /**
  * Chronic customers who are due, or late, for a refill. A customer qualifies with at least three visits
@@ -40,7 +43,7 @@ export class RefillService {
        value as (select customer_id, avg(val) as avg_val from visits group by customer_id),
        fu as (select distinct on (customer_id) customer_id, outcome, note, snoozed_until, created_on, created_by
                 from refill_followup order by customer_id, created_on desc)
-       select c.id as customer_id, c.name, c.mobile, per.visits, per.last_d as last_bought,
+       select c.id as customer_id, c.name, c.mobile, c.message_language, c.do_not_contact, per.visits, per.last_d as last_bought,
               round(per.med)::int as usual_gap,
               (per.last_d + round(per.med)::int) as expected_on,
               (current_date - (per.last_d + round(per.med)::int)) as days_over,
@@ -73,7 +76,17 @@ export class RefillService {
     const rank: Record<string, number> = { OVERDUE: 0, UPCOMING: 1, LAPSED: 2 };
     const shown = q.bucket ? visible.filter((r: any) => r.bucket === q.bucket) : visible.filter((r: any) => r.bucket !== 'LAPSED');
     shown.sort((a: any, b: any) => rank[a.bucket] - rank[b.bucket] || (+b.typical_value || 0) - (+a.typical_value || 0));
-    return { counts, rows: shown };
+    // the reminder for each row, from the shop's own "due back" wording, so the screen needs no access to the wording itself
+    const [setting] = await this.manager.query(`select setting_value from app_setting where setting_key = $1 and active and not archive`, [FOLLOWUP_KEY]);
+    let saved: unknown = null;
+    try { saved = setting?.setting_value ? JSON.parse(setting.setting_value) : null; } catch { saved = null; }
+    const [biz] = await this.manager.query(`select name from business where active and not archive order by id limit 1`);
+    const store = String(biz?.name || 'our shop').trim();
+    const rowsOut = shown.map((r: any) => {
+      const { message_language, do_not_contact, ...rest } = r;
+      return { ...rest, language: refillLang(message_language), messages: refillMessages(saved, store, { name: r.name, doNotContact: do_not_contact }) };
+    });
+    return { counts, rows: rowsOut };
   }
 
   /** How follow-ups are working: contacts in the last 30 days and how many then bought. */

@@ -68,6 +68,7 @@ export class RefillsComponent implements OnInit, OnDestroy {
   }
 
   openForm(customerId: number) {
+    this.msgOpen = null;
     this.open = this.open === customerId ? null : customerId;
     this.outcome = "WILL_BUY"; this.note = ""; this.formError = "";
   }
@@ -80,8 +81,42 @@ export class RefillsComponent implements OnInit, OnDestroy {
     );
   }
 
-  waLink(mobile: string) { return `https://wa.me/91${mobile}`; }
-  label(value: string) { return this.outcomes.find(o => o.value === value)?.label || value; }
+  // ---- the WhatsApp reminder: the shop's own wording, in the customer's language, editable before it is sent
+  msgOpen: number | null = null;     // customer whose message panel is open
+  msgLang: "en" | "ta" = "en";
+  msgText = "";
+  msgBusy = false;
+  msgError = "";
+
+  openMessage(r: any) {
+    if (this.msgOpen === r.customer_id) { this.msgOpen = null; return; }
+    this.open = null;
+    this.msgOpen = r.customer_id; this.msgError = "";
+    let saved: string | null = null;
+    try { saved = localStorage.getItem("rgp_followup_lang"); } catch { /* a private window */ }
+    this.setLang(r, r.language === "ta" || r.language === "en" ? r.language : (saved === "ta" ? "ta" : "en"), false);
+  }
+
+  setLang(r: any, lang: "en" | "ta", remember = true) {
+    this.msgLang = lang;
+    this.msgText = r.messages?.[lang] || "";
+    if (remember) { try { localStorage.setItem("rgp_followup_lang", lang); } catch { /* it just will not be remembered */ } }
+  }
+
+  /** open WhatsApp with the (edited) text, then put it on record: the customer leaves the due list for a few days */
+  sendMessage(r: any) {
+    const text = this.msgText.trim();
+    if (!text) { this.msgError = "The message is empty."; return; }
+    window.open(this.waLink(r.mobile, text), "_blank", "noopener");
+    this.msgBusy = true; this.msgError = "";
+    this.http.post(`${environment.apiHost}/refills/${r.customer_id}/followup`, { outcome: "MESSAGED" }).subscribe(
+      () => { this.msgBusy = false; this.msgOpen = null; this.load(); },
+      err => { this.msgBusy = false; const m = err?.error?.message; this.msgError = "WhatsApp was opened, but it could not be noted here. " + (Array.isArray(m) ? m.join(" ") : (m || "")); }
+    );
+  }
+
+  waLink(mobile: string, text?: string) { return `https://wa.me/91${mobile}${text ? "?text=" + encodeURIComponent(text) : ""}`; }
+  label(value: string) { return value === "MESSAGED" ? "Message sent" : (this.outcomes.find(o => o.value === value)?.label || value); }
   bucketClass(b: string) { return b === "OVERDUE" ? "bg-danger" : b === "UPCOMING" ? "bg-info text-dark" : "bg-secondary"; }
   get conversion(): string {
     const r = this.data?.results;

@@ -6,9 +6,9 @@ import { AuditService } from 'src/core/audit/audit.service';
 import { isManagerRole } from 'src/core/roles';
 import { AiProvider } from '../alerts/ai-provider';
 import { resolveModel } from '../alerts/ai-models';
-import { AUDIENCE_LABELS, FOLLOWUP_AUDIENCES, FOLLOWUP_LANGS, Templates, cleanDraft, cleanTemplate, mergeTemplates } from './customer-followup-rules';
+import { AUDIENCE_LABELS, FOLLOWUP_AUDIENCES, FOLLOWUP_KEY, FOLLOWUP_LANGS, Templates, cleanDraft, cleanTemplate, mergeTemplates } from './customer-followup-rules';
 
-const KEY = 'followup.templates';
+const KEY = FOLLOWUP_KEY;
 
 const TOOL = {
   name: 'draft_followup_messages',
