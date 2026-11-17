@@ -35,18 +35,16 @@ export function share(total: number, weights: number[]): number[] {
   });
 }
 
-/** every line of a bill with its share of the discount and tax. A cash memo has no tax split: its lines carry the gross only. */
+/** every line of a bill with its share of the discount and tax. A cash memo (a bill with no tax invoice number) is split the same way, so its CGST and SGST show; it is still not a tax invoice. */
 export function itemRows(bill: ItemBill): ItemRow[] {
   const base = (l: ItemLine) => ({
     doc_no: bill.docNo, date: bill.date, customer: bill.customer, buyer_gstin: bill.buyerGstin, store: bill.store,
     product: l.product, hsn: l.hsn, batch: l.batch, qty: l.qty, price: r2(l.price), rate: l.rate, gross: r2(l.gross),
   });
-  if (bill.kind === 'CASH') {
-    return bill.lines.map((l) => ({ type: 'Cash memo' as const, ...base(l), discount: null, taxable: null, cgst: null, sgst: null, igst: null, net: r2(l.gross) }));
-  }
   const groups = splitBill(bill.lines.map((l) => ({ total: l.gross, rate: l.rate })), bill.discount, bill.inter);
   const out: ItemRow[] = [];
-  for (const l of bill.lines) out.push({ type: 'Tax invoice', ...base(l), discount: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, net: 0 });
+  const type = bill.kind === 'CASH' ? 'Cash memo' as const : 'Tax invoice' as const;
+  for (const l of bill.lines) out.push({ type, ...base(l), discount: 0, taxable: 0, cgst: 0, sgst: 0, igst: 0, net: 0 });
   for (const g of groups) {
     const idx = bill.lines.map((l, i) => (l.rate === g.rate ? i : -1)).filter((i) => i >= 0);
     const w = idx.map((i) => bill.lines[i].gross);

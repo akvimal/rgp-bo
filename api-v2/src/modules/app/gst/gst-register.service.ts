@@ -62,9 +62,11 @@ export class GstRegisterService {
       const tax = !!b.gst_invoice_no;
       const inter = tax && isInterState(b.place_of_supply, reg.state_code);
       const rates = tax ? splitBill(byBill.get(+b.id) || [], b.disc, inter) : [];
+      // a cash memo is not a tax invoice and is not in the filing figures, but its tax is shown (a bill with no place of supply is within the state)
+      const cash_rates = tax ? [] : splitBill(byBill.get(+b.id) || [], b.disc, isInterState(b.place_of_supply, reg.state_code));
       return {
         id: +b.id, kind: tax ? 'TAX' : 'CASH', doc_no: tax ? b.gst_invoice_no : String(b.bill_no ?? b.id), bill_no: b.bill_no, date: b.day, customer: b.customer || 'Walk-in',
-        buyer_gstin: b.buyer_gstin, place_of_supply: b.place_of_supply, store: b.store, total: r2(b.total), discount: r2(b.disc), inter_state: inter, rates,
+        buyer_gstin: b.buyer_gstin, place_of_supply: b.place_of_supply, store: b.store, total: r2(b.total), discount: r2(b.disc), inter_state: inter, rates, cash_rates,
       };
     });
 
@@ -99,6 +101,8 @@ export class GstRegisterService {
     const cnRates: RateTotals[] = credit_notes.map((c: any) => ({ rate: c.rate, taxable: c.taxable, cgst: c.cgst, sgst: c.sgst, igst: c.igst, tax: c.tax }));
     const net = netByRate(invRates, cnRates);
     const cash = invoices.filter((i: any) => i.kind === 'CASH');
+    // the tax inside the cash memos, by rate: shown beside the filing figures, never added to them
+    const cashByRate = netByRate(cash.flatMap((i: any) => i.cash_rates as RateTotals[]), []);
     return {
       month, label: monthLabel(month), from, to, registered: reg.reg_type === 'registered', gstin: reg.gstin, state_code: reg.state_code, business: reg.legal_name || reg.name,
       invoices, credit_notes, returns_cash, cancelled,
@@ -106,7 +110,7 @@ export class GstRegisterService {
       totals: {
         tax_invoices: taxInvoices.length, tax_invoice_total: r2(taxInvoices.reduce((t: number, i: any) => t + i.total, 0)),
         credit_notes: credit_notes.length, credit_note_total: r2(credit_notes.reduce((t: number, c: any) => t + c.gross, 0)),
-        cash_bills: cash.length, cash_total: r2(cash.reduce((t: number, i: any) => t + i.total, 0)),
+        cash_bills: cash.length, cash_total: r2(cash.reduce((t: number, i: any) => t + i.total, 0)), cash_by_rate: cashByRate, cash_split: sumTotals(cashByRate),
         cash_returns: returns_cash.length, cash_returns_total: r2(returns_cash.reduce((t: number, r: any) => t + r.amount, 0)),
         output: sumTotals(netByRate(invRates, [])), credits: sumTotals(netByRate([], cnRates).map((r) => ({ ...r, taxable: -r.taxable, cgst: -r.cgst, sgst: -r.sgst, igst: -r.igst, tax: -r.tax }))),
         net_by_rate: net, net: sumTotals(net),
@@ -149,7 +153,7 @@ export class GstRegisterService {
       rate: c.rate, taxable: c.taxable, tax: c.tax, gross: c.gross, kind: kindByNote.get(c.note_no) || 'NIL_RATED', buyerGstin: c.buyer_gstin, inter: isInterState(c.place_of_supply, reg.state_code),
     }));
     const report = buildSalesReport({ bills, notes, cashReturns: { count: r.returns_cash.length, amount: r.totals.cash_returns_total }, cancelled: r.cancelled.map((c: any) => c.doc_no), gaps: r.gaps });
-    return { month, snapshot: false, registered: r.registered, label: r.label, ...report, cash_memos: { count: r.totals.cash_bills, total: r.totals.cash_total } };
+    return { month, snapshot: false, registered: r.registered, label: r.label, ...report, cash_memos: { count: r.totals.cash_bills, total: r.totals.cash_total, rows: (r.totals.cash_by_rate || []).map((x: any) => ({ ...x, total: r2(x.taxable + x.tax) })), split: r.totals.cash_split } };
   }
 
   /** the categories that sold at 0% in the month, with the kind the business has set for each (nil-rated until it says otherwise) */
@@ -397,7 +401,8 @@ export class GstRegisterService {
         for (const r of i.rates) ws.addRow({ type: 'Tax invoice', no: i.doc_no, date: i.date, customer: i.customer, gstin: i.buyer_gstin, pos: i.place_of_supply, rate: r.rate, taxable: r.taxable, cgst: r.cgst, sgst: r.sgst, igst: r.igst, total: r2(r.taxable + r.tax), store: i.store });
         if (!i.rates.length) ws.addRow({ type: 'Tax invoice', no: i.doc_no, date: i.date, customer: i.customer, total: i.total, store: i.store });
       } else {
-        ws.addRow({ type: 'Cash memo', no: i.doc_no, date: i.date, customer: i.customer, total: i.total, store: i.store });
+        for (const r of i.cash_rates || []) ws.addRow({ type: 'Cash memo', no: i.doc_no, date: i.date, customer: i.customer, rate: r.rate, taxable: r.taxable, cgst: r.cgst, sgst: r.sgst, igst: r.igst, total: r2(r.taxable + r.tax), store: i.store });
+        if (!(i.cash_rates || []).length) ws.addRow({ type: 'Cash memo', no: i.doc_no, date: i.date, customer: i.customer, total: i.total, store: i.store });
       }
     }
     for (const c of reg.credit_notes) ws.addRow({ type: 'Credit note', no: c.note_no, date: c.date, gstin: c.buyer_gstin, pos: c.place_of_supply, rate: c.rate, taxable: -c.taxable, cgst: -c.cgst, sgst: -c.sgst, igst: -c.igst, total: -c.gross, orig: c.original_invoice_no, store: c.store });
@@ -408,7 +413,7 @@ export class GstRegisterService {
     bold('Tax invoices', { taxable: t.output.taxable, cgst: t.output.cgst, sgst: t.output.sgst, igst: t.output.igst, total: r2(t.output.taxable + t.output.tax) });
     bold('Credit notes', { taxable: -t.credits.taxable, cgst: -t.credits.cgst, sgst: -t.credits.sgst, igst: -t.credits.igst, total: -t.credit_note_total });
     bold('Net tax documents', { taxable: t.net.taxable, cgst: t.net.cgst, sgst: t.net.sgst, igst: t.net.igst, total: r2(t.net.taxable + t.net.tax) });
-    bold('Cash memos', { total: t.cash_total });
+    bold('Cash memos', { taxable: t.cash_split?.taxable, cgst: t.cash_split?.cgst, sgst: t.cash_split?.sgst, igst: t.cash_split?.igst, total: t.cash_total });
     bold('Returns of cash memos', { total: -t.cash_returns_total });
     return ws;
   }
@@ -443,7 +448,15 @@ export class GstRegisterService {
     title('F. Documents'); const d = rep.documents;
     ws.addRow(['Tax invoices issued', d.issued]); ws.addRow(['From', d.first || '']); ws.addRow(['To', d.last || '']); ws.addRow(['Cancelled', d.cancelled]);
     ws.addRow(['Numbers missing', d.gaps.join(', ')]);
-    if (rep.cash_memos?.count) ws.addRow([`Cash memos (not tax invoices): ${rep.cash_memos.count}`, rep.cash_memos.total]);
+    if (rep.cash_memos?.count) {
+      ws.addRow([`Cash memos (not tax invoices): ${rep.cash_memos.count}`, rep.cash_memos.total]);
+      // their tax, rate by rate: for reference beside the filing figures above, which are tax invoices only (a month closed before this was added has no rows)
+      if (rep.cash_memos.rows?.length) {
+        title('G. Cash memos by rate (bills with no tax invoice number; not in A to F)'); head(['Rate', 'Taxable value', 'CGST', 'SGST', 'IGST', 'Tax', 'Total']);
+        rep.cash_memos.rows.forEach((x: any) => rateRow(`${x.rate}%`, x));
+        const s = rep.cash_memos.split; ws.addRow(['Total', s.taxable, s.cgst, s.sgst, s.igst, s.tax, rep.cash_memos.total]).font = { bold: true };
+      }
+    }
     return ws;
   }
 

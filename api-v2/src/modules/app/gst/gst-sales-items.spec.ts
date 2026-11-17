@@ -37,9 +37,9 @@ describe('itemRows', () => {
     expect(r).toMatchObject({ taxable: 100, cgst: 0, sgst: 0, igst: 18, net: 118 });
   });
 
-  it('keeps a cash memo to its gross, with no tax split', () => {
-    const r = itemRows(bill([['A', 50, 5]], { kind: 'CASH', docNo: '17' }))[0];
-    expect(r).toMatchObject({ type: 'Cash memo', gross: 50, net: 50, taxable: null, cgst: null, discount: null });
+  it('splits the tax of a cash memo too, so its CGST and SGST show; it stays a cash memo, not a tax invoice', () => {
+    const r = itemRows(bill([['A', 105, 5]], { kind: 'CASH', docNo: '17' }))[0];
+    expect(r).toMatchObject({ type: 'Cash memo', gross: 105, net: 105, taxable: 100, cgst: 2.5, sgst: 2.5, igst: 0, discount: 0 });
   });
 
   it('handles a bill with no lines', () => {
