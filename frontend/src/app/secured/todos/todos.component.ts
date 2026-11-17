@@ -55,7 +55,19 @@ export class TodosComponent implements OnInit {
     });
     this.load();
     // "Add a to-do" from the floating button opens the form straight away
-    this.route.queryParamMap.subscribe((p) => { if (p.get('add')) this.openAdd(); });
+    this.route.queryParamMap.subscribe((p) => { if (p.get('add')) this.openAdd(); const id = +(p.get('id') || 0); if (id) { this.focusId = id; this.triedTeam = false; this.focusSoon(); } });
+  }
+
+  /** a to-do an alert pointed at: found in the list (or the team's, once) and brought into view */
+  focusId: number | null = null;
+  private triedTeam = false;
+  private focusSoon() {
+    if (!this.focusId) return;
+    setTimeout(() => {
+      const el = document.getElementById('todo-' + this.focusId);
+      if (el) { el.scrollIntoView({ block: 'center' }); return; }
+      if (this.loaded && !this.triedTeam && this.scope === 'mine') { this.triedTeam = true; this.setScope('team'); }
+    }, 400);
   }
 
   openAdd() { this.showForm = true; setTimeout(() => document.getElementById('td-title')?.focus(), 50); }
@@ -80,6 +92,7 @@ export class TodosComponent implements OnInit {
         this.items = all.filter((i: any) => i.status === 'OPEN');
         this.doneItems = all.filter((i: any) => i.status !== 'OPEN');
         this.loaded = true;
+        this.focusSoon();
       },
       error: (e) => { this.loaded = true; this.fail(e, 'Could not load the to-dos.'); }
     });

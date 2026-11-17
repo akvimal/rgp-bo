@@ -98,7 +98,7 @@ export const KINDS: AlertKind[] = [
       const out: Finding[] = [];
       const warnBy = addDays(ctx.today, p.days ?? 2);
       for (const r of rows) {
-        const base = { storeid: r.store_id ?? null, link: '/secure/commitments' };
+        const base = { storeid: r.store_id ?? null, link: `/secure/commitments/${r.id}` };
         const params = { customer: String(r.name).trim(), phone: r.mobile || '', items: r.items || '', store: r.location ? String(r.location).trim() : 'the store', date: r.hold_until || r.needed_by || '', held: Number(r.held || 0).toFixed(2) };
         if (r.status === 'READY' && !r.notified_at) out.push({ ...base, key: `commit_ready:${r.id}`, code: 'commitment_ready', params });
         if (r.status === 'READY' && r.hold_until && r.hold_until < ctx.today) out.push({ ...base, key: `commit_hold_over:${r.id}`, code: 'commitment_hold_over', params, severity: 'warning' });
@@ -162,7 +162,7 @@ export const KINDS: AlertKind[] = [
     defaultSeverity: 'warning',
     async evaluate(ctx, p) {
       const rows = await ctx.manager.query(
-        `select e.id, u.full_name, e.pharmacist_valid_to::text as valid_to,
+        `select e.id, u.id as user_id, u.full_name, e.pharmacist_valid_to::text as valid_to,
                 (select us.store_id from user_stores us join stores s on s.id = us.store_id
                   where us.user_id = u.id and us.active and not us.archive and s.active and not s.archive
                   order by us.is_primary desc, us.id limit 1) as store_id
@@ -181,7 +181,7 @@ export const KINDS: AlertKind[] = [
           code: left < 0 ? 'registration_expired' : 'registration_expiring',
           severity: left < 0 ? 'critical' as Severity : undefined,
           params: { person: r.full_name, date: r.valid_to, days: Math.abs(left) },
-          link: '/secure/settings/users',
+          link: `/secure/settings/users/edit/${r.user_id}`,
         };
       });
     },
@@ -203,7 +203,7 @@ export const KINDS: AlertKind[] = [
           storeid: null,
           code: 'gst_rate_change_soon',
           params: { what, rate: r.rate, date: r.effective_from, days: daysBetween(ctx.today, r.effective_from) },
-          link: '/secure/gst-filing',
+          link: '/secure/gst-filing?tab=rates',
         };
       });
     },
@@ -232,7 +232,7 @@ export const KINDS: AlertKind[] = [
         code: dueDays >= 0 ? 'gst_filing_due' : 'gst_filing_late',
         severity: dueDays >= 0 ? undefined : 'critical' as Severity,
         params: { month, days: Math.abs(dueDays) },
-        link: '/secure/gst-filing',
+        link: `/secure/gst-filing?tab=summary&month=${month}`,
       }];
     },
   },
@@ -370,7 +370,7 @@ export const KINDS: AlertKind[] = [
       const [r] = await ctx.manager.query(
         `select count(*)::int as batches, coalesce(sum(bal * unit_cost), 0)::float as value
            from (${BATCH_BALANCE_SQL}) b where bal > 0 and public.expiry_end(exp_date) < current_date`, []);
-      return r.value > p.value ? [{ key: 'expired_stock', storeid: null, code: 'expired_stock', params: { batches: r.batches, value: Math.round(r.value) }, link: '/secure/store/stock' }] : [];
+      return r.value > p.value ? [{ key: 'expired_stock', storeid: null, code: 'expired_stock', params: { batches: r.batches, value: Math.round(r.value) }, link: '/secure/store/stock/expiry' }] : [];
     },
   },
   {
@@ -405,7 +405,7 @@ export const KINDS: AlertKind[] = [
            join product pr on pr.id = pii.product_id
           where q.active and not q.archive and coalesce(q.status, 'APPROVED') = 'APPROVED' and q.count_id is null
             and coalesce(nullif(q.reason_code, ''), 'Other') = 'Other' and q.created_on >= current_date - 30`, []);
-      return r.value > p.value ? [{ key: 'adjustment_other', storeid: null, code: 'adjustment_other', params: { count: r.n, value: Math.round(r.value) }, link: '/secure/store/stock' }] : [];
+      return r.value > p.value ? [{ key: 'adjustment_other', storeid: null, code: 'adjustment_other', params: { count: r.n, value: Math.round(r.value) }, link: '/secure/store/stock/adjust' }] : [];
     },
   },
   {
@@ -464,7 +464,7 @@ export const KINDS: AlertKind[] = [
           group by u.id, u.full_name having count(distinct r.customer_id) >= $3`, [ctx.businessId, p.hours, p.count]);
       return rows.map((r: any) => ({
         key: `reveals:${r.id}:${ctx.today}`, storeid: null, code: 'customer_reveals_many',
-        params: { person: String(r.full_name).trim(), count: r.n, hours: p.hours }, link: '/secure/customers/cust/list',
+        params: { person: String(r.full_name).trim(), count: r.n, hours: p.hours }, link: '/secure/quality/audit',
         severity: r.n >= p.count * 2 ? 'critical' as Severity : undefined,
       }));
     },
@@ -487,7 +487,7 @@ export const KINDS: AlertKind[] = [
           group by u.id, u.full_name having count(*) >= $3`, [ctx.businessId, p.hours, p.count]);
       return rows.map((r: any) => ({
         key: `lookups:${r.id}:${ctx.today}`, storeid: null, code: 'customer_lookups_many',
-        params: { person: String(r.full_name).trim(), count: r.n, hours: p.hours }, link: '/secure/customers/cust/list',
+        params: { person: String(r.full_name).trim(), count: r.n, hours: p.hours }, link: '/secure/quality/audit',
         severity: r.n >= p.count * 2 ? 'critical' as Severity : undefined,
       }));
     },
@@ -536,13 +536,13 @@ export const KINDS: AlertKind[] = [
         const mine = r.pool ? { roles: ['staff', 'managers'], userids: [] as number[] } : { roles: [] as string[], userids: [r.assignee_user_id] as number[] };
         const storeid = r.pool ? r.store_id : null;
         const high = r.priority === 'high';
-        if (stage === 'soon') out.push({ key: `todo:${r.id}:soon`, storeid, code: 'todo_soon', params, link: '/secure/todos', recipients: mine, severity: high ? 'warning' : 'info' });
-        else if (stage === 'due') out.push({ key: `todo:${r.id}:due`, storeid, code: 'todo_due', params, link: '/secure/todos', recipients: mine, severity: high ? 'warning' : 'info' });
+        if (stage === 'soon') out.push({ key: `todo:${r.id}:soon`, storeid, code: 'todo_soon', params, link: `/secure/todos?id=${r.id}`, recipients: mine, severity: high ? 'warning' : 'info' });
+        else if (stage === 'due') out.push({ key: `todo:${r.id}:due`, storeid, code: 'todo_due', params, link: `/secure/todos?id=${r.id}`, recipients: mine, severity: high ? 'warning' : 'info' });
         else {
           // late: said again each day, so it is not missed
-          out.push({ key: `todo:${r.id}:overdue:${ctx.today}`, storeid, code: 'todo_overdue', params, link: '/secure/todos', recipients: mine, severity: 'warning' });
+          out.push({ key: `todo:${r.id}:overdue:${ctx.today}`, storeid, code: 'todo_overdue', params, link: `/secure/todos?id=${r.id}`, recipients: mine, severity: 'warning' });
           if (stage === 'escalated' && r.assigned_by && r.assigned_by !== r.assignee_user_id) {
-            out.push({ key: `todo:${r.id}:escalated`, storeid: r.store_id ?? null, code: 'todo_escalated', params, link: '/secure/todos',
+            out.push({ key: `todo:${r.id}:escalated`, storeid: r.store_id ?? null, code: 'todo_escalated', params, link: `/secure/todos?id=${r.id}`,
               recipients: { roles: r.store_id ? ['managers'] : [], userids: [r.assigned_by] }, severity: 'critical' });
           }
         }
@@ -562,7 +562,7 @@ export const KINDS: AlertKind[] = [
         `select f.id, f.title, f.status, f.reporter_user_id from app_feedback f where f.business_id = $1 and not f.archive and f.reporter_unread`, [ctx.businessId]);
       return rows.map((r: any) => ({
         key: `feedback:${r.id}:reply`, storeid: null, code: 'feedback_reply',
-        params: { title: String(r.title), status: String(r.status).toLowerCase().replace(/_/g, ' ') }, link: '/secure/feedback',
+        params: { title: String(r.title), status: String(r.status).toLowerCase().replace(/_/g, ' ') }, link: `/secure/feedback?id=${r.id}`,
         recipients: { roles: [] as string[], userids: [r.reporter_user_id] as number[] },
       }));
     },
@@ -588,7 +588,7 @@ export const KINDS: AlertKind[] = [
       const userids = people.map((p: any) => p.id as number);
       return rows.map((r: any) => ({
         key: `feedback:${r.id}:waiting`, storeid: null, code: 'feedback_waiting',
-        params: { title: String(r.title), person: String(r.reporter).trim(), module: String(r.module_title), kind: String(r.kind) }, link: '/secure/feedback',
+        params: { title: String(r.title), person: String(r.reporter).trim(), module: String(r.module_title), kind: String(r.kind) }, link: `/secure/feedback?id=${r.id}`,
         recipients: { roles: [] as string[], userids },
       }));
     },
@@ -606,7 +606,7 @@ export const KINDS: AlertKind[] = [
            from app_feedback f where f.business_id = $1 and not f.archive and f.status = 'WAITING'`, [ctx.businessId]);
       return rows.filter((r: any) => needsReminder(r.status as FeedbackStatus, Number(r.idle))).map((r: any) => ({
         key: `feedback:${r.id}:closing`, storeid: null, code: 'feedback_closing',
-        params: { title: String(r.title), days: String(daysUntilClose(r.status as FeedbackStatus, Number(r.idle)) ?? 0) }, link: '/secure/feedback',
+        params: { title: String(r.title), days: String(daysUntilClose(r.status as FeedbackStatus, Number(r.idle)) ?? 0) }, link: `/secure/feedback?id=${r.id}`,
         recipients: { roles: [] as string[], userids: [r.reporter_user_id] as number[] },
       }));
     },

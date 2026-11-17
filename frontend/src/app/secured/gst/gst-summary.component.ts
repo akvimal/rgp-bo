@@ -1,4 +1,5 @@
 import { Component, OnInit } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
 import { GstApiService } from "./gst-api.service";
 
 /**
@@ -226,7 +227,7 @@ export class GstSummaryComponent implements OnInit {
   error = "";
   message = "";
 
-  constructor(private api: GstApiService) {}
+  constructor(private api: GstApiService, private route: ActivatedRoute) {}
 
   ngOnInit() { this.loadMonths(true); }
 
@@ -237,7 +238,12 @@ export class GstSummaryComponent implements OnInit {
   loadMonths(first = false) {
     this.api.months().subscribe((r: any) => {
       this.months = r.months; this.registered = !!r.registered;
-      if (first) { const prev = r.months.find((m: any) => m.over) || r.months[0]; this.open(prev.month); }
+      if (first) {
+        // an alert can name the month: ?month=2026-10
+        const named = this.route.snapshot.queryParamMap.get('month');
+        const prev = r.months.find((m: any) => m.month === named) || r.months.find((m: any) => m.over) || r.months[0];
+        this.open(prev.month);
+      }
     }, (e) => this.fail(e, 'Could not load the months.'));
   }
 

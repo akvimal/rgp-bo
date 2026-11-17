@@ -98,6 +98,8 @@ export class FeedbackComponent implements OnInit {
     this.service.get(id).subscribe({
       next: (r) => {
         this.open = r;
+        // a report that is someone else's is opened from the Inbox, so Back returns there
+        if (r.can?.manage && this.options.manage) this.tab = 'inbox';
         this.reply = { message: '', wait: false, internal: false };
         this.replyFiles = [];
         this.reopening = false; this.reopenMessage = '';

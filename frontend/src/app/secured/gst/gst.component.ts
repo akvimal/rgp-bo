@@ -1,4 +1,5 @@
 import { Component } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
 
 /** GST for the Business Head: the registration, rate changes, HSN, the sales register and the monthly summary. */
 @Component({
@@ -24,4 +25,10 @@ export class GstComponent {
     { key: 'hsn', label: 'HSN codes' },
   ];
   tab = 'registration';
+
+  /** an alert can open a tab: /secure/gst-filing?tab=rates */
+  constructor(route: ActivatedRoute) {
+    const t = route.snapshot.queryParamMap.get('tab');
+    if (t && this.tabs.some((x) => x.key === t)) this.tab = t;
+  }
 }
