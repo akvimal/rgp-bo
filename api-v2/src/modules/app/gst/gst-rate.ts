@@ -1,10 +1,10 @@
 /**
- * GST rates that change on a date. A change covers all products, a category, an HSN prefix or one product, and either sets the rate or caps it.
+ * GST rates that change on a date. A change covers all products, the products bought at a given GST rate, a category, an HSN prefix or one product, and either sets the rate or caps it.
  * The most specific change in force on the bill date wins; with none, the batch's own GST is billed. This file mirrors the database function
  * gst_sale_rate() so a change can be previewed before it is saved; billing itself asks the database.
  */
 
-export type ScopeType = 'all' | 'category' | 'hsn_prefix' | 'product';
+export type ScopeType = 'all' | 'bought_at' | 'category' | 'hsn_prefix' | 'product';
 export type ChangeMode = 'set' | 'cap';
 export type PricePolicy = 'pass_saving' | 'keep_price';
 
@@ -25,9 +25,11 @@ export interface ProductFacts {
   hsn: string | null;
   /** the category's default HSN, provisional until the Business Head confirms it */
   categoryHsn: string | null;
+  /** the GST of the product's batch (the latest one for a preview; the billed batch's own when billing asks the database) */
+  tax?: number | null;
 }
 
-export const SCOPE_TYPES: ScopeType[] = ['all', 'category', 'hsn_prefix', 'product'];
+export const SCOPE_TYPES: ScopeType[] = ['all', 'bought_at', 'category', 'hsn_prefix', 'product'];
 
 const clean = (v: any) => String(v ?? '').trim();
 
@@ -44,9 +46,13 @@ export function applyChange(mode: ChangeMode, rate: number, batchTax: number): n
   return mode === 'set' ? rate : Math.min(Number(batchTax) || 0, rate);
 }
 
-export function matches(c: RateChange, p: ProductFacts): boolean {
+export function matches(c: RateChange, p: ProductFacts, batchTax?: number | null): boolean {
   switch (c.scope_type) {
     case 'all': return true;
+    case 'bought_at': {
+      const t = batchTax ?? p.tax;
+      return t !== null && t !== undefined && Math.abs(Number(t) - Number(clean(c.scope_value))) < 0.005;
+    }
     case 'product': return clean(c.scope_value) === String(p.id);
     case 'category': return clean(c.scope_value).toLowerCase() === clean(p.category).toLowerCase();
     case 'hsn_prefix': {
@@ -57,11 +63,11 @@ export function matches(c: RateChange, p: ProductFacts): boolean {
   return false;
 }
 
-const specificity = (c: RateChange) => ({ product: 4, hsn_prefix: 3, category: 2, all: 1 }[c.scope_type]);
+const specificity = (c: RateChange) => ({ product: 5, hsn_prefix: 4, category: 3, bought_at: 2, all: 1 }[c.scope_type]);
 
 /** the change that decides the rate for this product on this day, or null */
-export function winner(changes: RateChange[], p: ProductFacts, on: string): RateChange | null {
-  const live = changes.filter((c) => c.effective_from <= on && matches(c, p));
+export function winner(changes: RateChange[], p: ProductFacts, on: string, batchTax?: number | null): RateChange | null {
+  const live = changes.filter((c) => c.effective_from <= on && matches(c, p, batchTax));
   if (!live.length) return null;
   live.sort((a, b) =>
     specificity(b) - specificity(a)
@@ -73,7 +79,7 @@ export function winner(changes: RateChange[], p: ProductFacts, on: string): Rate
 
 /** the GST billed for a product on a day */
 export function rateOn(changes: RateChange[], p: ProductFacts, batchTax: number, on: string): number {
-  const w = winner(changes, p, on);
+  const w = winner(changes, p, on, batchTax);
   return w ? applyChange(w.mode, w.rate, batchTax) : Number(batchTax) || 0;
 }
 
@@ -103,10 +109,15 @@ const isDay = (v: any) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
 /** checks what the Business Head sends for a new change; returns the clean change or the reason it is refused */
 export function parseChange(body: any): { value?: RateChange & { price_policy: PricePolicy }; error?: string } {
   const scope = clean(body?.scope_type) as ScopeType;
-  if (!SCOPE_TYPES.includes(scope)) return { error: 'Choose what the change covers: all products, a category, an HSN prefix or one product.' };
+  if (!SCOPE_TYPES.includes(scope)) return { error: 'Choose what the change covers: all products, the products bought at a GST rate, a category, an HSN prefix or one product.' };
   let value = clean(body?.scope_value);
   if (scope === 'all') value = '';
-  else if (!value) return { error: 'Say which category, HSN prefix or product the change covers.' };
+  else if (!value) return { error: 'Say which GST rate, category, HSN prefix or product the change covers.' };
+  if (scope === 'bought_at') {
+    const bought = Number(value);
+    if (!/^\d+(\.\d+)?$/.test(value) || !(bought >= 0 && bought <= 40)) return { error: 'The GST rate the products were bought at is a number from 0 to 40.' };
+    value = String(Math.round(bought * 100) / 100);
+  }
   if (scope === 'hsn_prefix' && !/^\d{2,8}$/.test(value)) return { error: 'An HSN prefix is 2 to 8 digits.' };
   if (scope === 'product' && !/^\d+$/.test(value)) return { error: 'Choose the product.' };
   if (scope === 'category' && value.length > 100) return { error: 'That category name is too long.' };

@@ -9,7 +9,7 @@ import { GstApiService } from "./gst-api.service";
   selector: "app-gst-rates",
   template: `
   <p class="small text-muted" data-testid="gstr-intro">
-    When the government changes a GST rate, add it here with the date it starts. From that date the till bills the new rate on stock you bought earlier too,
+    When the government changes a GST rate, add it here with the date it starts (for all products, for the products you bought at a given rate, a category, an HSN prefix or one product). From that date the till bills the new rate on stock you bought earlier too,
     and bills already made stay as they were. The purchase invoices keep the rate the vendor charged, so your input credit is unchanged.
   </p>
   <div class="alert alert-danger py-2" *ngIf="error" data-testid="gstr-error">{{error}}</div>
@@ -20,7 +20,8 @@ import { GstApiService } from "./gst-api.service";
     <thead><tr><th>Covers</th><th>GST</th><th>From</th><th>Prices</th><th>State</th><th>Note</th><th></th></tr></thead>
     <tbody>
       <tr *ngIf="!changes.length"><td colspan="7" class="text-muted">No changes yet. Until you add one the till bills each batch's own GST.</td></tr>
-      <tr *ngFor="let c of changes" [class.text-muted]="c.state === 'cancelled'" data-testid="gstr-row">
+      <ng-container *ngFor="let c of changes">
+      <tr [class.text-muted]="c.state === 'cancelled'" data-testid="gstr-row">
         <td>{{coverText(c)}}</td>
         <td>{{c.mode === 'cap' ? 'at most ' : ''}}{{c.rate}}%</td>
         <td>{{c.effective_from | date:'dd MMM yyyy'}}</td>
@@ -29,9 +30,20 @@ import { GstApiService } from "./gst-api.service";
         <td class="small">{{c.note}}</td>
         <td class="text-end text-nowrap">
           <button class="btn btn-sm btn-outline-secondary me-1" type="button" (click)="openReport(c)" *ngIf="c.state !== 'cancelled'" data-testid="gstr-report">Report</button>
-          <button class="btn btn-sm btn-outline-danger" type="button" (click)="withdraw(c)" *ngIf="c.state === 'upcoming'" data-testid="gstr-withdraw">Withdraw</button>
+          <button class="btn btn-sm btn-outline-danger" type="button" (click)="removing = c.id" *ngIf="c.state !== 'cancelled' && removing !== c.id" data-testid="gstr-remove">Remove</button>
         </td>
       </tr>
+      <tr *ngIf="removing === c.id" class="table-warning" data-testid="gstr-remove-confirm">
+        <td colspan="7">
+          <div class="small mb-1">
+            Remove <strong>{{c.label}}</strong>{{c.state === 'in force' ? ', which is in force' : ''}}?
+            {{c.state === 'in force' ? 'The till stops using it from now on and bills each product at its own GST (or the next change that covers it). ' : ''}}Bills already made keep the rate they were billed at.
+          </div>
+          <button class="btn btn-sm btn-danger me-1" type="button" [disabled]="busy" (click)="withdraw(c)" data-testid="gstr-remove-yes">Yes, remove it</button>
+          <button class="btn btn-sm btn-link" type="button" (click)="removing = null" data-testid="gstr-remove-no">Keep it</button>
+        </td>
+      </tr>
+      </ng-container>
     </tbody>
   </table>
 
@@ -41,10 +53,16 @@ import { GstApiService } from "./gst-api.service";
       <label class="form-label">Covers</label>
       <select class="form-select" [(ngModel)]="form.scope_type" (ngModelChange)="scopeChanged()" data-testid="gstr-scope">
         <option value="all">All products</option>
+        <option value="bought_at">Products bought at a GST rate</option>
         <option value="category">A category</option>
         <option value="hsn_prefix">An HSN prefix</option>
         <option value="product">One product</option>
       </select>
+    </div>
+    <div class="col-md-3" *ngIf="form.scope_type === 'bought_at'">
+      <label class="form-label">Bought at GST %</label>
+      <input type="number" min="0" max="40" step="0.5" class="form-control" placeholder="e.g. 12" [(ngModel)]="form.scope_value" (ngModelChange)="preview = null" data-testid="gstr-value">
+      <div class="small text-muted">Every batch whose purchase invoice charged this GST is billed at the new rate; batches bought at other rates are not touched.</div>
     </div>
     <div class="col-md-3" *ngIf="form.scope_type === 'category'">
       <label class="form-label">Category</label>
@@ -157,6 +175,7 @@ export class GstRatesComponent implements OnInit {
   preview: any = null;
   report: any = null;
   busy = false;
+  removing: number | null = null;
   error = "";
   message = "";
 
@@ -170,7 +189,7 @@ export class GstRatesComponent implements OnInit {
 
   private fail(e: any, fallback: string) { this.error = e?.error?.message || fallback; this.message = ''; this.busy = false; }
 
-  coverText(c: any) { return c.scope_type === 'all' ? 'All products' : c.scope_type === 'category' ? `Category: ${c.scope_value}` : c.scope_type === 'hsn_prefix' ? `HSN ${c.scope_value}...` : `Product #${c.scope_value}`; }
+  coverText(c: any) { return c.scope_type === 'all' ? 'All products' : c.scope_type === 'bought_at' ? `Bought at ${c.scope_value}%` : c.scope_type === 'category' ? `Category: ${c.scope_value}` : c.scope_type === 'hsn_prefix' ? `HSN ${c.scope_value}...` : `Product: ${c.product_title || '#' + c.scope_value}`; }
 
   scopeChanged() { this.form.scope_value = ''; this.form.productTitle = ''; this.preview = null; }
 
@@ -194,7 +213,8 @@ export class GstRatesComponent implements OnInit {
 
   withdraw(c: any) {
     this.error = this.message = '';
-    this.api.cancelChange(c.id).subscribe(() => { this.message = 'The change is withdrawn.'; this.load(); }, (e) => this.fail(e, 'Could not withdraw the change.'));
+    this.busy = true;
+    this.api.cancelChange(c.id).subscribe(() => { this.busy = false; this.removing = null; this.message = 'The change is removed.'; this.load(); }, (e) => this.fail(e, 'Could not remove the change.'));
   }
 
   openReport(c: any) { this.api.changeReport(c.id).subscribe((r: any) => this.report = r, (e) => this.fail(e, 'Could not load the report.')); }

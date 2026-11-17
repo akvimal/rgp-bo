@@ -108,3 +108,49 @@ describe('what the Business Head sends', () => {
     expect(parseHsn('ABCD').error).toBeTruthy();
   });
 });
+
+describe('a change for the products bought at a GST rate', () => {
+  const bought12 = chg({ id: 5, scope_type: 'bought_at', scope_value: '12', mode: 'set', rate: 5, effective_from: '2026-11-18' });
+
+  it('bills a 12% batch at 5% from the date, and leaves the batches bought at other rates alone', () => {
+    expect(rateOn([bought12], prod(), 12, '2026-11-17')).toBe(12);       // not yet
+    expect(rateOn([bought12], prod(), 12, '2026-11-18')).toBe(5);
+    expect(rateOn([bought12], prod(), 18, '2026-11-18')).toBe(18);
+    expect(rateOn([bought12], prod(), 5, '2026-11-18')).toBe(5);
+    expect(rateOn([bought12], prod(), 0, '2026-11-18')).toBe(0);
+  });
+
+  it('is decided per batch: one product with a 12% and a 5% batch changes only the 12% one', () => {
+    const p = prod({ tax: 12 });
+    expect(rateOn([bought12], p, 12, '2026-11-18')).toBe(5);
+    expect(rateOn([bought12], p, 18, '2026-11-18')).toBe(18);             // the batch asked about decides, not the product's latest
+    expect(matches(bought12, prod({ tax: 12 }))).toBe(true);
+    expect(matches(bought12, prod({ tax: 18 }))).toBe(false);
+    expect(matches(bought12, prod({ tax: null }))).toBe(false);
+  });
+
+  it('beats "all products" but not a category, an HSN prefix or the product itself', () => {
+    const all = chg({ id: 1, scope_type: 'all', mode: 'cap', rate: 18, effective_from: '2026-01-01' });
+    expect(rateOn([all, bought12], prod(), 12, '2026-11-18')).toBe(5);
+    const cat = chg({ id: 2, scope_type: 'category', scope_value: 'Tablet', mode: 'set', rate: 12, effective_from: '2026-01-01' });
+    expect(rateOn([all, bought12, cat], prod(), 12, '2026-11-18')).toBe(12);
+    const hsn = chg({ id: 3, scope_type: 'hsn_prefix', scope_value: '3004', mode: 'set', rate: 18, effective_from: '2026-01-01' });
+    expect(rateOn([bought12, hsn], prod(), 12, '2026-11-18')).toBe(18);
+    const own = chg({ id: 4, scope_type: 'product', scope_value: '7', mode: 'set', rate: 0, effective_from: '2026-01-01' });
+    expect(rateOn([bought12, own], prod(), 12, '2026-11-18')).toBe(0);
+  });
+
+  it('can also cap: bought at 12, at most 5', () => {
+    const cap = chg({ id: 6, scope_type: 'bought_at', scope_value: '12', mode: 'cap', rate: 5, effective_from: '2026-11-18' });
+    expect(rateOn([cap], prod(), 12, '2026-11-18')).toBe(5);
+  });
+
+  it('is checked as a number from 0 to 40 and kept tidy', () => {
+    const ok = parseChange({ scope_type: 'bought_at', scope_value: '12', mode: 'set', rate: 5, effective_from: '2026-11-18' });
+    expect(ok.value).toMatchObject({ scope_type: 'bought_at', scope_value: '12', rate: 5 });
+    expect(parseChange({ scope_type: 'bought_at', scope_value: '12.50', mode: 'set', rate: 5, effective_from: '2026-11-18' }).value?.scope_value).toBe('12.5');
+    for (const bad of ['', 'abc', '-3', '41', '12%']) {
+      expect(parseChange({ scope_type: 'bought_at', scope_value: bad, mode: 'set', rate: 5, effective_from: "2026-11-18" }).error).toBeTruthy();
+    }
+  });
+});

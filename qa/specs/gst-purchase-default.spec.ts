@@ -36,5 +36,8 @@ test.describe('GST purchase default @p1', () => {
     const now = await api.request('POST', '/gst/rate-changes', change({}), MGR);
     expect(now.status, JSON.stringify(now.body)).toBeLessThan(300);
     expect(await billed()).toBe(2);                                                                   // from its date, though it was bought at 12
+    // leave the rate list as it was
+    for (const c of [later, now]) await api.request('DELETE', `/gst/rate-changes/${c.body.id}`, undefined, MGR);
+    expect(await billed()).toBe(12);
   });
 });

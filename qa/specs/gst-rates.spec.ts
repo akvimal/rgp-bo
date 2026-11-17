@@ -54,7 +54,7 @@ test.describe('GST rate changes and HSN @p1', () => {
     expect(await billed(api, p.id)).toBe(5);
   });
 
-  test('GR-2 a change is billed from its date, the most specific wins, and one in force cannot be removed @happy', async ({ api }) => {
+  test('GR-2 a change is billed from its date, the most specific wins, and one in force can be removed @happy', async ({ api }) => {
     const p = await product(api, `b${run}`);
     // a change for the category that starts tomorrow does nothing today, and can be withdrawn
     const future = await api.request('POST', '/gst/rate-changes', change({ scope_type: 'category', scope_value: p.category, mode: 'set', rate: 4, effective_from: day(1) }), MGR);
@@ -69,13 +69,23 @@ test.describe('GST rate changes and HSN @p1', () => {
     const own = await api.request('POST', '/gst/rate-changes', change({ scope_type: 'product', scope_value: String(p.id), mode: 'set', rate: 3 }), MGR);
     expect(own.status, JSON.stringify(own.body)).toBeLessThan(300);
     expect(await billed(api, p.id)).toBe(3);
-    // one in force cannot be erased: bills were made under it
-    const gone = await api.request('DELETE', `/gst/rate-changes/${now.body.id}`, undefined, MGR);
-    expect(gone.status).toBe(400);
-    expect(JSON.stringify(gone.body)).toMatch(/already in force/);
     // the same scope and date twice is refused
     const dup = await api.request('POST', '/gst/rate-changes', change({ scope_type: 'product', scope_value: String(p.id), mode: 'set', rate: 2 }), MGR);
     expect(dup.status).toBe(400);
+    // the list names the product of a one-product change
+    const listed = (await api.request('GET', '/gst/rate-changes', undefined, MGR)).body.changes.find((c: any) => c.id === own.body.id);
+    expect(listed.product_title).toBe(p.title);
+    expect(listed.label).toContain(p.title);
+    // one in force can be removed: the till stops using it, and its own beats nothing now, so the category's applies again, then the batch's own
+    const gone = await api.request('DELETE', `/gst/rate-changes/${own.body.id}`, undefined, MGR);
+    expect(gone.status, JSON.stringify(gone.body)).toBeLessThan(300);
+    expect(gone.body.was_in_force).toBe(true);
+    expect(await billed(api, p.id)).toBe(4);
+    expect((await api.request('DELETE', `/gst/rate-changes/${now.body.id}`, undefined, MGR)).status).toBeLessThan(300);
+    expect(await billed(api, p.id)).toBe(5);
+    expect((await api.request('DELETE', `/gst/rate-changes/${now.body.id}`, undefined, MGR)).status).toBe(400);   // already removed
+    const after = (await api.request('GET', '/gst/rate-changes', undefined, MGR)).body.changes.find((c: any) => c.id === now.body.id);
+    expect(after.state).toBe('cancelled');
   });
 
   test('GR-3 the preview shows what a change does, defaults to passing the saving on, and keeping the price needs a confirmation @happy', async ({ api }) => {
@@ -150,5 +160,89 @@ test.describe('GST rate changes and HSN @p1', () => {
     const byHsn = (await api.request('POST', '/gst/rate-changes/preview', change({ scope_type: 'hsn_prefix', scope_value: '9999', mode: 'set', rate: 12, effective_from: day(30) }), MGR)).body;
     expect(byHsn.not_covered).toBeGreaterThan(0);                                              // products whose HSN is unknown cannot be reached by an HSN change
     expect(byHsn.not_covered_sample.length).toBeGreaterThan(0);                                // a sample of them is named so they can be fixed
+  });
+
+  test('GR-7 on the screen, a one-product change names the product, and a change in force can be removed after a confirmation @happy', async ({ app, api }) => {
+    const p = await product(api, `g${run}`);
+    const own = await api.request('POST', '/gst/rate-changes', change({ scope_type: 'product', scope_value: String(p.id), mode: 'set', rate: 3 }), MGR);
+    expect(own.status, JSON.stringify(own.body)).toBeLessThan(300);
+    expect(await billed(api, p.id)).toBe(3);
+
+    const { page } = await app.open(MGR, '/secure/gst-filing');
+    await page.getByTestId('gst-tab-rates').click();
+    const row = page.getByTestId('gstr-row').filter({ hasText: p.title });
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText(`Product: ${p.title}`);                                   // the name, not a number
+    await expect(row).not.toContainText(`#${p.id}`);
+    await expect(row.getByTestId('gstr-remove')).toBeVisible();                              // in force, and it can still be removed
+
+    await row.getByTestId('gstr-remove').click();
+    await expect(page.getByTestId('gstr-remove-confirm')).toContainText('which is in force');
+    await expect(page.getByTestId('gstr-remove-confirm')).toContainText('Bills already made keep the rate');
+    await page.getByTestId('gstr-remove-no').click();                                          // keeping it changes nothing
+    await expect(page.getByTestId('gstr-remove-confirm')).toHaveCount(0);
+    expect(await billed(api, p.id)).toBe(3);
+
+    await row.getByTestId('gstr-remove').click();
+    await page.getByTestId('gstr-remove-yes').click();
+    await expect(page.getByTestId('gstr-message')).toContainText('The change is removed');
+    await expect(row.locator('.badge')).toHaveText('cancelled');
+    await expect(row.getByTestId('gstr-remove')).toHaveCount(0);
+    expect(await billed(api, p.id)).toBe(5);                                                   // the till is back to the cap
+  });
+
+  test('GR-8 "products bought at 12%" bills every 12% batch at the new rate from its date, and nothing bought at another rate @integration', async ({ api }) => {
+    const p = await product(api, `h${run}`);                       // one batch bought at 12%
+    expect(await billed(api, p.id)).toBe(5);                        // the cap in force for these cases
+    // bad input is refused
+    for (const bad of ['', 'abc', '45', '-1']) {
+      expect((await api.request('POST', '/gst/rate-changes', change({ scope_type: 'bought_at', scope_value: bad, mode: 'set', rate: 4 }), MGR)).status, `value "${bad}"`).toBe(400);
+    }
+    // starting tomorrow: not yet
+    const later = await api.request('POST', '/gst/rate-changes', change({ scope_type: 'bought_at', scope_value: '12', mode: 'set', rate: 4, effective_from: day(1) }), MGR);
+    expect(later.status, JSON.stringify(later.body)).toBeLessThan(300);
+    expect(await billed(api, p.id)).toBe(5);
+    // the preview names the products it moves, and none that were bought at another rate
+    const prev = (await api.request('POST', '/gst/rate-changes/preview', change({ scope_type: 'bought_at', scope_value: '12', mode: 'set', rate: 4, effective_from: day(0) }), MGR)).body;
+    expect(prev.rows.some((r: any) => r.id === p.id)).toBe(true);
+    expect(prev.rows.every((r: any) => Number(r.batch_tax) === 12)).toBe(true);
+    expect(prev.change.label).toBe('Products bought at 12%: GST 4%');
+    // from today
+    const now = await api.request('POST', '/gst/rate-changes', change({ scope_type: 'bought_at', scope_value: '12', mode: 'set', rate: 4 }), MGR);
+    expect(now.status, JSON.stringify(now.body)).toBeLessThan(300);
+    expect(await billed(api, p.id)).toBe(4);
+    // a change for the product itself still beats it; a different purchase rate does not touch it
+    const other = await api.request('POST', '/gst/rate-changes', change({ scope_type: 'bought_at', scope_value: '18', mode: 'set', rate: 1 }), MGR);
+    expect(other.status, JSON.stringify(other.body)).toBeLessThan(300);
+    expect(await billed(api, p.id)).toBe(4);
+    const own = await api.request('POST', '/gst/rate-changes', change({ scope_type: 'product', scope_value: String(p.id), mode: 'set', rate: 3 }), MGR);
+    expect(await billed(api, p.id)).toBe(3);
+    // the list names it, and removing them puts the till back
+    const listed = (await api.request('GET', '/gst/rate-changes', undefined, MGR)).body.changes.find((c: any) => c.id === now.body.id);
+    expect(listed.label).toBe('Products bought at 12%: GST 4%');
+    for (const c of [own, other, now, later]) expect((await api.request('DELETE', `/gst/rate-changes/${c.body.id}`, undefined, MGR)).status).toBeLessThan(300);
+    expect(await billed(api, p.id)).toBe(5);
+  });
+
+  test('GR-9 on the screen: choose "Products bought at a GST rate", preview, save, and see it in the list @happy', async ({ app, api }) => {
+    const p = await product(api, `i${run}`);
+    const { page } = await app.open(MGR, '/secure/gst-filing');
+    await page.getByTestId('gst-tab-rates').click();
+    await page.getByTestId('gstr-scope').selectOption('bought_at');
+    await page.getByTestId('gstr-value').fill('12');
+    await page.getByTestId('gstr-mode').selectOption('set');
+    await page.getByTestId('gstr-rate').fill('4');
+    await page.getByTestId('gstr-date').fill(new Date().toISOString().slice(0, 10));
+    await page.getByTestId('gstr-preview').click();
+    await expect(page.getByTestId('gstr-preview-box')).toContainText('Products bought at 12%');
+    await page.getByTestId('gstr-save').click();
+    await expect(page.getByTestId('gstr-message')).toContainText('The change is saved');
+    const row = page.getByTestId('gstr-row').filter({ hasText: 'Bought at 12%' }).filter({ has: page.getByTestId('gstr-remove') }).first();   // earlier ones may be removed already
+    await expect(row).toBeVisible();
+    expect(await billed(api, p.id)).toBe(4);
+    await row.getByTestId('gstr-remove').click();
+    await page.getByTestId('gstr-remove-yes').click();
+    await expect(page.getByTestId('gstr-message')).toContainText('The change is removed');
+    expect(await billed(api, p.id)).toBe(5);
   });
 });

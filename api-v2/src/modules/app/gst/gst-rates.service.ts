@@ -28,8 +28,10 @@ export class GstRatesService {
     const rows = await this.manager.query(
       `select c.id, c.scope_type, c.scope_value, c.mode, c.rate::float8 as rate, to_char(c.effective_from, 'YYYY-MM-DD') as effective_from, c.price_policy, c.note,
               to_char(c.created_on, 'YYYY-MM-DD') as created_on, u.full_name as created_by_name, (c.cancelled_on is not null) as cancelled,
-              to_char(c.cancelled_on, 'YYYY-MM-DD') as cancelled_on, c.effective_from > current_date as upcoming
-         from gst_rate_change c left join app_user u on u.id = c.created_by order by c.effective_from desc, c.id desc`);
+              to_char(c.cancelled_on, 'YYYY-MM-DD') as cancelled_on, c.effective_from > current_date as upcoming, pr.title as product_title
+         from gst_rate_change c left join app_user u on u.id = c.created_by
+         left join product pr on c.scope_type = 'product' and c.scope_value ~ '^[0-9]+$' and pr.id = (case when c.scope_value ~ '^[0-9]+$' then c.scope_value::int end)
+        order by c.effective_from desc, c.id desc`);
     const today = istDay();
     return {
       today,
@@ -42,7 +44,7 @@ export class GstRatesService {
   }
 
   private label(c: any): string {
-    const what = c.scope_type === 'all' ? 'All products' : c.scope_type === 'category' ? `Category ${c.scope_value}` : c.scope_type === 'hsn_prefix' ? `HSN ${c.scope_value}...` : `Product #${c.scope_value}`;
+    const what = c.scope_type === 'all' ? 'All products' : c.scope_type === 'bought_at' ? `Products bought at ${Number(c.scope_value)}%` : c.scope_type === 'category' ? `Category ${c.scope_value}` : c.scope_type === 'hsn_prefix' ? `HSN ${c.scope_value}...` : `Product ${c.product_title || '#' + c.scope_value}`;
     return `${what}: ${c.mode === 'cap' ? 'at most' : 'GST'} ${Number(c.rate)}%`;
   }
 
@@ -136,22 +138,29 @@ export class GstRatesService {
     return { id: +row.id };
   }
 
-  /** a change that has not taken effect yet can be withdrawn; one in force is ended by a new change, never erased (bills were made under it) */
+  /**
+   * A change is removed here, whether or not it has started: the till stops using it from now on. It is kept in the list as removed. Bills already made keep
+   * the rate they were billed at (a bill line carries its own rate), so nothing already issued changes.
+   */
   async cancel(user: any, id: number) {
-    const [c] = await this.manager.query(`select id, scope_type, scope_value, mode, rate, to_char(effective_from, 'YYYY-MM-DD') as effective_from, cancelled_on from gst_rate_change where id = $1`, [id]);
+    const [c] = await this.manager.query(
+      `select c.id, c.scope_type, c.scope_value, c.mode, c.rate, to_char(c.effective_from, 'YYYY-MM-DD') as effective_from, c.cancelled_on, pr.title as product_title
+         from gst_rate_change c left join product pr on c.scope_type = 'product' and c.scope_value ~ '^[0-9]+$' and pr.id = (case when c.scope_value ~ '^[0-9]+$' then c.scope_value::int end) where c.id = $1`, [id]);
     if (!c) throw new NotFoundException('That change was not found.');
-    if (c.cancelled_on) throw new BadRequestException('That change is already cancelled.');
+    if (c.cancelled_on) throw new BadRequestException('That change is already removed.');
     const eff = c.effective_from;
-    if (eff <= istDay()) throw new BadRequestException('This change is already in force and bills were made under it. Add a new change to end it.');
+    const inForce = eff <= istDay();
     await this.manager.query(`update gst_rate_change set cancelled_on = now(), cancelled_by = $2 where id = $1`, [id, user.id]);
-    await this.audit.record({ userId: user.id, action: 'gst.rate_change_cancelled', entityType: 'gst_rate_change', entityId: id, summary: `${this.label(c)} from ${eff} withdrawn`, details: { change: c } });
-    return { ok: true };
+    await this.audit.record({ userId: user.id, action: 'gst.rate_change_cancelled', entityType: 'gst_rate_change', entityId: id,
+      summary: `${this.label(c)} from ${eff} ${inForce ? 'removed while in force' : 'withdrawn'}`, details: { change: { ...c, in_force: inForce } } });
+    return { ok: true, was_in_force: inForce };
   }
 
   /** After the date: the stock and the sales under a change, by the rate billed. */
   async report(id: number) {
     const [c] = await this.manager.query(
-      `select id, scope_type, scope_value, mode, rate::float8 as rate, to_char(effective_from, 'YYYY-MM-DD') as effective_from, price_policy, note from gst_rate_change where id = $1`, [id]);
+      `select c.id, c.scope_type, c.scope_value, c.mode, c.rate::float8 as rate, to_char(c.effective_from, 'YYYY-MM-DD') as effective_from, c.price_policy, c.note, pr.title as product_title
+         from gst_rate_change c left join product pr on c.scope_type = 'product' and c.scope_value ~ '^[0-9]+$' and pr.id = (case when c.scope_value ~ '^[0-9]+$' then c.scope_value::int end) where c.id = $1`, [id]);
     if (!c) throw new NotFoundException('That change was not found.');
     const changes = await this.liveChanges();
     const products = await this.facts();
