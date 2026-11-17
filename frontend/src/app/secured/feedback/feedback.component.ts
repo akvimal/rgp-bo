@@ -8,11 +8,21 @@ const STATUS_TONE: any = { NEW: 'secondary', IN_PROGRESS: 'primary', WAITING: 'w
 const STAFF_STATUS_CHOICES = [
   { key: 'IN_PROGRESS', label: 'Looking into it' },
   { key: 'WAITING', label: 'Waiting for the reporter' },
-  { key: 'ANSWERED', label: 'Answered' },
+  { key: 'ANSWERED', label: 'Resolved' },
   { key: 'PLANNED', label: 'Planned' },
   { key: 'DECLINED', label: 'Not planned' },
   { key: 'DUPLICATE', label: 'Already reported' },
   { key: 'CLOSED', label: 'Closed' },
+];
+
+/** how a report ends: what the manager picks in Resolve (the API maps each to a status) */
+const RESOLUTION_CHOICES = [
+  { key: 'fixed', label: 'Fixed' },
+  { key: 'answered', label: 'Answered' },
+  { key: 'not_a_bug', label: 'Not a bug' },
+  { key: 'cannot_reproduce', label: 'Cannot reproduce' },
+  { key: 'not_planned', label: 'Not planned' },
+  { key: 'duplicate', label: 'Already reported' },
 ];
 
 /**
@@ -46,6 +56,9 @@ export class FeedbackComponent implements OnInit {
   reopenMessage = '';
   setting = { status: 'IN_PROGRESS', resolution: '', duplicate_of: null as number | null };
   statusChoices = STAFF_STATUS_CHOICES;
+  resolutionChoices = RESOLUTION_CHOICES;
+  resolving = false;
+  resolveForm = { code: 'answered', note: '', duplicate_of: null as number | null };
   viewOpen = false;
   viewPath = '';
   viewName = '';
@@ -86,6 +99,8 @@ export class FeedbackComponent implements OnInit {
         this.reply = { message: '', wait: false, internal: false };
         this.replyFiles = [];
         this.reopening = false; this.reopenMessage = '';
+        this.resolving = false;
+        this.resolveForm = { code: r.kind === 'problem' || r.kind === 'data' ? 'fixed' : 'answered', note: '', duplicate_of: null };
         this.setting = { status: r.status === 'NEW' ? 'IN_PROGRESS' : (r.status === 'CLOSED' ? 'IN_PROGRESS' : r.status), resolution: '', duplicate_of: null };
         this.uploadKey = `r${Date.now()}`;
         this.loadMine(); // opening it is reading it, so the unread count falls
@@ -115,6 +130,18 @@ export class FeedbackComponent implements OnInit {
     this.service.setStatus(this.open.id, { status: this.setting.status, resolution: this.setting.resolution, duplicate_of: this.setting.duplicate_of || undefined })
       .subscribe({ next: () => this.after('Status saved.'), error: (e) => this.fail(e) });
   }
+  /** resolve in one step: how it ended and the words the reporter reads */
+  doResolve() {
+    this.busy = true; this.error = '';
+    this.service.resolve(this.open.id, { code: this.resolveForm.code, note: this.resolveForm.note, duplicate_of: this.resolveForm.duplicate_of || undefined })
+      .subscribe({ next: () => this.after('Resolved.'), error: (e) => this.fail(e) });
+  }
+  /** a report that has ended is closed by a manager once it is done with */
+  closeTicket() {
+    this.busy = true; this.error = '';
+    this.service.setStatus(this.open.id, { status: 'CLOSED' }).subscribe({ next: () => this.after('Closed.'), error: (e) => this.fail(e) });
+  }
+  resolutionLabel(code: string) { return RESOLUTION_CHOICES.find((c) => c.key === code)?.label || ''; }
   assign(id: any) { this.service.assign(this.open.id, +id || null).subscribe({ next: () => this.after('Assigned.'), error: (e) => this.fail(e) }); }
 
   onFiles(ev: any) {

@@ -12,7 +12,7 @@ Permissions that were decided by role name inside the API, or by a bare "page op
 
 1. **Back up** the database.
 2. **Rehearse** on a copy.
-3. **Run the migrations 208 to 218** on the live database. Old code ignores the extra actions, so this step is safe to do first and is reversible.
+3. **Run the migrations 208 to 219** on the live database. Old code ignores the extra actions, so this step is safe to do first and is reversible.
 4. **Deploy the code** (api, then frontend).
 5. **Verify** (section 6).
 6. Keep the rollback ready for one day (section 8).
@@ -25,7 +25,7 @@ Permissions that were decided by role name inside the API, or by a bare "page op
   ```sql
   select name from schema_migrations order by name desc limit 20;   -- if the table exists
   ```
-  Anything below 208 that is missing will run too (for example 182, the purchase flow revision, was never applied). Read those files before you start; this release only vouches for 208 to 218.
+  Anything below 208 that is missing will run too (for example 182, the purchase flow revision, was never applied). Read those files before you start; this release only vouches for 208 to 219.
 - [ ] **The database you are about to change is the one you mean.** `api-v2/.env` points at the **production** database on the developer machine. Do not run a migration, a script or a test from there without naming the target explicitly (`PGDATABASE`, `PG_PREFIX`).
 - [ ] **Nobody is mid-shift** if you can help it (a role edit during a shift is harmless, but the check in section 6 is easier when the till is quiet).
 - [ ] The migrations are idempotent (each skips an action a role already has), so a repeat run changes nothing. They still belong in `schema_migrations` once run.
@@ -59,11 +59,12 @@ Each file is in `sql/migrations/`; the rollback sits beside it. `roles` below me
 | 216 | Sales: `batchstop.override`, `creditlimit.override`, `deliveries.manage`, `returns.settings` | owner roles all four; Store Head the first three | `216_rollback.sql` |
 | 217 | Customers day to day: `dues.view`, `dues.collect`, `audiences.use`, `worklist.use`, `consent.manage` | **every role holding the Customers page** gets all five | `217_rollback.sql` |
 | 218 | Refills: the follow-up outcome "message sent" (WhatsApp reminder from the Refills page) | no role change; widens the allowed outcomes only | `218_rollback.sql` (deletes the "message sent" records) |
+| 219 | Help and feedback: a resolution type on a report (fixed, answered, not a bug, cannot reproduce, not planned, duplicate); finished reports get the nearest type | no role change | `219_rollback.sql` |
 
 Run them in numeric order:
 
 ```bash
-for n in 208 209 210 211 212 213 214 215 216 217 218; do
+for n in 208 209 210 211 212 213 214 215 216 217 218 219; do
   f=$(ls sql/migrations/${n}_*.sql | grep -v rollback)
   echo "== $f"
   docker exec -i rgp-db psql -v ON_ERROR_STOP=1 -U rgpapp -d rgpdb < "$f"
@@ -133,7 +134,7 @@ curl -X PUT $API/config/views -H "authorization: Bearer $TOKEN" -H 'content-type
 **Full rollback** (a day or less after deploy):
 
 1. Redeploy the previous code (api and frontend).
-2. Run the rollbacks **in reverse order**: `218_rollback.sql`, `217`, `216`, `215`, `214`, `213`, `212`, `211`, `210`, `209`, and `208` last (208 also takes the two pages off every role again). Each removes only the actions it added.
+2. Run the rollbacks **in reverse order**: `219_rollback.sql`, `218`, `217`, `216`, `215`, `214`, `213`, `212`, `211`, `210`, `209`, and `208` last (208 also takes the two pages off every role again). Each removes only the actions it added.
 3. Delete the matching names from `schema_migrations` so a later run applies them.
 4. Caveat: a rollback removes **every** stored action with those names, including ones an owner ticked in the editor in the meantime. Note down any role the owner edited before rolling back.
 

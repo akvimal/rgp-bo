@@ -9,7 +9,7 @@ export type Impact = (typeof IMPACTS)[number];
 export const STATUSES = ['NEW', 'IN_PROGRESS', 'WAITING', 'ANSWERED', 'PLANNED', 'DECLINED', 'DUPLICATE', 'CLOSED'] as const;
 export type FeedbackStatus = (typeof STATUSES)[number];
 export const STATUS_LABEL: Record<FeedbackStatus, string> = {
-  NEW: 'Sent', IN_PROGRESS: 'Looking into it', WAITING: 'Waiting for your reply', ANSWERED: 'Answered', PLANNED: 'Planned',
+  NEW: 'Sent', IN_PROGRESS: 'Looking into it', WAITING: 'Waiting for your reply', ANSWERED: 'Resolved', PLANNED: 'Planned',
   DECLINED: 'Not planned', DUPLICATE: 'Already reported', CLOSED: 'Closed',
 };
 /** what a manager may set (a report starts as NEW by itself) */
@@ -18,6 +18,24 @@ export const STAFF_STATUSES: FeedbackStatus[] = ['IN_PROGRESS', 'WAITING', 'ANSW
 export const FINISHED: FeedbackStatus[] = ['ANSWERED', 'DECLINED', 'DUPLICATE', 'CLOSED'];
 /** these must say why or what (the reporter reads it) */
 export const NEEDS_TEXT: FeedbackStatus[] = ['ANSWERED', 'DECLINED'];
+
+/** how a report ends: what the reporter reads and what is counted. Each maps to the status it leaves the report in. */
+export const RESOLUTIONS = ['fixed', 'answered', 'not_a_bug', 'cannot_reproduce', 'not_planned', 'duplicate'] as const;
+export type Resolution = (typeof RESOLUTIONS)[number];
+export const RESOLUTION_LABEL: Record<Resolution, string> = {
+  fixed: 'Fixed', answered: 'Answered', not_a_bug: 'Not a bug', cannot_reproduce: 'Cannot reproduce', not_planned: 'Not planned', duplicate: 'Already reported',
+};
+export const RESOLUTION_STATUS: Record<Resolution, FeedbackStatus> = {
+  fixed: 'ANSWERED', answered: 'ANSWERED', not_a_bug: 'ANSWERED', cannot_reproduce: 'ANSWERED', not_planned: 'DECLINED', duplicate: 'DUPLICATE',
+};
+
+/** the number a report goes by: FB-12 */
+export const ticketNo = (id: number | string): string => `FB-${id}`;
+/** "FB-12", "fb12" or "12" typed in the search box: the number, else null */
+export function ticketFromText(v: any): number | null {
+  const m = /^\s*(?:fb[-\s]?)?(\d{1,9})\s*$/i.exec(String(v ?? ''));
+  return m ? Number(m[1]) : null;
+}
 
 export const MAX_PER_DAY = 20;
 export const MAX_FILES = 3;
@@ -99,6 +117,16 @@ export function statusProblem(b: { status?: any; resolution?: any; duplicate_of?
   if (NEEDS_TEXT.includes(s) && !cleanMessage(b?.resolution)) return s === 'ANSWERED' ? 'Write the answer the reporter will read.' : 'Say why it is not planned.';
   if (s === 'DUPLICATE' && !(Number(b?.duplicate_of) > 0)) return 'Give the number of the report this repeats.';
   return null;
+}
+
+/** a manager resolves a report: a type, the note the reporter reads, and for a duplicate the number it repeats. The status follows from the type. */
+export function resolveProblem(b: { code?: any; note?: any; duplicate_of?: any }): { problem: string } | { code: Resolution; status: FeedbackStatus; note: string } {
+  const code = String(b?.code ?? '') as Resolution;
+  if (!RESOLUTIONS.includes(code)) return { problem: 'Choose how it ended: fixed, answered, not a bug, cannot reproduce, not planned or already reported.' };
+  const note = cleanMessage(b?.note);
+  if (!note) return { problem: code === 'not_planned' ? 'Say why it is not planned.' : 'Write what the reporter will read.' };
+  if (code === 'duplicate' && !(Number(b?.duplicate_of) > 0)) return { problem: 'Give the number of the report this repeats.' };
+  return { code, status: RESOLUTION_STATUS[code], note };
 }
 
 /** the two flags the alerts read after a change: who owes the next word, and whether the reporter has something unread */

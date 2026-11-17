@@ -1,4 +1,4 @@
-import { canReporterClose, canReporterReopen, cleanMessage, cleanReport, flagsAfter, statusAfterReporterReply, statusAfterStaffReply, statusProblem } from './feedback-rules';
+import { canReporterClose, canReporterReopen, cleanMessage, cleanReport, flagsAfter, statusAfterReporterReply, statusAfterStaffReply, statusProblem, resolveProblem, ticketFromText, ticketNo } from './feedback-rules';
 
 describe('feedback rules', () => {
   const problem = { kind: 'problem', title: 'Bill total is wrong', module_id: 'nav-sales', module_title: 'Sales and billing', feature: 'Print a bill', details: { what: 'The total is 10 less', expected: 'The sum of the lines' }, impact: 'blocks', context: { route: '/secure/sales/pos/new?token=abc#x', version: '2026.11', browser: 'Chrome' } };
@@ -75,6 +75,27 @@ describe('feedback rules', () => {
     expect(statusProblem({ status: 'DUPLICATE', duplicate_of: 12 })).toBeNull();
     expect(statusProblem({ status: 'NEW' })).toMatch(/choose/i);
     expect(statusProblem({ status: 'PLANNED' })).toBeNull();
+  });
+
+  it('a resolution has a type, the words the reporter reads, and sets the status', () => {
+    expect(resolveProblem({})).toMatchObject({ problem: expect.stringMatching(/choose/i) });
+    expect(resolveProblem({ code: 'fixed' })).toMatchObject({ problem: expect.stringMatching(/write/i) });
+    expect(resolveProblem({ code: 'not_planned', note: '  ' })).toMatchObject({ problem: expect.stringMatching(/why/i) });
+    expect(resolveProblem({ code: 'duplicate', note: 'Same as the other' })).toMatchObject({ problem: expect.stringMatching(/number/i) });
+    expect(resolveProblem({ code: 'fixed', note: 'Fixed in the update' })).toEqual({ code: 'fixed', status: 'ANSWERED', note: 'Fixed in the update' });
+    expect(resolveProblem({ code: 'not_a_bug', note: 'It is meant to work this way' })).toMatchObject({ status: 'ANSWERED' });
+    expect(resolveProblem({ code: 'not_planned', note: 'Out of scope' })).toMatchObject({ status: 'DECLINED' });
+    expect(resolveProblem({ code: 'duplicate', note: 'See FB-4', duplicate_of: 4 })).toMatchObject({ status: 'DUPLICATE' });
+    expect(resolveProblem({ code: 'bogus', note: 'x' })).toMatchObject({ problem: expect.stringMatching(/choose/i) });
+  });
+
+  it('a report goes by a number like FB-12, which the search box understands', () => {
+    expect(ticketNo(12)).toBe('FB-12');
+    expect(ticketFromText('FB-12')).toBe(12);
+    expect(ticketFromText(' fb12 ')).toBe(12);
+    expect(ticketFromText('12')).toBe(12);
+    expect(ticketFromText('print button')).toBeNull();
+    expect(ticketFromText('')).toBeNull();
   });
 
   it('says who owes the next word', () => {

@@ -40,6 +40,9 @@ export class FeedbackController {
   @Post(':id/status')
   async status(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) { await this.need(user); return this.feedback.setStatus(user, id, body); }
 
+  @Post(':id/resolve')
+  async resolve(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) { await this.need(user); return this.feedback.resolve(user, id, body); }
+
   @Post(':id/assign')
   async assign(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) { await this.need(user); return this.feedback.assign(user, id, body); }
 

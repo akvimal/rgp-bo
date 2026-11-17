@@ -24,7 +24,8 @@
       <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
         <span class="badge bg-light text-dark border">{{open.kind_label}}</span>
         <span class="badge" [ngClass]="'bg-' + tone(open.status)" data-testid="fb-status">{{open.status_label}}</span>
-        <span class="small text-muted">#{{open.id}} &middot; {{open.module_title}}<span *ngIf="open.feature"> &rsaquo; {{open.feature}}</span></span>
+        <span class="badge bg-light text-dark border" *ngIf="open.resolution_label" data-testid="fb-resolution">{{open.resolution_label}}</span>
+        <span class="small text-muted" data-testid="fb-ticket">{{open.ticket}} &middot; {{open.module_title}}<span *ngIf="open.feature"> &rsaquo; {{open.feature}}</span></span>
       </div>
       <h5 class="mb-1" data-testid="fb-title-view">{{open.title}}</h5>
       <div class="small text-muted mb-2">From {{open.reporter_name}} &middot; {{open.created_on | date:'dd MMM yyyy, h:mm a'}}<span *ngIf="open.assignee_name"> &middot; with {{open.assignee_name}}</span><span *ngIf="open.impact === 'blocks'" class="text-danger"> &middot; blocks their work</span><span *ngIf="open.impact === 'workaround'"> &middot; has a workaround</span></div>
@@ -52,6 +53,10 @@
     <div class="text-muted small" *ngIf="!open.notes.length" data-testid="fb-no-replies">No reply yet. We will tell you here, and with an alert, when there is one.</div>
   </div>
 
+  <div class="alert alert-secondary py-2 my-3" *ngIf="open.status === 'CLOSED'" data-testid="fb-closed">
+    This report is closed and read-only.<span *ngIf="open.can.reopen"> If it is not solved, reopen it below.</span>
+  </div>
+
   <!-- the reporter: solved or reopen -->
   <div class="my-3" *ngIf="open.can.close || open.can.reopen" data-testid="fb-reporter-actions">
     <button class="btn btn-success btn-sm me-2" type="button" *ngIf="open.can.close" [disabled]="busy" (click)="solved()" data-testid="fb-solved"><i class="bi bi-check2"></i> This solved it</button>
@@ -74,7 +79,36 @@
         <span class="small" *ngFor="let f of replyFiles; let i = index">{{f.name}} <a href="javascript:void(0)" (click)="replyFiles.splice(i, 1)">remove</a></span>
         <div class="form-check" *ngIf="open.can.manage"><input class="form-check-input" type="checkbox" id="fb-wait" [(ngModel)]="reply.wait" [disabled]="reply.internal" data-testid="fb-wait"><label class="form-check-label small" for="fb-wait">Wait for their reply</label></div>
         <div class="form-check" *ngIf="open.can.manage"><input class="form-check-input" type="checkbox" id="fb-internal" [(ngModel)]="reply.internal" data-testid="fb-internal"><label class="form-check-label small" for="fb-internal">Internal note</label></div>
-        <button class="btn btn-primary btn-sm ms-auto" type="button" [disabled]="busy || uploading || !reply.message.trim()" (click)="sendReply()" data-testid="fb-reply-send">{{reply.internal ? 'Save note' : 'Send'}}</button>
+        <button class="btn btn-outline-success btn-sm ms-auto" type="button" *ngIf="open.can.resolve" (click)="resolving = !resolving" data-testid="fb-resolve-open"><i class="bi bi-check2-circle"></i> Resolve</button>
+        <button class="btn btn-primary btn-sm" [class.ms-auto]="!open.can.resolve" type="button" [disabled]="busy || uploading || !reply.message.trim()" (click)="sendReply()" data-testid="fb-reply-send">{{reply.internal ? 'Save note' : 'Send'}}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- resolve: how it ended, and what the reporter reads -->
+  <div class="card mb-3 border-success" *ngIf="open.can.resolve && resolving" data-testid="fb-resolve-panel">
+    <div class="card-body">
+      <div class="fw-bold mb-2">Resolve {{open.ticket}}</div>
+      <div class="row g-2">
+        <div class="col-12 col-md-4">
+          <label class="form-label small mb-0" for="fb-resolve-code">How it ended</label>
+          <select id="fb-resolve-code" class="form-select" [(ngModel)]="resolveForm.code" data-testid="fb-resolve-code">
+            <option *ngFor="let c of resolutionChoices" [value]="c.key">{{c.label}}</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-4" *ngIf="resolveForm.code === 'duplicate'">
+          <label class="form-label small mb-0" for="fb-resolve-dup">Report number it repeats</label>
+          <input id="fb-resolve-dup" type="number" class="form-control" [(ngModel)]="resolveForm.duplicate_of" data-testid="fb-resolve-dup">
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-0" for="fb-resolve-note">{{resolveForm.code === 'not_planned' ? 'Why it is not planned' : 'What the reporter reads'}}</label>
+          <textarea id="fb-resolve-note" class="form-control" rows="3" maxlength="2000" [(ngModel)]="resolveForm.note" data-testid="fb-resolve-note"></textarea>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-success btn-sm me-1" type="button" [disabled]="busy || !resolveForm.note.trim()" (click)="doResolve()" data-testid="fb-resolve-save">Resolve</button>
+          <button class="btn btn-link btn-sm" type="button" (click)="resolving = false">Cancel</button>
+          <span class="small text-muted ms-2">The reporter is told, and can say it is not solved. It closes when they confirm, or you can close it.</span>
+        </div>
       </div>
     </div>
   </div>
@@ -82,7 +116,10 @@
   <!-- the managers: status and assignee -->
   <div class="card mb-3" *ngIf="open.can.manage" data-testid="fb-manage">
     <div class="card-body">
-      <div class="fw-bold mb-2">Status</div>
+      <div class="d-flex align-items-center mb-2">
+        <div class="fw-bold">Status</div>
+        <button class="btn btn-secondary btn-sm ms-auto" type="button" *ngIf="open.can.closeTicket" [disabled]="busy" (click)="closeTicket()" data-testid="fb-close-ticket"><i class="bi bi-lock"></i> Close this report</button>
+      </div>
       <div class="row g-2 align-items-end">
         <div class="col-12 col-md-4">
           <select class="form-select" [(ngModel)]="setting.status" aria-label="Status" data-testid="fb-set-status">
@@ -116,7 +153,7 @@
         <strong class="me-auto">{{r.title}}</strong>
         <span class="badge" [ngClass]="'bg-' + tone(r.status)">{{r.status_label}}</span>
       </div>
-      <div class="small text-muted">{{r.kind_label}} &middot; {{r.module_title}}<span *ngIf="r.feature"> &rsaquo; {{r.feature}}</span> &middot; {{r.last_activity_on | date:'dd MMM yyyy'}}</div>
+      <div class="small text-muted">FB-{{r.id}} &middot; {{r.kind_label}} &middot; {{r.module_title}}<span *ngIf="r.feature"> &rsaquo; {{r.feature}}</span> &middot; {{r.last_activity_on | date:'dd MMM yyyy'}}<span *ngIf="r.resolution_code"> &middot; {{resolutionLabel(r.resolution_code)}}</span></div>
     </a>
   </div>
 </div>
@@ -136,7 +173,7 @@
     <select class="form-select form-select-sm w-auto" [(ngModel)]="module" (ngModelChange)="loadInbox()" aria-label="Module" data-testid="fb-filter-module">
       <option value="">Every module</option><option *ngFor="let m of modules" [value]="m.id">{{m.title}}</option>
     </select>
-    <input class="form-control form-control-sm w-auto" placeholder="Search" [(ngModel)]="search" (keydown.enter)="loadInbox()" aria-label="Search" data-testid="fb-search">
+    <input class="form-control form-control-sm w-auto" placeholder="Search or FB-12" [(ngModel)]="search" (keydown.enter)="loadInbox()" aria-label="Search" data-testid="fb-search">
   </div>
   <div class="text-muted" *ngIf="loaded && !inbox.items.length" data-testid="fb-inbox-empty">Nothing here.</div>
   <div class="list-group">
@@ -147,7 +184,7 @@
         <strong class="me-auto">{{r.title}}</strong>
         <span class="badge" [ngClass]="'bg-' + tone(r.status)">{{r.status_label}}</span>
       </div>
-      <div class="small text-muted">#{{r.id}} &middot; {{r.kind_label}} &middot; {{r.module_title}}<span *ngIf="r.feature"> &rsaquo; {{r.feature}}</span> &middot; {{r.reporter_name}} &middot; {{r.last_activity_on | date:'dd MMM yyyy'}}<span *ngIf="r.assignee_name"> &middot; with {{r.assignee_name}}</span></div>
+      <div class="small text-muted">FB-{{r.id}} &middot; {{r.kind_label}} &middot; {{r.module_title}}<span *ngIf="r.feature"> &rsaquo; {{r.feature}}</span> &middot; {{r.reporter_name}} &middot; {{r.last_activity_on | date:'dd MMM yyyy'}}<span *ngIf="r.assignee_name"> &middot; with {{r.assignee_name}}</span></div>
     </a>
   </div>
 </div>

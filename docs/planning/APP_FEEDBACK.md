@@ -59,3 +59,10 @@ Two flags drive the alerts: `awaiting_staff` (the reporter spoke last, or it is 
 - Free-text reports can hold personal data; keep access to the reporter and `feedback.manage`.
 - The module list changes with the guide; reports keep the module title as text, so an old report stays readable if a page is renamed.
 - Rate limit: a person may send at most 20 reports a day.
+
+## Lifecycle, step 1 (2026-11-17)
+
+- A report goes by a number, **FB-12** (list, thread, audit, and the Inbox search understands `FB-12`, `fb12` and `12`).
+- **Resolve** sits beside Send for a manager: how it ended (Fixed, Answered, Not a bug, Cannot reproduce, Not planned, Already reported), the words the reporter reads, and for a duplicate the report it repeats. `POST /feedback/:id/resolve`. The status follows from the type (the first four leave it Resolved, which is the old Answered renamed; Not planned leaves it Not planned; Already reported leaves it Already reported). Migration 219 adds `resolution_code`.
+- **Close this report** is a manager button for a report that has ended. A closed report is **read-only** for everyone: the reporter reopens it (which clears the resolution), a manager moves it with the status.
+- The reporter still confirms with "This solved it" or "It is not solved". QA: `qa/specs/feedback-lifecycle.spec.ts` (RFB-1..4). Not yet: auto-close, reminders, the reopen window, response targets, assign-to-me, fixed-in version (steps 2 to 4 of the suggestion).
