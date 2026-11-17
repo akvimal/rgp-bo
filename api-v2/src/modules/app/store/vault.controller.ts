@@ -16,6 +16,12 @@ export class VaultController {
     return this.service.confirm(id, u?.id);
   }
 
+  /** the deposit slip photo of a bank deposit: add, replace or (empty path) remove */
+  @Post('movements/:id/receipt')
+  receipt(@Param('id') id: string, @Body() body: any, @User() u: any) {
+    return this.service.setReceipt(id, body, u?.id);
+  }
+
   @Post('movements/:id/reject')
   reject(@Param('id') id: string, @Body() body: any, @User() u: any) {
     return this.service.reject(id, body, u?.id);

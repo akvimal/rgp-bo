@@ -1,7 +1,9 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
+import { sep } from 'path';
 import { AuditService } from 'src/core/audit/audit.service';
+import { uploadedFilePath } from '../files/upload-path';
 import { isManagerRole, isOwnerRole } from 'src/core/roles';
 import { Denoms, firstShortfall, holdingsToDenoms, holdingsTotal, readRequest, reservedByPending, vaultHoldings } from './vault-math';
 
@@ -84,7 +86,7 @@ export class VaultService {
 
   private movementSql(where: string, tail = '', limit = '') {
     return `select m.id::text as id, m.store_id as storeid, m.shift_id as shiftid, m.move_type as movetype, m.direction, m.amount::float as amount, m.denominations,
-                   m.status, m.reference_no as referenceno, m.reason, m.notes, m.created_on as createdon, m.confirmed_on as confirmedon,
+                   m.status, m.reference_no as referenceno, m.receipt_path as receiptpath, m.reason, m.notes, m.created_on as createdon, m.confirmed_on as confirmedon,
                    m.actor_id as actorid, a.full_name as actor, m.confirmed_by as confirmedby, cb.full_name as confirmer
               from store_vault_movements m
               join app_user a on a.id = m.actor_id left join app_user cb on cb.id = m.confirmed_by
@@ -109,13 +111,22 @@ export class VaultService {
 
   private async insertMovement(m: EntityManager, v: {
     storeid: number; shiftid?: number | null; type: string; direction: 'IN' | 'OUT'; amount: number; denominations: Denoms; status: string;
-    actor: number; reference?: string | null; reason?: string | null; notes?: string | null;
+    actor: number; reference?: string | null; reason?: string | null; notes?: string | null; receipt?: string | null;
   }) {
     const [row] = await m.query(
-      `insert into store_vault_movements (store_id, shift_id, move_type, direction, amount, denominations, status, actor_id, reference_no, reason, notes)
-       values ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11) returning id::text as id`,
-      [v.storeid, v.shiftid ?? null, v.type, v.direction, v.amount, JSON.stringify(v.denominations), v.status, v.actor, v.reference ?? null, v.reason ?? null, v.notes ?? null]);
+      `insert into store_vault_movements (store_id, shift_id, move_type, direction, amount, denominations, status, actor_id, reference_no, reason, notes, receipt_path)
+       values ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12) returning id::text as id`,
+      [v.storeid, v.shiftid ?? null, v.type, v.direction, v.amount, JSON.stringify(v.denominations), v.status, v.actor, v.reference ?? null, v.reason ?? null, v.notes ?? null, v.receipt ?? null]);
     return row.id as string;
+  }
+
+  /** the deposit slip a person uploaded for a deposit: an existing file from the bank-deposit upload area, nothing else; empty means none */
+  private cleanReceipt(raw: any): string | null {
+    const path = typeof raw === 'string' ? raw.trim() : '';
+    if (!path) return null;
+    const full = uploadedFilePath(path);
+    if (!full.includes(`${sep}bankdeposit${sep}`)) throw new BadRequestException('That file was not uploaded as a deposit slip.');
+    return path.slice(0, 300);
   }
 
   private cleanText(v: any, max: number): string | null {
@@ -223,24 +234,25 @@ export class VaultService {
     this.needManager(c, 'bank the vault cash');
     const r = this.request(body, 'cash for the bank');
     const reference = this.cleanText(body?.referenceno, 40);
+    const receipt = this.cleanReceipt(body?.receiptpath);
     return this.manager.transaction(async (m) => {
       const s = await this.store(m, storeid, c, { lock: true });
       this.needVault(s);
       this.needCover(r.denominations, await this.rows(m, storeid));
       const limit = Number(s.confirmlimit || 0);
       const status = limit > 0 && r.amount > limit ? 'PENDING' : 'CONFIRMED';
-      const id = await this.insertMovement(m, { storeid, type: 'BANK_DEPOSIT_OUT', direction: 'OUT', amount: r.amount, denominations: r.denominations, status, actor: c.id, reference, notes: this.cleanText(body?.notes, 500) });
-      if (status === 'CONFIRMED') await this.postBankDeposit(m, storeid, id, r.amount, reference, body?.transdate);
+      const id = await this.insertMovement(m, { storeid, type: 'BANK_DEPOSIT_OUT', direction: 'OUT', amount: r.amount, denominations: r.denominations, status, actor: c.id, reference, notes: this.cleanText(body?.notes, 500), receipt });
+      if (status === 'CONFIRMED') await this.postBankDeposit(m, storeid, id, r.amount, reference, body?.transdate, receipt);
       await this.audit.record({ userId: c.id, action: 'vault.deposit', entityType: 'store_vault', entityId: storeid, summary: `${String(s.location).trim()}: ${money(r.amount)} to the bank${status === 'PENDING' ? ' (waiting for confirmation)' : ''}`, details: { movement: id, reference, denominations: r.denominations } });
       return { id, amount: r.amount, status };
     });
   }
 
-  private async postBankDeposit(m: EntityManager, storeid: number, movementId: string, amount: number, reference: string | null, transdate?: string) {
+  private async postBankDeposit(m: EntityManager, storeid: number, movementId: string, amount: number, reference: string | null, transdate?: string, receipt: string | null = null) {
     await m.query(
-      `insert into store_cash_accounts (trans_date, category, description, deposit, withdraw, reference_no, store_id, shift_id, holder, vault_movement_id)
-       values (coalesce($1::date, current_date), 'BANK_DEPOSIT', 'Banked from the vault', 0, $2, $3, $4, null, 'VAULT', $5)`,
-      [transdate && /^\d{4}-\d{2}-\d{2}$/.test(transdate) ? transdate : null, amount, reference, storeid, movementId]);
+      `insert into store_cash_accounts (trans_date, category, description, deposit, withdraw, reference_no, receipt_path, store_id, shift_id, holder, vault_movement_id)
+       values (coalesce($1::date, current_date), 'BANK_DEPOSIT', 'Banked from the vault', 0, $2, $3, $4, $5, null, 'VAULT', $6)`,
+      [transdate && /^\d{4}-\d{2}-\d{2}$/.test(transdate) ? transdate : null, amount, reference, receipt, storeid, movementId]);
   }
 
   /** small notes and coins given to a drawer's float */
@@ -294,16 +306,37 @@ export class VaultService {
     const c = await this.caller(userid);
     this.needManager(c, 'confirm a vault movement');
     return this.manager.transaction(async (m) => {
-      const [mv] = await m.query(`select id::text as id, store_id, move_type, amount::float as amount, denominations, status, actor_id, reference_no from store_vault_movements where id = $1 for update`, [movementId]);
+      const [mv] = await m.query(`select id::text as id, store_id, move_type, amount::float as amount, denominations, status, actor_id, reference_no, receipt_path from store_vault_movements where id = $1 for update`, [movementId]);
       if (!mv) throw new NotFoundException('Movement not found.');
       const s = await this.store(m, mv.store_id, c, { lock: true });
       if (mv.status !== 'PENDING') throw new ConflictException(`That movement is already ${String(mv.status).toLowerCase()}.`);
       if (Number(mv.actor_id) === c.id) throw new ForbiddenException('A second person must confirm this; you made it.');
       if (mv.move_type === 'BANK_DEPOSIT_OUT') this.needCover(mv.denominations, await this.rows(m, mv.store_id), mv.denominations);
       await m.query(`update store_vault_movements set status = 'CONFIRMED', confirmed_by = $2, confirmed_on = now() where id = $1`, [movementId, c.id]);
-      if (mv.move_type === 'BANK_DEPOSIT_OUT') await this.postBankDeposit(m, mv.store_id, mv.id, mv.amount, mv.reference_no);
+      if (mv.move_type === 'BANK_DEPOSIT_OUT') await this.postBankDeposit(m, mv.store_id, mv.id, mv.amount, mv.reference_no, undefined, mv.receipt_path);
       await this.audit.record({ userId: c.id, action: 'vault.confirm', entityType: 'store_vault', entityId: mv.store_id, summary: `${String(s.location).trim()}: ${money(mv.amount)} ${mv.move_type === 'DROP_IN' ? 'drop' : 'deposit'} confirmed`, details: { movement: mv.id } });
       return { id: mv.id, status: 'CONFIRMED' };
+    });
+  }
+
+  /**
+   * The deposit slip (challan) of a bank deposit, added or replaced after the deposit was made, or taken off (an empty path). It is kept with the movement and on its
+   * cash book row. Whoever may bank the vault cash may do this; a deposit that was turned down has no slip.
+   */
+  async setReceipt(movementId: string, body: any, userid: number) {
+    const c = await this.caller(userid);
+    this.needManager(c, 'attach a deposit slip');
+    const receipt = this.cleanReceipt(body?.receiptpath);
+    return this.manager.transaction(async (m) => {
+      const [mv] = await m.query(`select id::text as id, store_id, move_type, status, receipt_path from store_vault_movements where id = $1 for update`, [movementId]);
+      if (!mv) throw new NotFoundException('Movement not found.');
+      const s = await this.store(m, mv.store_id, c, { lock: false });
+      if (mv.move_type !== 'BANK_DEPOSIT_OUT') throw new BadRequestException('A deposit slip belongs to a bank deposit.');
+      if (mv.status === 'REJECTED') throw new ConflictException('That deposit was turned down.');
+      await m.query(`update store_vault_movements set receipt_path = $2 where id = $1`, [movementId, receipt]);
+      await m.query(`update store_cash_accounts set receipt_path = $2 where vault_movement_id = $1`, [movementId, receipt]);
+      await this.audit.record({ userId: c.id, action: 'vault.receipt', entityType: 'store_vault', entityId: mv.store_id, summary: `${String(s.location).trim()}: deposit slip ${receipt ? (mv.receipt_path ? 'replaced' : 'added') : 'removed'}`, details: { movement: movementId, had: !!mv.receipt_path, has: !!receipt } });
+      return { id: movementId, receiptpath: receipt };
     });
   }
 

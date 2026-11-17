@@ -5,6 +5,7 @@ import { UsersService } from "../../settings/users/users.service";
 import { DenominationRow } from "src/app/shared/denominations";
 import { VaultService } from "./vault.service";
 import { CashService } from "../cash/cash.service";
+import { FileUploadService } from "src/app/secured/documents/file-upload.service";
 
 type Panel = "" | "opening" | "deposit" | "change" | "count" | "adjust" | "dropnow";
 
@@ -34,6 +35,10 @@ export class VaultComponent implements OnInit, OnDestroy {
   rows: DenominationRow[] = [];
   total = 0;
   referenceno = "";
+  /** the deposit slip (challan) photo or PDF: uploaded when picked, sent with the deposit */
+  receiptpath = "";
+  receiptName = "";
+  uploadingSlip = false;
   transdate = new Date().toISOString().slice(0, 10);
   notes = "";
   direction: "IN" | "OUT" = "OUT";
@@ -49,7 +54,7 @@ export class VaultComponent implements OnInit, OnDestroy {
   openShifts: any[] = [];
   dropShiftId: any = "";
 
-  constructor(private storeContext: StoreContextService, private vault: VaultService, private users: UsersService, private cash: CashService) {}
+  constructor(private storeContext: StoreContextService, private vault: VaultService, private users: UsersService, private cash: CashService, private files: FileUploadService) {}
 
   ngOnInit(): void {
     this.users.getCurrentUser().subscribe((u: any) => this.me = u, () => this.me = null);
@@ -104,7 +109,44 @@ export class VaultComponent implements OnInit, OnDestroy {
     this.panel = p; this.rows = []; this.total = 0; this.referenceno = ""; this.notes = ""; this.reason = ""; this.direction = "OUT";
     this.transdate = new Date().toISOString().slice(0, 10);
   }
-  closePanel() { this.panel = ""; this.rows = []; this.total = 0; }
+  closePanel() { this.panel = ""; this.rows = []; this.total = 0; this.receiptpath = ""; this.receiptName = ""; }
+
+  // ---- the deposit slip (challan)
+  private upload(file: File, done: (path: string) => void) {
+    this.error = "";
+    this.uploadingSlip = true;
+    this.files.upload(file, `bankdeposit=${this.storeId || "na"}-${Date.now()}`).subscribe({
+      next: (res: any) => { this.uploadingSlip = false; if (res?.path) done(res.path); },
+      error: (e: any) => { this.uploadingSlip = false; this.error = e?.error?.message || "The slip could not be uploaded (a photo or a PDF)."; },
+    });
+  }
+  /** picked with the deposit */
+  onSlip(event: any) {
+    const file = event?.target?.files?.[0];
+    if (event?.target) event.target.value = "";
+    if (!file) return;
+    this.upload(file, (path) => { this.receiptpath = path; this.receiptName = file.name; });
+  }
+  clearSlip() { this.receiptpath = ""; this.receiptName = ""; }
+  /** added to a deposit already made (the slip arrived later), or replacing the one there */
+  addSlip(m: any, event: any) {
+    const file = event?.target?.files?.[0];
+    if (event?.target) event.target.value = "";
+    if (!file) return;
+    this.upload(file, (path) => this.vault.setReceipt(m.id, path).subscribe({
+      next: () => { this.message = "The deposit slip is saved."; this.reload(true); },
+      error: (e: any) => this.error = e?.error?.message || "The slip could not be saved.",
+    }));
+  }
+  removeSlip(m: any) {
+    this.vault.setReceipt(m.id, "").subscribe({
+      next: () => { this.message = "The deposit slip is taken off."; this.reload(true); },
+      error: (e: any) => this.error = e?.error?.message || "The slip could not be removed.",
+    });
+  }
+  viewSlip(path: string) {
+    this.files.view(path).subscribe((b: any) => window.open(URL.createObjectURL(b), "_blank"), () => this.error = "The slip could not be opened.");
+  }
 
   get canSubmit(): boolean {
     if (this.busy) return false;
@@ -129,7 +171,7 @@ export class VaultComponent implements OnInit, OnDestroy {
     const notes = this.notes.trim() || undefined;
     switch (this.panel) {
       case "opening": this.vault.opening(id, this.rows, notes).subscribe({ next: done("Opening balance recorded."), error: fail }); break;
-      case "deposit": this.vault.deposit(id, { denominations: this.rows, referenceno: this.referenceno.trim() || undefined, transdate: this.transdate || undefined, notes }).subscribe({
+      case "deposit": this.vault.deposit(id, { denominations: this.rows, referenceno: this.referenceno.trim() || undefined, transdate: this.transdate || undefined, notes, receiptpath: this.receiptpath || undefined }).subscribe({
         next: (res: any) => done(res?.status === "PENDING" ? "Deposit recorded. A second person must confirm it before it counts." : "Deposit recorded in the cash book.")(res), error: fail }); break;
       case "dropnow": this.vault.dropNow(id, Number(this.dropShiftId), this.rows, notes).subscribe({
         next: (res: any) => done(res?.status === "PENDING" ? "Put in the vault. A second person must confirm it before it counts in the vault." : "Put in the vault. The drawer's expected cash is lower by the same amount.")(res), error: fail }); break;

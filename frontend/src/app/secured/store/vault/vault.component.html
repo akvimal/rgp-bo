@@ -96,6 +96,13 @@
           <label class="form-label small mb-1">Date banked</label>
           <input type="date" class="form-control form-control-sm" [(ngModel)]="transdate">
         </div>
+        <div class="col-12" *ngIf="panel === 'deposit'" data-testid="vault-slip-box">
+          <label class="form-label small mb-1">Deposit slip (challan): a photo or PDF <span class="text-muted">(optional; it can be added later)</span></label>
+          <input type="file" class="form-control form-control-sm" accept="image/*,.pdf" [disabled]="uploadingSlip" (change)="onSlip($event)" data-testid="vault-slip-file">
+          <div class="small mt-1" *ngIf="uploadingSlip">Uploading...</div>
+          <div class="small text-success mt-1" *ngIf="receiptpath" data-testid="vault-slip-attached"><i class="bi bi-paperclip"></i> Attached: {{ receiptName || 'the slip' }}
+            <a href="javascript:void(0)" class="ms-2" (click)="clearSlip()" data-testid="vault-slip-clear">Remove</a></div>
+        </div>
         <div class="col-12" *ngIf="panel === 'adjust'">
           <label class="form-label small mb-1">Reason *</label>
           <input class="form-control form-control-sm" maxlength="200" [(ngModel)]="reason" data-testid="vault-reason">
@@ -166,7 +173,7 @@
       </div>
       <div class="table-responsive">
         <table class="table table-sm align-middle" data-testid="vault-history">
-          <thead><tr><th>When</th><th>What</th><th class="text-end">Amount</th><th>Notes and coins</th><th>By</th><th>Status</th><th>Reference</th></tr></thead>
+          <thead><tr><th>When</th><th>What</th><th class="text-end">Amount</th><th>Notes and coins</th><th>By</th><th>Status</th><th>Reference</th><th>Slip</th></tr></thead>
           <tbody>
             <tr *ngFor="let m of history">
               <td class="small text-nowrap">{{ m.createdon | date:'short' }}</td>
@@ -176,8 +183,16 @@
               <td>{{ m.actor }}<div class="small text-muted" *ngIf="m.confirmer">confirmed by {{ m.confirmer }}</div></td>
               <td><span class="badge" [ngClass]="m.status === 'CONFIRMED' ? 'bg-success' : m.status === 'PENDING' ? 'bg-warning text-dark' : 'bg-secondary'">{{ m.status | titlecase }}</span></td>
               <td class="small">{{ m.referenceno }}</td>
+              <td class="small text-nowrap" data-testid="vault-slip-cell">
+                <ng-container *ngIf="m.movetype === 'BANK_DEPOSIT_OUT' && m.status !== 'REJECTED'">
+                  <a href="javascript:void(0)" *ngIf="m.receiptpath" (click)="viewSlip(m.receiptpath)" data-testid="vault-slip-view"><i class="bi bi-paperclip"></i> View</a>
+                  <label class="mb-0 ms-2 text-primary" style="cursor:pointer" [attr.data-testid]="'vault-slip-add-label'">{{ m.receiptpath ? 'Replace' : 'Add slip' }}
+                    <input type="file" class="d-none" accept="image/*,.pdf" (change)="addSlip(m, $event)" data-testid="vault-slip-add"></label>
+                  <a href="javascript:void(0)" class="ms-2 text-danger" *ngIf="m.receiptpath" (click)="removeSlip(m)" data-testid="vault-slip-remove">Remove</a>
+                </ng-container>
+              </td>
             </tr>
-            <tr *ngIf="!history.length"><td colspan="7" class="text-center text-muted py-3">No movements yet.</td></tr>
+            <tr *ngIf="!history.length"><td colspan="8" class="text-center text-muted py-3">No movements yet.</td></tr>
           </tbody>
         </table>
       </div>

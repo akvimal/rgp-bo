@@ -62,9 +62,13 @@ export class CashComponent implements OnInit {
     onReceiptSelected(event:any) {
       const file = event?.target?.files?.[0];
       if (!file) return;
-      this.fileUploadService.upload(file, `expense=${this.selectedStoreId || 'na'}-${Date.now()}`).subscribe((res:any) => {
+      this.fileUploadService.upload(file, `${this.ledgerForm.category === 'BANK_DEPOSIT' ? 'bankdeposit' : 'expense'}=${this.selectedStoreId || 'na'}-${Date.now()}`).subscribe((res:any) => {
         this.ledgerForm.receiptpath = res?.path || '';
       }, () => this.message = 'Unable to upload the receipt.');
+    }
+
+    viewReceipt(path:string) {
+      this.fileUploadService.view(path).subscribe((b:any) => window.open(URL.createObjectURL(b), '_blank'), () => this.message = 'Unable to open the receipt.');
     }
 
     saveLedger() {

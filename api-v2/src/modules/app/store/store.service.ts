@@ -1,4 +1,6 @@
 import { varianceReasons } from "./shift-variance";
+import { sep } from 'path';
+import { uploadedFilePath } from '../files/upload-path';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { checkPhones } from 'src/core/phones';
 import { ComplianceService } from '../compliance/compliance.service';
@@ -862,6 +864,14 @@ export class StoreService {
     });
   }
 
+  /** the deposit slip a person uploaded with a bank deposit: an existing file from the bank-deposit upload area; empty means none */
+  private depositSlip(raw: any): string | null {
+    const path = typeof raw === 'string' ? raw.trim() : '';
+    if (!path) return null;
+    if (!uploadedFilePath(path).includes(`${sep}bankdeposit${sep}`)) throw new BadRequestException('That file was not uploaded as a deposit slip.');
+    return path.slice(0, 255);
+  }
+
   async closeShift(id: number, body: any, userid: any) {
     const shift = await this.shiftRepository.findOne({ where: { id } });
     if (!shift) {
@@ -1176,7 +1186,7 @@ export class StoreService {
       withdraw,
       referenceno: category === "BANK_DEPOSIT" ? (body.referenceno || null) : null,
       expensecategory: category === "EXPENSE" ? (body.expensecategory || null) : null,
-      receiptpath: category === "EXPENSE" ? (body.receiptpath || null) : null,
+      receiptpath: category === "EXPENSE" ? (body.receiptpath || null) : category === "BANK_DEPOSIT" ? this.depositSlip(body.receiptpath) : null,
       store: { id: storeid } as any,
       shift: shiftid ? ({ id: shiftid } as any) : null,
     });

@@ -100,9 +100,10 @@
           <option *ngFor="let c of expenseCategories" [value]="c.value">{{c.label}}</option>
         </select>
       </div>
-      <div class="col-12 col-md-4" *ngIf="ledgerForm.category === 'EXPENSE'">
-        <label class="form-label">Receipt (optional)</label>
-        <input type="file" class="form-control" accept="image/*,.pdf" (change)="onReceiptSelected($event)">
+      <div class="col-12 col-md-4" *ngIf="ledgerForm.category === 'EXPENSE' || ledgerForm.category === 'BANK_DEPOSIT'">
+        <label class="form-label">{{ledgerForm.category === 'BANK_DEPOSIT' ? 'Deposit slip (challan), a photo or PDF (optional)' : 'Receipt (optional)'}}</label>
+        <input type="file" class="form-control" accept="image/*,.pdf" (change)="onReceiptSelected($event)" data-testid="cash-receipt-file">
+        <div class="small text-success mt-1" *ngIf="ledgerForm.receiptpath" data-testid="cash-receipt-attached"><i class="bi bi-paperclip"></i> Attached</div>
       </div>
     </div>
     <div class="mt-3">
@@ -131,7 +132,7 @@
             <td>
               <span *ngIf="entry.category === 'BANK_DEPOSIT' && entry.referenceno">Ref: {{entry.referenceno}}</span>
               <span *ngIf="entry.category === 'EXPENSE' && entry.expensecategory">{{entry.expensecategory}}</span>
-              <i *ngIf="entry.receiptpath" class="bi bi-paperclip ms-1" title="Receipt attached"></i>
+              <a *ngIf="entry.receiptpath" href="javascript:void(0)" class="ms-1" (click)="viewReceipt(entry.receiptpath)" title="Open the receipt" data-testid="cash-receipt-view"><i class="bi bi-paperclip"></i></a>
             </td>
           </tr>
         </ng-template>
