@@ -1,4 +1,4 @@
-import { HOURLY_CAP, formatAlert, inQuiet, istMinute, overCap, parseUpdate, passesSeverity, quietEnds, retryAfterMinutes, toMinutes } from './messaging-rules';
+import { HOURLY_CAP, formatAlert, inQuiet, istMinute, overCap, sendTime, parseUpdate, passesSeverity, quietEnds, retryAfterMinutes, toMinutes } from './messaging-rules';
 
 describe('messaging rules', () => {
   it('lets a person choose the level of alert they get', () => {
@@ -68,5 +68,20 @@ describe('messaging rules', () => {
     expect(parseUpdate(msg('/chatid', 'private'))).toEqual({ kind: 'chatid', chatId: '42', chatType: 'private', title: null });
     expect(parseUpdate({ message: { text: '/chatid@ShopBot', chat: { id: -100123, type: 'supergroup', title: 'Main Store' } } })).toEqual({ kind: 'chatid', chatId: '-100123', chatType: 'supergroup', title: 'Main Store' });
     expect(parseUpdate({})).toBeNull();
+  });
+});
+
+describe('when a personal message is sent', () => {
+  const night = new Date('2026-11-17T17:30:00Z');       // 23:00 in India, inside 22:00-07:00
+  const day = new Date('2026-11-17T08:30:00Z');         // 14:00
+
+  it('holds an ordinary message to the end of the quiet hours', () => {
+    expect(sendTime(night, '22:00', '07:00').toISOString()).toBe('2026-11-18T01:30:00.000Z');       // 07:00 India
+    expect(sendTime(day, '22:00', '07:00')).toBe(day);
+    expect(sendTime(night, null, null)).toBe(night);
+  });
+
+  it('sends one the person asked to get as it happens at once, whatever the hour', () => {
+    expect(sendTime(night, '22:00', '07:00', true)).toBe(night);
   });
 });

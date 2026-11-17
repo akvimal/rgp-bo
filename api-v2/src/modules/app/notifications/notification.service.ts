@@ -80,6 +80,8 @@ export class NotificationService {
       const digest = await this.builder.forStore(store.id, store.location, date);
       digests.push(digest);
       if (!targeted) continue;
+      // the store's day was already sent, as it closed (the day summary at the end-of-day close): this scheduled one would repeat it
+      if (!opts.preview && !opts.force && (await this.daySummarySent(store.id, date))) { results.push({ scope: `store:${store.id}`, status: "SKIPPED", message: "the day summary was sent when the day closed" }); continue; }
       // the day beyond the sales: built once, for the store's group and for the people who run the shop
       const groupDone = !opts.preview && !opts.force && (!routable || !!(await this.logged("DAILY", date, `store:${store.id}`, "SENT")));
       const managersDone = !opts.preview && !opts.force && !!(await this.logged("DAILY", date, `managers:store:${store.id}`, "SENT"));
@@ -126,6 +128,18 @@ export class NotificationService {
       await this.record("DAILY", date, scope, "FAILED", error);
       return { scope, status: "FAILED", error };
     }
+  }
+
+  /** the day summary of this store and date went out when its last shift closed (to the store's group or to the people who run the shop) */
+  private async daySummarySent(storeId: number, date: string): Promise<boolean> {
+    const [r] = await this.manager.query(
+      `select 1 as ok
+         from store_shifts sh
+        where sh.store_id = $1 and sh.shift_date = $2::date
+          and (exists (select 1 from notification_log l where l.kind = 'DAY_SUMMARY' and l.scope = 'store:' || $1::text and l.period_key = sh.id::text and l.status = 'SENT')
+            or exists (select 1 from message_outbox o where o.kind = 'DAY_SUMMARY' and o.ref_type = 'shift' and o.ref_id = sh.id and o.status in ('PENDING', 'SENT')))
+        limit 1`, [storeId, date]);
+    return !!r;
   }
 
   private async logged(kind: string, periodKey: string, scope: string, status: string) {

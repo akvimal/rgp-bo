@@ -35,6 +35,15 @@ export function quietEnds(at: Date, to: string): Date {
   return new Date(at.getTime() + wait * 60000 - sec * 1000);
 }
 
+/**
+ * When a personal message is sent: at once, or (for a lower level than critical) when the person's quiet hours end. A message the person asked to get as it happens,
+ * such as the day summary when the day's last shift closes, passes `immediate` and is never held.
+ */
+export function sendTime(now: Date, quietFrom: string | null | undefined, quietTo: string | null | undefined, immediate = false): Date {
+  if (immediate || !inQuiet(istMinute(now), quietFrom, quietTo)) return now;
+  return quietEnds(now, String(quietTo));
+}
+
 /** when a message that could not be sent is tried again, by the number of tries so far; null after the last */
 export const RETRY_MINUTES = [1, 5, 30, 120, 360];
 export const retryAfterMinutes = (attempts: number): number | null => (attempts >= 1 && attempts <= RETRY_MINUTES.length ? RETRY_MINUTES[attempts - 1] : null);

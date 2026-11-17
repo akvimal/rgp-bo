@@ -4,7 +4,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
 import { isManagerRole, isOwnerRole } from 'src/core/roles';
-import { inQuiet, istMinute, quietEnds } from './messaging-rules';
+import { sendTime } from './messaging-rules';
 import { MessagingService } from './messaging.service';
 import { DayFacts, formatDayGroup, formatDayManager, sumDigital } from './day-summary-rules';
 import { OpenFacts, ShiftFacts, TOLERANCE, formatOpenGroup, formatOpenManager, formatShiftGroup, formatShiftManager } from './shift-digest-rules';
@@ -63,7 +63,7 @@ export class ShiftDigestService {
     if (!sw.on || !sw.day) return { group: false, direct: 0 };
     const group = await this.toGroup(DAY_KIND, shiftId, d.ids.storeId, formatDayGroup(d.facts, sw.groupFull));
     const [title, ...rest] = formatDayManager(d.facts).split('\n');
-    const direct = await this.queueToManagers({ businessId: d.ids.businessId, storeId: d.ids.storeId, kind: DAY_KIND, refType: 'shift', refId: shiftId, title: title.replace(/^\S+\s/, ''), body: rest.join('\n').trim() });
+    const direct = await this.queueToManagers({ businessId: d.ids.businessId, storeId: d.ids.storeId, kind: DAY_KIND, refType: 'shift', refId: shiftId, title: title.replace(/^\S+\s/, ''), body: rest.join('\n').trim(), immediate: true });
     return { group, direct };
   }
 
@@ -287,10 +287,11 @@ export class ShiftDigestService {
   }
 
   /**
-   * Queues one personal message for each connected owner, Business Head or Store Head of the store (held to the morning in their quiet hours). One per person
+   * Queues one personal message for each connected owner, Business Head or Store Head of the store (held to the morning in their quiet hours, unless `immediate`: the day
+ * summary at the end of the day goes when the day's last shift closes, even at night). One per person
    * for a kind and reference, so a repeat does nothing, unless `replace` is set (a manual resend).
    */
-  async queueToManagers(o: { businessId: number | null; storeId: number; kind: string; refType: string; refId: number; title: string; body: string; replace?: boolean }): Promise<number> {
+  async queueToManagers(o: { businessId: number | null; storeId: number; kind: string; refType: string; refId: number; title: string; body: string; replace?: boolean; immediate?: boolean }): Promise<number> {
     const { businessId, storeId } = o;
     if (!businessId || !this.telegram.configured) return 0;
     const people = await this.manager.query(
@@ -306,12 +307,12 @@ export class ShiftDigestService {
         if (!mine) continue;
       }
       const now = new Date();
-      const quiet = inQuiet(istMinute(now), p.quiet_from, p.quiet_to);
+      const sendAt = sendTime(now, p.quiet_from, p.quiet_to, o.immediate);
       const rows = await this.manager.query(
         `insert into message_outbox (business_id, channel, recipient_user_id, chat_id, kind, ref_type, ref_id, severity, title, body, link, status, send_after)
          values ($1, $2, $3, $4, $5, $6, $7, 'info', $8, $9, null, 'PENDING', $10)
          on conflict (channel, recipient_user_id, kind, ref_type, ref_id) where ref_id is not null do nothing returning id`,
-        [businessId, CHANNEL, p.user_id, p.chat_id, o.kind, o.refType, o.refId, o.title.slice(0, 200), o.body, quiet ? quietEnds(now, p.quiet_to) : now]);
+        [businessId, CHANNEL, p.user_id, p.chat_id, o.kind, o.refType, o.refId, o.title.slice(0, 200), o.body, sendAt]);
       if (rows.length) queued++;
     }
     if (queued) void this.messaging.processOutbox().catch(() => undefined);
