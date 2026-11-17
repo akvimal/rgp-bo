@@ -149,6 +149,10 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'Report waiting for an answer: {title}', body: '{person} sent a {kind} about {module}. Open the Inbox in Help and feedback to reply.' },
     ta: { title: 'பதிலுக்காகக் காத்திருக்கும் அறிக்கை: {title}', body: '{person} {module} பற்றி ஒரு {kind} அனுப்பினார். பதில் அளிக்க உதவி மற்றும் கருத்து பக்கத்தின் பெட்டியைத் திறக்கவும்.' },
   },
+  feedback_closing: {
+    en: { title: 'Your report will close soon: {title}', body: 'We asked you something and have not heard back. It closes by itself in {days} day(s) unless you reply. Open Help and feedback.' },
+    ta: { title: 'உங்கள் அறிக்கை விரைவில் மூடப்படும்: {title}', body: 'நாங்கள் உங்களிடம் ஒன்று கேட்டோம், பதில் வரவில்லை. நீங்கள் பதிலளிக்காவிட்டால் {days} நாளில் தானாக மூடப்படும். உதவி மற்றும் கருத்து பக்கத்தைத் திறக்கவும்.' },
+  },
   kpi_behind: {
     en: { title: 'KPI behind pace: {measure}', body: '{evidence}. At this point in the month you are at {progress}% of the pace needed. Have a look at My KPI to see what to do.' },
     ta: { title: 'KPI பின்தங்கியுள்ளது: {measure}', body: '{evidence}. மாதத்தின் இந்த நிலையில் தேவையான வேகத்தில் {progress}% மட்டுமே உள்ளது. என் KPI பக்கத்தில் பார்க்கவும்.' },

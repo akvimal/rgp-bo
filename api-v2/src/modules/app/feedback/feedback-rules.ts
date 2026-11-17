@@ -22,12 +22,47 @@ export const NEEDS_TEXT: FeedbackStatus[] = ['ANSWERED', 'DECLINED'];
 /** how a report ends: what the reporter reads and what is counted. Each maps to the status it leaves the report in. */
 export const RESOLUTIONS = ['fixed', 'answered', 'not_a_bug', 'cannot_reproduce', 'not_planned', 'duplicate'] as const;
 export type Resolution = (typeof RESOLUTIONS)[number];
-export const RESOLUTION_LABEL: Record<Resolution, string> = {
-  fixed: 'Fixed', answered: 'Answered', not_a_bug: 'Not a bug', cannot_reproduce: 'Cannot reproduce', not_planned: 'Not planned', duplicate: 'Already reported',
+/** a report can also end by itself: no answer from the reporter to a question. Not something a manager picks. */
+export const AUTO_RESOLUTIONS = ['no_response'] as const;
+export const RESOLUTION_LABEL: Record<Resolution | (typeof AUTO_RESOLUTIONS)[number], string> = {
+  fixed: 'Fixed', answered: 'Answered', not_a_bug: 'Not a bug', cannot_reproduce: 'Cannot reproduce', not_planned: 'Not planned', duplicate: 'Already reported', no_response: 'No response',
 };
 export const RESOLUTION_STATUS: Record<Resolution, FeedbackStatus> = {
   fixed: 'ANSWERED', answered: 'ANSWERED', not_a_bug: 'ANSWERED', cannot_reproduce: 'ANSWERED', not_planned: 'DECLINED', duplicate: 'DUPLICATE',
 };
+
+/**
+ * How long a report may sit before it moves by itself. A question waiting on the reporter is reminded on day 3 and closed on day 7; a report that has ended
+ * (resolved, not planned, already reported) closes after 7 quiet days; a closed report can be reopened for 14 days, after which a follow-up is raised instead.
+ */
+export const LIFECYCLE = { remindWaitingDays: 3, closeWaitingDays: 7, closeEndedDays: 7, reopenWindowDays: 14 } as const;
+const DAY_MS = 86400000;
+
+export type AutoClose = 'no_response' | 'ended_quiet';
+/** why a report should be closed now, if it should: `idleDays` is the time since anyone last wrote or changed it */
+export function autoCloseReason(status: FeedbackStatus, idleDays: number): AutoClose | null {
+  if (status === 'WAITING' && idleDays >= LIFECYCLE.closeWaitingDays) return 'no_response';
+  if ((status === 'ANSWERED' || status === 'DECLINED' || status === 'DUPLICATE') && idleDays >= LIFECYCLE.closeEndedDays) return 'ended_quiet';
+  return null;
+}
+/** the reporter is reminded that a question waiting on them will close: from day 3 until it does */
+export const needsReminder = (status: FeedbackStatus, idleDays: number): boolean => status === 'WAITING' && idleDays >= LIFECYCLE.remindWaitingDays && idleDays < LIFECYCLE.closeWaitingDays;
+/** the days left before it closes by itself, or null when it will not */
+export function daysUntilClose(status: FeedbackStatus, idleDays: number): number | null {
+  const limit = status === 'WAITING' ? LIFECYCLE.closeWaitingDays : (status === 'ANSWERED' || status === 'DECLINED' || status === 'DUPLICATE') ? LIFECYCLE.closeEndedDays : null;
+  return limit === null ? null : Math.max(0, Math.ceil(limit - idleDays));
+}
+export const closeNote = (reason: AutoClose): string => reason === 'no_response'
+  ? `Closed automatically: no reply for ${LIFECYCLE.closeWaitingDays} days`
+  : `Closed automatically: nothing more for ${LIFECYCLE.closeEndedDays} days`;
+/** whole days (with a fraction) between two moments */
+export const idleDaysBetween = (from: Date | string | null, now: Date = new Date()): number => (from ? Math.max(0, (now.getTime() - new Date(from).getTime()) / DAY_MS) : 0);
+/** the reporter may reopen a report that is still open at the end, or one closed within the window; after that a follow-up is raised instead */
+export function reopenAllowed(status: FeedbackStatus, closedOn: Date | string | null, now: Date = new Date()): boolean {
+  if (status !== 'CLOSED') return true;
+  if (!closedOn) return true;     // closed before the date was kept
+  return idleDaysBetween(closedOn, now) <= LIFECYCLE.reopenWindowDays;
+}
 
 /** the number a report goes by: FB-12 */
 export const ticketNo = (id: number | string): string => `FB-${id}`;

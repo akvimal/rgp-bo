@@ -26,6 +26,8 @@ export class FeedbackService {
     get(id: number) { return this.http.get<any>(`${this.api}/${id}`); }
     create(body: any) { return this.http.post<any>(this.api, body); }
     reply(id: number, body: any) { return this.http.post<any>(`${this.api}/${id}/reply`, body); }
+    followUp(id: number, message: string) { return this.http.post<any>(`${this.api}/${id}/follow-up`, { message }); }
+    sweep() { return this.http.post<any>(`${this.api}/sweep`, {}); }
     resolve(id: number, body: any) { return this.http.post<any>(`${this.api}/${id}/resolve`, body); }
     setStatus(id: number, body: any) { return this.http.post<any>(`${this.api}/${id}/status`, body); }
     assign(id: number, userId: number | null) { return this.http.post<any>(`${this.api}/${id}/assign`, { user_id: userId }); }

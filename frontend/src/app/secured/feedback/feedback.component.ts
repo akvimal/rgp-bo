@@ -58,6 +58,8 @@ export class FeedbackComponent implements OnInit {
   statusChoices = STAFF_STATUS_CHOICES;
   resolutionChoices = RESOLUTION_CHOICES;
   resolving = false;
+  followingUp = false;
+  followUpMessage = '';
   resolveForm = { code: 'answered', note: '', duplicate_of: null as number | null };
   viewOpen = false;
   viewPath = '';
@@ -100,6 +102,7 @@ export class FeedbackComponent implements OnInit {
         this.replyFiles = [];
         this.reopening = false; this.reopenMessage = '';
         this.resolving = false;
+        this.followingUp = false; this.followUpMessage = '';
         this.resolveForm = { code: r.kind === 'problem' || r.kind === 'data' ? 'fixed' : 'answered', note: '', duplicate_of: null };
         this.setting = { status: r.status === 'NEW' ? 'IN_PROGRESS' : (r.status === 'CLOSED' ? 'IN_PROGRESS' : r.status), resolution: '', duplicate_of: null };
         this.uploadKey = `r${Date.now()}`;
@@ -141,7 +144,12 @@ export class FeedbackComponent implements OnInit {
     this.busy = true; this.error = '';
     this.service.setStatus(this.open.id, { status: 'CLOSED' }).subscribe({ next: () => this.after('Closed.'), error: (e) => this.fail(e) });
   }
-  resolutionLabel(code: string) { return RESOLUTION_CHOICES.find((c) => c.key === code)?.label || ''; }
+  resolutionLabel(code: string) { return code === 'no_response' ? 'No response' : (RESOLUTION_CHOICES.find((c) => c.key === code)?.label || ''); }
+  /** closed too long ago to reopen: a new report that links back to this one */
+  sendFollowUp() {
+    this.busy = true; this.error = '';
+    this.service.followUp(this.open.id, this.followUpMessage).subscribe({ next: (r) => { this.busy = false; this.message = 'Follow-up sent.'; this.openReport(r.id); this.loadMine(); }, error: (e) => this.fail(e) });
+  }
   assign(id: any) { this.service.assign(this.open.id, +id || null).subscribe({ next: () => this.after('Assigned.'), error: (e) => this.fail(e) }); }
 
   onFiles(ev: any) {

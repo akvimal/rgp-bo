@@ -27,6 +27,8 @@
         <span class="badge bg-light text-dark border" *ngIf="open.resolution_label" data-testid="fb-resolution">{{open.resolution_label}}</span>
         <span class="small text-muted" data-testid="fb-ticket">{{open.ticket}} &middot; {{open.module_title}}<span *ngIf="open.feature"> &rsaquo; {{open.feature}}</span></span>
       </div>
+      <div class="small mb-1" *ngIf="open.follow_up_of" data-testid="fb-follows">Follow-up to <a href="javascript:void(0)" (click)="openReport(open.follow_up_of)">{{open.follow_up_ticket}}</a></div>
+      <div class="small mb-1" *ngFor="let f of open.follow_ups" data-testid="fb-followup-link">Follow-up: <a href="javascript:void(0)" (click)="openReport(f.id)">{{f.ticket}}</a> <span class="text-muted">({{f.title}})</span></div>
       <h5 class="mb-1" data-testid="fb-title-view">{{open.title}}</h5>
       <div class="small text-muted mb-2">From {{open.reporter_name}} &middot; {{open.created_on | date:'dd MMM yyyy, h:mm a'}}<span *ngIf="open.assignee_name"> &middot; with {{open.assignee_name}}</span><span *ngIf="open.impact === 'blocks'" class="text-danger"> &middot; blocks their work</span><span *ngIf="open.impact === 'workaround'"> &middot; has a workaround</span></div>
       <dl class="mb-2" data-testid="fb-details">
@@ -53,8 +55,24 @@
     <div class="text-muted small" *ngIf="!open.notes.length" data-testid="fb-no-replies">No reply yet. We will tell you here, and with an alert, when there is one.</div>
   </div>
 
+  <div class="small text-muted my-2" *ngIf="open.closes_in_days !== null && open.status !== 'CLOSED'" data-testid="fb-closes-in">
+    <i class="bi bi-clock"></i>
+    {{open.status === 'WAITING' ? 'Waiting for ' + (open.can.manage ? open.reporter_name : 'your reply') : 'Nothing more is needed'}}:
+    it closes by itself in {{open.closes_in_days}} day{{open.closes_in_days === 1 ? '' : 's'}} unless someone writes.
+  </div>
+
   <div class="alert alert-secondary py-2 my-3" *ngIf="open.status === 'CLOSED'" data-testid="fb-closed">
-    This report is closed and read-only.<span *ngIf="open.can.reopen"> If it is not solved, reopen it below.</span>
+    This report is closed and read-only.<span *ngIf="open.can.reopen"> If it is not solved, you can reopen it for {{open.reopen_window_days}} days after it closed.</span>
+    <div *ngIf="open.can.followup" data-testid="fb-followup-offer">
+      It was closed more than {{open.reopen_window_days}} days ago, so it cannot be reopened. If something is still not right, send a follow-up; it links back to this one.
+      <div class="mt-2" *ngIf="!followingUp"><button class="btn btn-outline-primary btn-sm" type="button" (click)="followingUp = true" data-testid="fb-followup-open">Send a follow-up</button></div>
+      <div class="mt-2" *ngIf="followingUp">
+        <label class="form-label small mb-0" for="fb-followup-msg">What is still not right</label>
+        <textarea id="fb-followup-msg" class="form-control" rows="2" maxlength="2000" [(ngModel)]="followUpMessage" data-testid="fb-followup-msg"></textarea>
+        <button class="btn btn-primary btn-sm mt-1" type="button" [disabled]="busy || !followUpMessage.trim()" (click)="sendFollowUp()" data-testid="fb-followup-send">Send</button>
+        <button class="btn btn-link btn-sm mt-1" type="button" (click)="followingUp = false">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <!-- the reporter: solved or reopen -->

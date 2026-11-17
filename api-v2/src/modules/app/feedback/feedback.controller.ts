@@ -40,6 +40,13 @@ export class FeedbackController {
   @Post(':id/status')
   async status(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) { await this.need(user); return this.feedback.setStatus(user, id, body); }
 
+  /** a manager closes the quiet ones now, as the night's run does */
+  @Post('sweep')
+  async sweep(@User() user: any) { await this.need(user); return this.feedback.sweep(user); }
+
+  @Post(':id/follow-up')
+  async followUp(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) { await this.need(user); return this.feedback.followUp(user, id, body); }
+
   @Post(':id/resolve')
   async resolve(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) { await this.need(user); return this.feedback.resolve(user, id, body); }
 

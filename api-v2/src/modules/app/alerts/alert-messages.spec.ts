@@ -55,6 +55,7 @@ describe('alert messages', () => {
       todo_due: ['todo_soon', 'todo_due', 'todo_overdue', 'todo_escalated'],
       feedback_reply: ['feedback_reply'],
       feedback_waiting: ['feedback_waiting'],
+      feedback_closing: ['feedback_closing'],
       kpi_behind_pace: ['kpi_behind'],
       kpi_rating_due: ['kpi_rating_due'],
     };

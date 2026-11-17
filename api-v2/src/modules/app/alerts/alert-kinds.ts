@@ -8,6 +8,7 @@ import { lastFullWeek, reviewLate } from '../review/review-rules';
 import { BUSINESS_OF_USER_SQL } from '../../../core/business-of-user';
 import { stageOf } from '../todos/todo-rules';
 import { NOT_A_PERSON } from '../../../core/roles';
+import { FeedbackStatus, daysUntilClose, needsReminder } from '../feedback/feedback-rules';
 import { ModuleKey } from '../../../core/modules/modules';
 
 export type Severity = 'info' | 'warning' | 'critical';
@@ -593,6 +594,24 @@ export const KINDS: AlertKind[] = [
     },
   },
   {
+    kind: 'feedback_closing',
+    module: 'feedback',
+    label: 'Your report will close soon',
+    description: 'A manager asked the person who sent a report a question and has not heard back for a few days. The person is told it will close by itself unless they reply. Only the person who sent it is told.',
+    params: [],
+    defaultSeverity: 'info',
+    async evaluate(ctx) {
+      const rows = await ctx.manager.query(
+        `select f.id, f.title, f.status, f.reporter_user_id, extract(epoch from (now() - f.last_activity_on)) / 86400 as idle
+           from app_feedback f where f.business_id = $1 and not f.archive and f.status = 'WAITING'`, [ctx.businessId]);
+      return rows.filter((r: any) => needsReminder(r.status as FeedbackStatus, Number(r.idle))).map((r: any) => ({
+        key: `feedback:${r.id}:closing`, storeid: null, code: 'feedback_closing',
+        params: { title: String(r.title), days: String(daysUntilClose(r.status as FeedbackStatus, Number(r.idle)) ?? 0) }, link: '/secure/feedback',
+        recipients: { roles: [] as string[], userids: [r.reporter_user_id] as number[] },
+      }));
+    },
+  },
+  {
     kind: 'kpi_behind_pace',
     label: 'KPI behind pace',
     description: 'Part-way through the month, a staff member is behind on a KPI the system measures (sales behind the pace needed for full marks, or a "lower is better" figure that has already cost half its points). They are told once for each measure each month.',
@@ -684,6 +703,7 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity; re
   { kind: 'todo_due', name: 'To-dos coming due', severity: 'info' },
   { kind: 'feedback_reply', name: 'Reply to your report', severity: 'info' },
   { kind: 'feedback_waiting', name: 'Report waiting for an answer', severity: 'info' },
+  { kind: 'feedback_closing', name: 'Your report will close soon', severity: 'info' },
   { kind: 'kpi_behind_pace', name: 'KPI behind pace', severity: 'info' },
   { kind: 'kpi_rating_due', name: 'KPI ratings to give', severity: 'warning' },
 ];

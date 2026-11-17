@@ -1,4 +1,4 @@
-import { canReporterClose, canReporterReopen, cleanMessage, cleanReport, flagsAfter, statusAfterReporterReply, statusAfterStaffReply, statusProblem, resolveProblem, ticketFromText, ticketNo } from './feedback-rules';
+import { canReporterClose, canReporterReopen, cleanMessage, cleanReport, flagsAfter, statusAfterReporterReply, statusAfterStaffReply, statusProblem, resolveProblem, ticketFromText, ticketNo, autoCloseReason, closeNote, daysUntilClose, idleDaysBetween, needsReminder, reopenAllowed } from './feedback-rules';
 
 describe('feedback rules', () => {
   const problem = { kind: 'problem', title: 'Bill total is wrong', module_id: 'nav-sales', module_title: 'Sales and billing', feature: 'Print a bill', details: { what: 'The total is 10 less', expected: 'The sum of the lines' }, impact: 'blocks', context: { route: '/secure/sales/pos/new?token=abc#x', version: '2026.11', browser: 'Chrome' } };
@@ -96,6 +96,41 @@ describe('feedback rules', () => {
     expect(ticketFromText('12')).toBe(12);
     expect(ticketFromText('print button')).toBeNull();
     expect(ticketFromText('')).toBeNull();
+  });
+
+  it('closes by itself: a question nobody answered after 7 days, a finished report after 7 quiet days; nothing else', () => {
+    expect(autoCloseReason('WAITING', 6.9)).toBeNull();
+    expect(autoCloseReason('WAITING', 7)).toBe('no_response');
+    expect(autoCloseReason('ANSWERED', 7)).toBe('ended_quiet');
+    expect(autoCloseReason('DECLINED', 9)).toBe('ended_quiet');
+    expect(autoCloseReason('DUPLICATE', 9)).toBe('ended_quiet');
+    expect(autoCloseReason('ANSWERED', 6)).toBeNull();
+    for (const s of ['NEW', 'IN_PROGRESS', 'PLANNED', 'CLOSED'] as const) expect(autoCloseReason(s, 400)).toBeNull();   // being worked on, planned, or already closed
+    expect(closeNote('no_response')).toMatch(/no reply for 7 days/);
+    expect(closeNote('ended_quiet')).toMatch(/nothing more for 7 days/);
+  });
+
+  it('reminds the reporter of a waiting question from day 3 until it closes', () => {
+    expect(needsReminder('WAITING', 2.9)).toBe(false);
+    expect(needsReminder('WAITING', 3)).toBe(true);
+    expect(needsReminder('WAITING', 6.9)).toBe(true);
+    expect(needsReminder('WAITING', 7)).toBe(false);
+    expect(needsReminder('ANSWERED', 5)).toBe(false);
+    expect(daysUntilClose('WAITING', 4.2)).toBe(3);
+    expect(daysUntilClose('ANSWERED', 0)).toBe(7);
+    expect(daysUntilClose('IN_PROGRESS', 1)).toBeNull();
+    expect(daysUntilClose('WAITING', 20)).toBe(0);
+  });
+
+  it('can be reopened inside 14 days of closing; after that a follow-up is raised', () => {
+    const now = new Date('2026-12-01T10:00:00Z');
+    const ago = (d: number) => new Date(now.getTime() - d * 86400000);
+    expect(reopenAllowed('CLOSED', ago(13.9), now)).toBe(true);
+    expect(reopenAllowed('CLOSED', ago(14.1), now)).toBe(false);
+    expect(reopenAllowed('CLOSED', null, now)).toBe(true);          // closed before the date was kept
+    expect(reopenAllowed('ANSWERED', ago(400), now)).toBe(true);    // not closed: no window
+    expect(idleDaysBetween(ago(2), now)).toBeCloseTo(2, 5);
+    expect(idleDaysBetween(null, now)).toBe(0);
   });
 
   it('says who owes the next word', () => {
