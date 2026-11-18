@@ -183,3 +183,69 @@ export function cleanOrder(raw: any, known: string[]): { keys: string[]; problem
   for (const k of known) if (!seen.has(k)) keys.push(k);          // a checklist left out keeps its place at the end
   return { keys, problem: null };
 }
+
+// ------------------------------------------------------------------ when a checklist is to be done
+/**
+ * A checklist's schedule. Not scheduled; every shift (a to-do when a shift opens); or daily, weekly (on a weekday) or monthly (on a day of the month),
+ * at a time, as a repeating to-do in the store's shared list. A store keeps its own, the owner sets one for every store without its own, and with
+ * neither the schedule shipped here applies.
+ */
+export type Cadence = 'NONE' | 'EACH_SHIFT' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export const CADENCES: Cadence[] = ['NONE', 'EACH_SHIFT', 'DAILY', 'WEEKLY', 'MONTHLY'];
+export interface Schedule { cadence: Cadence; day: number | null; time: string }
+export const NO_SCHEDULE: Schedule = { cadence: 'NONE', day: null, time: '09:00' };
+
+export const DEFAULT_SCHEDULE: Record<string, Schedule> = {
+  outage_readiness: { cadence: 'WEEKLY', day: 1, time: '09:00' },
+  opening: { cadence: 'DAILY', day: null, time: '09:00' },
+  closing: { cadence: 'DAILY', day: null, time: '21:00' },
+  monthly_housekeeping: { cadence: 'MONTHLY', day: 5, time: '09:00' },
+};
+
+export const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export interface ScheduleRow { cadence: string; day: number | null; at_time: string | null }
+
+const fromRow = (r: ScheduleRow, key: string): Schedule => {
+  const cadence = (CADENCES as string[]).includes(r.cadence) ? (r.cadence as Cadence) : 'NONE';
+  const dflt = DEFAULT_SCHEDULE[key];
+  // a weekly or monthly row with no day follows the day the list is shipped with, else the first
+  const day = cadence === 'WEEKLY' ? (r.day ?? (dflt?.cadence === 'WEEKLY' ? dflt.day : null) ?? 1)
+    : cadence === 'MONTHLY' ? (r.day ?? (dflt?.cadence === 'MONTHLY' ? dflt.day : null) ?? 1) : null;
+  return { cadence, day, time: r.at_time && TIME_RE.test(r.at_time) ? r.at_time : (dflt?.time ?? '09:00') };
+};
+
+/** the schedule that applies to a store: its own, else the business's, else the shipped one, else none */
+export function effectiveSchedule(key: string, own?: ScheduleRow | null, wide?: ScheduleRow | null): { schedule: Schedule; source: 'store' | 'business' | 'default' } {
+  if (own) return { schedule: fromRow(own, key), source: 'store' };
+  if (wide) return { schedule: fromRow(wide, key), source: 'business' };
+  return { schedule: DEFAULT_SCHEDULE[key] ?? NO_SCHEDULE, source: 'default' };
+}
+
+/** a problem with a schedule asked for, in plain words; null when it is usable */
+export function scheduleProblem(cadence: any, day: any, time: any): string | null {
+  if (!(CADENCES as string[]).includes(cadence)) return 'Choose when it is done: not scheduled, every shift, daily, weekly or monthly.';
+  if (cadence === 'WEEKLY') { const n = Number(day); if (day === null || day === undefined || day === '' || !Number.isInteger(n) || n < 0 || n > 6) return 'Choose the day of the week.'; }
+  if (cadence === 'MONTHLY') { const n = Number(day); if (day === null || day === undefined || day === '' || !Number.isInteger(n) || n < 0 || n > 31) return 'Choose the day of the month (0 for the last day).'; }
+  if (['DAILY', 'WEEKLY', 'MONTHLY'].includes(cadence) && !TIME_RE.test(String(time ?? ''))) return 'The time should look like 09:30.';
+  return null;
+}
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] || 'th'}`;
+
+/** the schedule in words */
+export function scheduleLabel(s: Schedule): string {
+  switch (s.cadence) {
+    case 'EACH_SHIFT': return 'Every shift';
+    case 'DAILY': return `Daily at ${s.time}`;
+    case 'WEEKLY': return `Every ${WEEKDAYS[s.day ?? 1]} at ${s.time}`;
+    case 'MONTHLY': return s.day === 0 ? `Monthly on the last day at ${s.time}` : `Monthly on the ${ordinal(s.day ?? 1)} at ${s.time}`;
+    default: return 'Not scheduled';
+  }
+}
+
+/** how long a complete run keeps the checklist "up to date": the schedule says how often it is done, else the list's own cadence */
+export function everyOf(cadence: Cadence, fallback: ChecklistDef['every']): ChecklistDef['every'] {
+  return cadence === 'EACH_SHIFT' || cadence === 'DAILY' ? 'DAILY' : cadence === 'WEEKLY' ? 'WEEKLY' : cadence === 'MONTHLY' ? 'MONTHLY' : fallback;
+}

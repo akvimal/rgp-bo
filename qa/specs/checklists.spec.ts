@@ -1,5 +1,5 @@
 /**
- * Checklists and system tasks — CHK-1..7
+ * Checklists and system tasks — CHK-1..10
  * Filling a list in is for everyone who bills (checklists.view); setting lists and recurring tasks up is admin work (checklistsetup.manage): a Store Head
  * for their own stores, the owner roles for any store or the whole business.
  * The outage kit page was taken apart: the weekly check became one of several configurable store checklists, the price list and procedure stand
@@ -95,7 +95,7 @@ test.describe('Checklists @p1', () => {
 
   test('CHK-4 the system tasks are kept as repeating store to-dos; a task can be moved or switched off @happy', async ({ api }) => {
     const t = (await api.request('GET', '/checklists/tasks', undefined, HEAD)).body;
-    expect(t.tasks.length).toBeGreaterThanOrEqual(8);
+    expect(t.tasks.length).toBeGreaterThanOrEqual(6);                  // the checklists' own to-dos are scheduled on each checklist now
     const sid = t.store.id;
     const price = t.tasks.find((x: any) => x.key === 'price_list');
     expect(price.enabled).toBe(true);
@@ -184,6 +184,101 @@ test.describe('Checklists @p1', () => {
 
     const sid = (await api.request('GET', '/checklists', undefined, HEAD)).body.store.id;
     await api.request('DELETE', `/checklists/order?storeid=${sid}&scope=store`, undefined, HEAD);            // leave the store as it was
+  });
+
+  test('CHK-8 a checklist is scheduled daily, weekly, monthly or every shift; a Store Head for the store, the owner for every store; the to-dos follow @happy', async ({ api }) => {
+    const first = (await api.request('GET', '/checklists', undefined, HEAD)).body;
+    const sid = first.store.id;
+    const sched = async (key: string) => (await api.request('GET', `/checklists?storeid=${sid}`, undefined, HEAD)).body.lists.find((l: any) => l.key === key).schedule;
+    const repeats = async () => (await api.request('GET', '/todos/repeats', undefined, HEAD)).body.items.filter((r: any) => r.system && /^Complete the .* checklist$/.test(r.title));
+    await api.request('GET', '/checklists/tasks', undefined, HEAD);                             // brings the store's to-dos in step
+
+    // shipped: opening and closing daily, outage readiness weekly, housekeeping monthly
+    expect((await sched('opening'))).toMatchObject({ cadence: 'DAILY', source: 'default', label: 'Daily at 09:00' });
+    expect((await sched('closing')).time).toBe('21:00');
+    expect((await sched('outage_readiness')).cadence).toBe('WEEKLY');
+    expect((await sched('monthly_housekeeping')).cadence).toBe('MONTHLY');
+    expect((await repeats()).map((r: any) => r.title)).toEqual(expect.arrayContaining(['Complete the Opening checklist', 'Complete the Closing checklist']));
+
+    // refused: staff, a Store Head for the whole business, a bad cadence, a weekly one with no weekday, a bad time, a list that is not there
+    const put = (body: any, who = HEAD, key = 'opening') => api.request('PUT', `/checklists/${key}/schedule`, { storeid: sid, ...body }, who);
+    expect((await put({ cadence: 'DAILY', time: '08:00' }, SALES)).status).toBe(403);
+    expect((await put({ cadence: 'DAILY', time: '08:00', scope: 'business' })).status).toBe(403);
+    expect((await put({ cadence: 'SOMETIMES' })).status).toBe(400);
+    expect((await put({ cadence: 'WEEKLY', time: '08:00' })).status).toBe(400);
+    expect((await put({ cadence: 'DAILY', time: '8:00' })).status).toBe(400);
+    expect((await put({ cadence: 'DAILY', time: '08:00' }, HEAD, 'no_such_list')).status).toBe(404);
+
+    // the Store Head makes it weekly, on a Wednesday at 10:30: the label, and the repeating to-do, follow
+    expect((await put({ cadence: 'WEEKLY', day: 3, time: '10:30' })).status).toBeLessThan(300);
+    expect(await sched('opening')).toMatchObject({ cadence: 'WEEKLY', day: 3, time: '10:30', source: 'store', label: 'Every Wednesday at 10:30' });
+    const wed = (await repeats()).find((r: any) => r.title === 'Complete the Opening checklist');
+    expect(wed).toMatchObject({ repeat: 'WEEKLY', at: '10:30' });
+    expect(new Date(wed.nextdue + 'T00:00:00Z').getUTCDay()).toBe(3);
+
+    // not scheduled: the to-do stops; put back: the shipped daily schedule returns
+    expect((await put({ cadence: 'NONE' })).status).toBeLessThan(300);
+    expect((await repeats()).some((r: any) => r.title === 'Complete the Opening checklist')).toBe(false);
+    expect((await api.request('DELETE', `/checklists/opening/schedule?storeid=${sid}&scope=store`, undefined, HEAD)).status).toBeLessThan(300);
+    expect((await sched('opening')).source).toBe('default');
+    expect((await repeats()).some((r: any) => r.title === 'Complete the Opening checklist')).toBe(true);
+    expect((await api.request('DELETE', `/checklists/opening/schedule?storeid=${sid}&scope=store`, undefined, HEAD)).status).toBe(404);
+
+    // the owner sets "every shift" for closing across the business; the Store Head cannot take that back, the owner can
+    expect((await api.request('PUT', '/checklists/closing/schedule', { scope: 'business', cadence: 'EACH_SHIFT' }, OWNER)).status).toBeLessThan(300);
+    expect(await sched('closing')).toMatchObject({ cadence: 'EACH_SHIFT', source: 'business', label: 'Every shift' });
+    expect((await repeats()).some((r: any) => r.title === 'Complete the Closing checklist')).toBe(false);      // made when a shift opens, not on a clock
+    expect((await api.request('DELETE', '/checklists/closing/schedule?scope=business', undefined, HEAD)).status).toBe(403);
+    expect((await api.request('DELETE', '/checklists/closing/schedule?scope=business', undefined, OWNER)).status).toBeLessThan(300);
+    expect((await sched('closing')).cadence).toBe('DAILY');
+  });
+
+  test('CHK-9 a checklist scheduled every shift gets a to-do when a shift opens, and completing it closes the to-do @happy', async ({ api }) => {
+    const location = `SCHED ${Date.now()}.${Math.random().toString(36).slice(2, 5)}`;
+    const st = await api.request('POST', '/stores', { location, depositthreshold: 5000, isActive: true }, OWNER);
+    expect(st.status).toBeLessThan(300);
+    const sid = st.body.id as number;
+    const email = `sc${Date.now().toString().slice(-8)}${Math.random().toString(36).slice(2, 4)}@local.test`;
+    const u = await api.request('POST', '/users', { fullname: 'QA Sched', email, password: process.env.QA_ADMIN_PASS || 'admin123', phone: '9' + String(Date.now()).slice(-9), location: 'QA', roleid: 2, storeids: [sid] }, OWNER);
+    expect(u.status, JSON.stringify(u.body)).toBeLessThan(300);
+
+    expect((await api.request('PUT', '/checklists/closing/schedule', { storeid: sid, cadence: 'EACH_SHIFT' }, OWNER)).status).toBeLessThan(300);
+    expect((await api.request('PUT', '/checklists/opening/schedule', { storeid: sid, cadence: 'NONE' }, OWNER)).status).toBeLessThan(300);
+    const mine = async () => (await api.request('GET', '/todos?scope=mine&status=all', undefined, email)).body.items.filter((i: any) => i.systemkey === 'checklist:closing');
+    expect(await mine()).toHaveLength(0);                                                        // nothing until a shift opens
+
+    const open = await api.request('POST', '/store-cash/shifts', { storeid: sid, name: 'sched', openingdenominations: [{ d: 500, n: 2 }] }, email);
+    expect(open.status, JSON.stringify(open.body)).toBeLessThan(300);
+    const todos = await mine();
+    expect(todos).toHaveLength(1);
+    expect(todos[0]).toMatchObject({ status: 'OPEN', title: 'Complete the Closing checklist', link: '/secure/checklists?key=closing' });
+
+    // complete the checklist: the to-do is ticked off
+    const list = (await api.request('GET', `/checklists?storeid=${sid}`, undefined, email)).body.lists.find((l: any) => l.key === 'closing');
+    expect(list.schedule.label).toBe('Every shift');
+    const ticks = Object.fromEntries(list.items.map((i: any) => [i.key, true]));
+    const done = await api.request('POST', '/checklists/closing/run', { storeid: sid, ticks, values: {} }, email);
+    expect(done.body).toMatchObject({ complete: true, closedtasks: 1 });
+    expect((await mine())[0].status).toBe('DONE');
+  });
+
+  test('CHK-10 the schedule is set on the Settings screen and shown on the Checklists page @happy', async ({ app, api }) => {
+    const { page } = await app.open(HEAD, '/secure/settings/checklists');
+    await expect(page.getByTestId('cls-lists')).toBeVisible();
+    await page.getByTestId('cls-pick-monthly_housekeeping').click();
+    await expect(page.getByTestId('cls-schedule-label')).toHaveText('Monthly on the 5th at 09:00');
+    await page.getByTestId('cls-sched-cadence').selectOption('WEEKLY');
+    await page.getByTestId('cls-sched-weekday').selectOption({ label: 'Friday' });
+    await page.getByTestId('cls-sched-time').fill('11:00');
+    await page.getByTestId('cls-sched-save').click();
+    await expect(page.getByTestId('cls-message')).toContainText('Scheduled: Every Friday at 11:00');
+    await expect(page.getByTestId('cls-schedule-label')).toHaveText('Every Friday at 11:00');
+
+    const run = await app.open(HEAD, '/secure/checklists?key=monthly_housekeeping');
+    await expect(run.page.getByTestId('cl-schedule')).toContainText('Every Friday at 11:00');
+
+    const sid = (await api.request('GET', '/checklists', undefined, HEAD)).body.store.id;
+    await api.request('DELETE', `/checklists/monthly_housekeeping/schedule?storeid=${sid}&scope=store`, undefined, HEAD);   // leave the store as it was
   });
 
   test('CHK-5 another business\'s store is refused, and a role without the permission is turned away @negative', async ({ api }) => {

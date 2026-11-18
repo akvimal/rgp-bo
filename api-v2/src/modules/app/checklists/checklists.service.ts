@@ -7,9 +7,9 @@ import { businessOfUser } from 'src/core/business-of-user';
 import { affectedRows } from 'src/core/db-result';
 import { ModulesService } from 'src/core/modules/modules.service';
 import { isOwnerRole } from 'src/core/roles';
-import { firstOnOrAfter, istDay, RepeatRule } from '../todos/todo-rules';
+import { dueInstant, firstOnOrAfter, istDay, nextAfter, RepeatRule } from '../todos/todo-rules';
 import { TodoService } from '../todos/todo.service';
-import { ChecklistDef, ChecklistItem, cleanItems, cleanOrder, daysSince, defaultList, DEFAULT_CHECKLISTS, isCurrent, orderLists, recordRun, slugKey } from './checklist-rules';
+import { ChecklistDef, ChecklistItem, cleanItems, cleanOrder, daysSince, defaultList, DEFAULT_CHECKLISTS, effectiveSchedule, everyOf, isCurrent, orderLists, recordRun, ScheduleRow, scheduleLabel, scheduleProblem, slugKey } from './checklist-rules';
 import { lastPriceListPrint } from '../outage/price-list-last';
 import { dayProblem, effectiveSetting, SYSTEM_TASKS, systemTask, TaskSetting } from './system-tasks';
 
@@ -95,6 +95,16 @@ export class ChecklistsService {
     return orderLists(out, (await this.savedOrder(businessId, storeId)).keys);
   }
 
+  /** the schedules saved for a business: each row is a store's own (store_id) or the business's (null) */
+  private async scheduleRows(businessId: number, storeId: number | null): Promise<(ScheduleRow & { store_id: number | null; key: string })[]> {
+    return this.manager.query(`select store_id, key, cadence, day, at_time from checklist_schedule where business_id = $1 and (store_id is null or store_id = $2)`, [businessId, storeId]);
+  }
+
+  /** the schedule that applies to one checklist at one store */
+  private scheduleOf(rows: (ScheduleRow & { store_id: number | null; key: string })[], key: string) {
+    return effectiveSchedule(key, rows.find((r) => r.store_id !== null && r.key === key), rows.find((r) => r.store_id === null && r.key === key));
+  }
+
   /** the order saved for a store, else the business's, else none (the order shipped in code applies) */
   private async savedOrder(businessId: number, storeId: number | null): Promise<{ keys: string[] | null; source: 'store' | 'business' | 'default' }> {
     const rows = await this.manager.query(`select store_id, keys from checklist_order where business_id = $1 and (store_id is null or store_id = $2)`, [businessId, storeId]);
@@ -115,15 +125,19 @@ export class ChecklistsService {
         where l.store_id = $1 ${completeOnly ? 'and l.complete' : ''} order by l.template_key, l.run_on desc`, [store.id])).map((r: any) => [r.template_key, r]));
     const [any, complete] = await Promise.all([lastRuns(false), lastRuns(true)]);
     const pricelist = await this.lastPriceListPrint(w.businessId);
+    const schedRows = await this.scheduleRows(w.businessId, store.id);
     return {
       store, stores, canedit: w.canEdit, owner: w.owner, today, pricelist, ordersource: (await this.savedOrder(w.businessId, store.id)).source,
       pharmacy: await this.modules.packOnForBusiness(w.businessId, 'pharmacy'),
       lists: lists.map((l) => {
         const lc = complete.get(l.key) ?? null;
+        const sch = this.scheduleOf(schedRows, l.key);
+        const every = everyOf(sch.schedule.cadence, l.every);
         return {
-          key: l.key, title: l.title, description: l.description, every: l.every, source: l.source, custom: l.custom, active: l.active,
+          key: l.key, title: l.title, description: l.description, every, source: l.source, custom: l.custom, active: l.active,
+          schedule: { ...sch.schedule, source: sch.source, label: scheduleLabel(sch.schedule) },
           items: (l.items as ChecklistItem[]).map((i) => ({ ...i, autoticked: i.auto === 'price_list' ? !!pricelist?.fresh : undefined })),
-          last: any.get(l.key) ?? null, lastcomplete: lc, dayssince: lc ? daysSince(lc.day, today) : null, current: isCurrent(l.every, lc?.day ?? null, today),
+          last: any.get(l.key) ?? null, lastcomplete: lc, dayssince: lc ? daysSince(lc.day, today) : null, current: isCurrent(every, lc?.day ?? null, today),
         };
       }),
     };
@@ -142,7 +156,7 @@ export class ChecklistsService {
     await this.audit.record({ userId: w.id, action: 'checklist.run', entityType: 'checklist', entityId: row.id,
       summary: `${list.title} checked at ${store.location}: ${complete ? 'complete' : `${items.filter((i) => !i.ticked).length} item(s) not ready`}`, details: { key, complete } });
     let closed = 0;
-    if (complete) for (const t of SYSTEM_TASKS.filter((x) => x.auto === `checklist:${key}`)) closed += await this.todos.completeSystemTask(w.businessId, [store.id], t.key, w.id, `${list.title} checked`);
+    if (complete) closed = await this.todos.completeSystemTask(w.businessId, [store.id], `checklist:${key}`, w.id, `${list.title} checked`);
     return { id: row.id, complete, closedtasks: closed };
   }
 
@@ -210,6 +224,57 @@ export class ChecklistsService {
       `insert into checklist_template (business_id, store_id, key, title, items, active, updated_by) values ($1, $2, $3, $4, $5::jsonb, $6, $7)
        on conflict (business_id, (coalesce(store_id, 0)), key) do update set title = excluded.title, items = excluded.items, active = excluded.active, updated_by = excluded.updated_by, updated_on = now()`,
       [w.businessId, storeId, key, title, JSON.stringify(items), active, w.id]);
+  }
+
+  /** when a checklist is done, for this store or (the owner) for every store without its own schedule; the to-dos follow at once */
+  async saveSchedule(user: any, key: string, body: any) {
+    const { w, storeId } = await this.target(user, body);
+    if (!(await this.lists(w.businessId, storeId)).some((l) => l.key === key)) throw new NotFoundException('That checklist is not here.');
+    const cadence = String(body?.cadence ?? '').toUpperCase();
+    const time = body?.time ? String(body.time) : '09:00';
+    const day = body?.day === undefined || body?.day === null || body?.day === '' ? null : Number(body.day);
+    const problem = scheduleProblem(cadence, day, time);
+    if (problem) throw new BadRequestException(problem);
+    const keepDay = cadence === 'WEEKLY' || cadence === 'MONTHLY' ? day : null;
+    await this.manager.query(
+      `insert into checklist_schedule (business_id, store_id, key, cadence, day, at_time, updated_by) values ($1, $2, $3, $4, $5, $6, $7)
+       on conflict (business_id, (coalesce(store_id, 0)), key) do update set cadence = excluded.cadence, day = excluded.day, at_time = excluded.at_time, updated_by = excluded.updated_by, updated_on = now()`,
+      [w.businessId, storeId, key, cadence, keepDay, time, w.id]);
+    const label = scheduleLabel({ cadence: cadence as any, day: keepDay, time });
+    await this.audit.record({ userId: w.id, action: 'checklist.schedule', entityType: 'checklist', entityId: 0, summary: `Checklist "${key}" scheduled: ${label}${storeId ? '' : ' for every store'}`, details: { key, cadence, day: keepDay, time } });
+    await this.sync(w.businessId, storeId ?? undefined);
+    return { key, label };
+  }
+
+  /** back to the shared schedule: the store's own goes (a Store Head or the owner), or the business's (the owner) */
+  async resetSchedule(user: any, key: string, q: { storeid?: string; scope?: string }) {
+    const { w, storeId } = await this.target(user, q);
+    const res = await this.manager.query(`delete from checklist_schedule where business_id = $1 and key = $2 and store_id is not distinct from $3 returning id`, [w.businessId, key, storeId]);
+    if (!affectedRows(res)) throw new NotFoundException('There is no changed schedule to put back.');
+    await this.audit.record({ userId: w.id, action: 'checklist.schedule_reset', entityType: 'checklist', entityId: 0, summary: `Checklist "${key}": schedule put back${storeId ? '' : ' for every store'}`, details: { key } });
+    await this.sync(w.businessId, storeId ?? undefined);
+    return { key };
+  }
+
+  /**
+   * A shift has opened: each checklist scheduled "every shift" at this store gets a to-do now. It is for the person whose shift it is (a staff-based store), else
+   * for the store's shared list, and is due when the shift is planned to end, else eight hours on. Completing the checklist closes it.
+   */
+  async shiftOpened(storeId: number, shift: { id: number; assigneduserid?: number | null; endtime?: string | null }) {
+    const [st] = await this.manager.query(`select business_id from stores where id = $1`, [storeId]);
+    if (!st) return;
+    const rows = await this.scheduleRows(+st.business_id, storeId);
+    const now = Date.now();
+    let due = new Date(now + 8 * 3600000);
+    if (shift.endtime && /^\d{2}:\d{2}$/.test(shift.endtime)) { const planned = dueInstant(istDay(), shift.endtime); if (planned.getTime() > now + 30 * 60000) due = planned; }
+    for (const l of await this.lists(+st.business_id, storeId)) {
+      if (!l.active || this.scheduleOf(rows, l.key).schedule.cadence !== 'EACH_SHIFT') continue;
+      const person = shift.assigneduserid ? Number(shift.assigneduserid) : null;
+      await this.manager.query(
+        `insert into todo_item (business_id, store_id, title, notes, priority, assignee_user_id, pool, due_on, soon_days, escalate_days, system_key, link)
+         values ($1, $2, $3, $4, 'normal', $5, $6, $7, 0, 1, $8, $9)`,
+        [+st.business_id, storeId, `Complete the ${l.title} checklist`, `For this shift. ${l.description}`, person, !person, due, `checklist:${l.key}`, `/secure/checklists?key=${l.key}`]);
+    }
   }
 
   /** the order the checklists are shown in, for this store or (the owner) for every store that has none of its own */
@@ -322,7 +387,9 @@ export class ChecklistsService {
       const settings = await this.manager.query(`select store_id, task_key, enabled, day from system_task_setting where business_id = $1`, [businessId]);
       const setting = (key: string, sid: number | null): TaskSetting | undefined => { const s = settings.find((x: any) => x.task_key === key && (sid === null ? x.store_id === null : +x.store_id === sid)); return s ? { enabled: s.enabled, day: s.day } : undefined; };
       const existing = await this.manager.query(
-        `select id, store_id, system_key, active, repeat, repeat_day, repeat_days from todo_template where business_id = $1 and system_key is not null and not archive`, [businessId]);
+        `select id, store_id, system_key, active, repeat, repeat_day, repeat_days, at_time, title from todo_template where business_id = $1 and system_key is not null and not archive`, [businessId]);
+      const schedAll = await this.manager.query(`select store_id, key, cadence, day, at_time from checklist_schedule where business_id = $1`, [businessId]);
+      const nowTime = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(11, 16);
       const stop = async (id: number) => {
         await this.manager.query(`update todo_template set active = false, next_due_on = null where id = $1`, [id]);
         await this.manager.query(`update todo_item set archive = true where template_id = $1 and status = 'OPEN'`, [id]);
@@ -350,6 +417,36 @@ export class ChecklistsService {
               await this.manager.query(
                 `update todo_template set active = true, repeat = $2, repeat_days = $3::int4[], repeat_day = $4, next_due_on = $5, title = $6, notes = $7, link = $8 where id = $1`,
                 [ex.id, rule.repeat, days, dom, next, t.title, t.notes, t.link]);
+            }
+          }
+        }
+
+        // the checklists scheduled daily, weekly or monthly: a repeating to-do in the store's shared list each, for as long as the checklist is shown and scheduled
+        for (const l of await this.lists(businessId, s.id)) {
+          const key = `checklist:${l.key}`;
+          const ex = existing.find((e: any) => +e.store_id === +s.id && e.system_key === key);
+          const { schedule } = this.scheduleOf(schedAll.filter((r: any) => r.store_id === null || +r.store_id === +s.id), l.key);
+          if (!l.active || !['DAILY', 'WEEKLY', 'MONTHLY'].includes(schedule.cadence)) { if (ex?.active) await stop(ex.id); continue; }
+          wanted.add(`${s.id}:${key}`);
+          const rule: RepeatRule = schedule.cadence === 'DAILY' ? { repeat: 'DAILY' } : schedule.cadence === 'WEEKLY' ? { repeat: 'WEEKLY', days: [schedule.day ?? 1] } : { repeat: 'MONTHLY', day: schedule.day ?? 1 };
+          // a schedule set after today's time has passed starts tomorrow, not with a to-do that is late from the start
+          let next = firstOnOrAfter(rule, today);
+          if (next === today && nowTime >= schedule.time) next = nextAfter(rule, today);
+          const days = rule.days ?? null, dom = rule.day ?? null;
+          const title = `Complete the ${l.title} checklist`, link = `/secure/checklists?key=${l.key}`;
+          const soon = schedule.cadence === 'DAILY' ? 0 : schedule.cadence === 'WEEKLY' ? 1 : 2, esc = schedule.cadence === 'DAILY' ? 1 : schedule.cadence === 'WEEKLY' ? 3 : 5;
+          if (!ex) {
+            await this.manager.query(
+              `insert into todo_template (business_id, store_id, title, notes, priority, pool, repeat, repeat_days, repeat_day, at_time, starts_on, skip_if_open, soon_days, escalate_days, next_due_on, system_key, link)
+               values ($1, $2, $3, $4, 'normal', true, $5, $6::int4[], $7, $8, $9, true, $10, $11, $12, $13, $14)
+               on conflict do nothing`,
+              [businessId, s.id, title, l.description, rule.repeat, days, dom, schedule.time, today, soon, esc, next, key, link]);
+          } else {
+            const sameDay = rule.repeat === 'WEEKLY' ? (ex.repeat_days ?? [])[0] === rule.days![0] : rule.repeat === 'MONTHLY' ? ex.repeat_day === rule.day : true;
+            if (!(ex.active && ex.repeat === rule.repeat && sameDay && ex.at_time === schedule.time && ex.title === title)) {
+              await this.manager.query(
+                `update todo_template set active = true, repeat = $2, repeat_days = $3::int4[], repeat_day = $4, at_time = $5, next_due_on = $6, title = $7, notes = $8, link = $9, soon_days = $10, escalate_days = $11 where id = $1`,
+                [ex.id, rule.repeat, days, dom, schedule.time, next, title, l.description, link, soon, esc]);
             }
           }
         }

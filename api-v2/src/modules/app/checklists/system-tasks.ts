@@ -19,8 +19,6 @@ export interface SystemTask {
 }
 
 export const SYSTEM_TASKS: SystemTask[] = [
-  { key: 'outage_check', title: 'Outage readiness check', cadence: 'WEEKLY', day: 1, link: '/secure/checklists?key=outage_readiness', auto: 'checklist:outage_readiness',
-    notes: 'Go through the outage readiness checklist: UPS, devices, bill book, torch, float, UPI device. It closes when every item is ticked.' },
   { key: 'price_list', title: 'Print a fresh price list for the counter', cadence: 'WEEKLY', day: 1, link: '/secure/pricing/prices', auto: 'price_list',
     notes: "Print this week's price list (Pricing > Prices) and put it at the counter. It closes when the list is printed." },
   { key: 'weekly_review', title: 'Do the weekly review', cadence: 'WEEKLY', day: 2, link: '/secure/review', auto: 'weekly_review',
@@ -29,8 +27,6 @@ export const SYSTEM_TASKS: SystemTask[] = [
     notes: 'Look at products with negative stock and stock past its expiry. Correct them, or write down why they stand.' },
   { key: 'stock_count', title: 'Do the monthly stock count', cadence: 'MONTHLY', day: 1, link: '/secure/stock-audits',
     notes: 'Count the stock that is due this month and complete the count.', priority: 'high' },
-  { key: 'monthly_housekeeping', title: 'Monthly housekeeping checklist', cadence: 'MONTHLY', day: 5, link: '/secure/checklists?key=monthly_housekeeping', auto: 'checklist:monthly_housekeeping',
-    notes: 'UPS battery, printers, fire and first-aid, displayed licences, an expiry walk of the shelves. It closes when every item is ticked.' },
   { key: 'gst_check', title: "Check the month's GST sales report", cadence: 'MONTHLY', day: 5, link: '/secure/gst-filing',
     notes: "Open last month's GST sales report, look at the adjustments, and make sure it is right before filing.", priority: 'high' },
   { key: 'bank_cash_check', title: 'Match the cash book and bank statement', cadence: 'MONTHLY', day: 3, link: '/secure/finance',

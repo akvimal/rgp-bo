@@ -68,6 +68,38 @@ export class ChecklistSetupComponent implements OnInit {
 
     changeStore(id: any) { this.storeid = +id; this.loading = true; this.message = ''; this.load(); if (this.tab === 'tasks') this.loadTasks(); }
 
+    // ------------------------------------------------------------------ when a checklist is done
+    readonly cadences = [{ v: 'NONE', n: 'Not scheduled' }, { v: 'EACH_SHIFT', n: 'Every shift' }, { v: 'DAILY', n: 'Daily' }, { v: 'WEEKLY', n: 'Weekly' }, { v: 'MONTHLY', n: 'Monthly' }];
+    scheduleError = '';
+
+    get timed(): boolean { return ['DAILY', 'WEEKLY', 'MONTHLY'].includes(this.edit?.sched?.cadence); }
+    get schedSourceLabel(): string { const s = this.edit?.sched?.source; return s === 'store' ? "this store's own schedule" : s === 'business' ? 'the schedule set for every store' : 'the standard schedule'; }
+    get canResetSchedule(): boolean { const s = this.edit?.sched?.source; return s === 'store' || (s === 'business' && this.canOwner); }
+
+    /** a weekday or a day of the month is asked for only when the cadence needs one, and starts at a sensible value */
+    cadenceChanged() {
+        const s = this.edit.sched;
+        if (s.cadence === 'WEEKLY' && (s.day === null || s.day === undefined || s.day > 6)) s.day = 1;
+        if (s.cadence === 'MONTHLY' && (s.day === null || s.day === undefined)) s.day = 1;
+        if (s.cadence !== 'WEEKLY' && s.cadence !== 'MONTHLY') s.day = null;
+    }
+
+    saveSchedule() {
+        this.scheduleError = ''; this.message = '';
+        const s = this.edit.sched;
+        this.service.saveSchedule(this.edit.key, { storeid: this.storeid, scope: this.edit.scope, cadence: s.cadence, day: s.day, time: s.time }).subscribe((r: any) => {
+            this.message = `Scheduled: ${r.label}.` + (s.cadence === 'EACH_SHIFT' ? ' A to-do is made each time a shift opens.' : s.cadence === 'NONE' ? '' : ' The to-do is made in the store\'s shared list.');
+            this.load();
+        }, (err: any) => this.scheduleError = this.msg(err, 'Could not save the schedule.'));
+    }
+
+    resetSchedule() {
+        this.scheduleError = '';
+        const scope = this.edit.sched.source === 'business' && this.canOwner ? 'business' : 'store';
+        this.service.resetSchedule(this.edit.key, this.storeid, scope).subscribe(() => { this.message = 'The schedule is put back to the shared one.'; this.load(); },
+            (err: any) => this.scheduleError = this.msg(err, 'Could not put the schedule back.'));
+    }
+
     // ------------------------------------------------------------------ the order of the lists
     toggleOrder() {
         this.orderOpen = !this.orderOpen; this.orderError = '';
@@ -106,7 +138,7 @@ export class ChecklistSetupComponent implements OnInit {
         const l = this.current || this.lists[0];
         if (!l) { this.edit = null; return; }
         this.key = l.key;
-        this.edit = { key: l.key, title: l.title, active: l.active, custom: l.custom, source: l.source, scope: 'store', items: l.items.map((i: any) => ({ key: i.key, label: i.label, kind: i.kind, auto: i.auto || null })) };
+        this.edit = { key: l.key, title: l.title, active: l.active, custom: l.custom, source: l.source, scope: 'store', sched: { ...(l.schedule || { cadence: 'NONE', day: null, time: '09:00', source: 'default', label: 'Not scheduled' }) }, items: l.items.map((i: any) => ({ key: i.key, label: i.label, kind: i.kind, auto: i.auto || null })) };
         this.editError = '';
     }
 

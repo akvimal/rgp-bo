@@ -3,6 +3,7 @@ import { sep } from 'path';
 import { uploadedFilePath } from '../files/upload-path';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { checkPhones } from 'src/core/phones';
+import { ChecklistsService } from '../checklists/checklists.service';
 import { ComplianceService } from '../compliance/compliance.service';
 import { ShiftDigestService } from '../messaging/shift-digest.service';
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
@@ -45,6 +46,7 @@ export class StoreService {
     private readonly compliance: ComplianceService,
     private readonly shiftDigest: ShiftDigestService,
     private readonly vault: VaultService,
+    private readonly checklists: ChecklistsService,
   ) {}
 
   async findStores() {
@@ -816,6 +818,8 @@ export class StoreService {
     await this.syncShiftTotals(shift.id);
     // the shop is told the shift has opened: never holds up or fails the opening
     this.shiftDigest.notifyOpened(shift.id);
+    // the checklists scheduled "every shift" get their to-do now: never holds up or fails the opening
+    try { await this.checklists.shiftOpened(storeid, { id: shift.id, assigneduserid: shift.assigneduserid ?? null, endtime: shift.endtime || template?.endtime || null }); } catch { /* the shift is open all the same */ }
     return this.shiftRepository.findOne({
       where: { id: shift.id },
       relations: ["store", "template", "assigneduser", "openedby", "closedby"],

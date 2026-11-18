@@ -396,7 +396,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'setup-checklists', group: 'setup', title: 'Checklists setup', route: '/secure/settings/checklists', needs: ['checklistsetup.manage'],
     purpose: 'Set up the lists a store ticks off and the weekly and monthly tasks the system puts in its to-do list.',
-    tasks: ['Change a checklist, add your own, hide one or put it back to the shared list.', 'Change the order the checklists are shown in (Change the order): the first one opens first on the Checklists page. A Store Head sets it for their store, the owner for every store without its own.', 'Switch a recurring task off or move it to another day for the store.', 'Owner: save a list or task for every store at once.'],
+    tasks: ['Change a checklist, add your own, hide one or put it back to the shared list.', 'Schedule a checklist (When it is done): not scheduled, every shift (a to-do each time a shift opens), daily, weekly or monthly at a time. The to-do appears in the store\'s shared list and ticks itself off when the checklist is completed. Opening and closing are daily by default.', 'Change the order the checklists are shown in (Change the order): the first one opens first on the Checklists page. A Store Head sets it for their store, the owner for every store without its own.', 'Switch a recurring task off or move it to another day for the store.', 'Owner: save a list or task for every store at once.'],
     who: 'A Store Head sets up their own stores; the Business Head or owner any store, or the whole business.', keywords: 'checklist outage opening closing housekeeping recurring task weekly monthly setup',
   },
   {

@@ -38,6 +38,7 @@
         <span *ngIf="current.lastcomplete"> Last complete check {{current.lastcomplete.run_on | date:'dd MMM yyyy'}} by {{current.lastcomplete.by_name}} ({{ago(current.dayssince)}}).</span>
         <span *ngIf="!current.lastcomplete"> It has not been completed yet.</span>
       </div>
+      <p class="small mb-1" *ngIf="current.schedule && current.schedule.cadence !== 'NONE'" data-testid="cl-schedule"><i class="bi bi-clock me-1"></i>Scheduled: {{current.schedule.label}}</p>
       <p class="small text-muted mb-2">{{current.description}} Tick each item once you have looked at it yourself. The list counts as done only when every item is.</p>
 
       <div class="mb-3" data-testid="cl-items">

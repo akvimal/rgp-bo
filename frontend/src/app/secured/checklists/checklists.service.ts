@@ -19,6 +19,12 @@ export class ChecklistsService {
         return this.http.delete<any>(`${this.api}/${key}`, { params: { ...(storeid ? { storeid: String(storeid) } : {}), scope } });
     }
 
+    /** when a checklist is done (not scheduled, every shift, daily, weekly, monthly): for the store, or (the owner) for every store without its own */
+    saveSchedule(key: string, body: any) { return this.http.put<any>(`${this.api}/${key}/schedule`, body); }
+    resetSchedule(key: string, storeid: number | null, scope: 'store' | 'business') {
+        return this.http.delete<any>(`${this.api}/${key}/schedule`, { params: { ...(storeid ? { storeid: String(storeid) } : {}), scope } });
+    }
+
     /** the order the checklists are shown in: for the store, or (the owner) for every store without its own */
     saveOrder(body: any) { return this.http.put<any>(`${this.api}/order`, body); }
     resetOrder(storeid: number | null, scope: 'store' | 'business') {

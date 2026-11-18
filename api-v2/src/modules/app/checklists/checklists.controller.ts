@@ -44,6 +44,12 @@ export class ChecklistsController {
   @Post(':key/run')
   run(@Param('key') key: string, @Body() body: any, @User() user: any) { return this.checklists.run(user, key, body); }
 
+  @Put(':key/schedule')
+  saveSchedule(@Param('key') key: string, @Body() body: any, @User() user: any) { return this.checklists.saveSchedule(user, key, body); }
+
+  @Delete(':key/schedule')
+  resetSchedule(@Param('key') key: string, @Query() q: { storeid?: string; scope?: string }, @User() user: any) { return this.checklists.resetSchedule(user, key, q); }
+
   @Put(':key')
   save(@Param('key') key: string, @Body() body: any, @User() user: any) { return this.checklists.saveList(user, key, body); }
 

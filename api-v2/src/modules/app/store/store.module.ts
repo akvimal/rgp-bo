@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ComplianceModule } from '../compliance/compliance.controller';
+import { ChecklistsModule } from '../checklists/checklists.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { JwtService } from "@nestjs/jwt";
@@ -23,7 +24,7 @@ import { ChecklistAssistant } from "./checklist-assistant";
 import { AiProvider } from "../alerts/ai-provider";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Store, StoreCashAccount, StoreVaultMovement, StoreVaultCount, StoreShift, StoreShiftTemplate, AppUser, UserStore, Business]), AuthModule, RoleModule, ComplianceModule, MessagingModule],
+  imports: [TypeOrmModule.forFeature([Store, StoreCashAccount, StoreVaultMovement, StoreVaultCount, StoreShift, StoreShiftTemplate, AppUser, UserStore, Business]), AuthModule, RoleModule, ChecklistsModule, ComplianceModule, MessagingModule],
   controllers: [StoreController, StoreCashController, VaultController],
   providers: [StoreService, VaultService, JwtService, ChecklistAssistant, AiProvider],
   exports: [StoreService],
