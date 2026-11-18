@@ -24,6 +24,5 @@ export class ChecklistsService {
     resetTask(key: string, storeid: number | null) { return this.http.delete<any>(`${this.api}/tasks/${key}`, this.params(storeid)); }
 
     // the printed documents (served by the outage controller)
-    priceList(format: 'pdf' | 'xlsx') { return this.http.get(`${environment.apiHost}/outage/price-list`, { params: { format }, responseType: 'blob' }); }
     procedure() { return this.http.get(`${environment.apiHost}/outage/procedure`, { responseType: 'blob' }); }
 }

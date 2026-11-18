@@ -10,6 +10,7 @@ import { buildPriceListPdf, stamp } from './price-list-pdf';
 import { ModulesService } from 'src/core/modules/modules.service';
 import { buildProcedurePdf } from './procedure-pdf';
 import { TodoService } from '../todos/todo.service';
+import { lastPriceListPrint } from './price-list-last';
 
 const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
 
@@ -21,6 +22,12 @@ const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOSt
 @Injectable()
 export class OutageService {
   constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService, private readonly modules: ModulesService, private readonly todos: TodoService) {}
+
+  /** when the price list was last printed, for the Price page */
+  async lastPrint(userid: number) {
+    const businessId = await businessOfUser(this.manager, userid);
+    return businessId ? lastPriceListPrint(this.manager, businessId) : null;
+  }
 
   // ------------------------------------------------------------------ the printed documents
   private async header(businessId: number) {

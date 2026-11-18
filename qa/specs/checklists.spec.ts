@@ -49,6 +49,10 @@ test.describe('Checklists @p1', () => {
     const xlsx = await raw.get('/outage/price-list?format=xlsx');
     expect(Buffer.from(await xlsx.arrayBuffer()).slice(0, 2).toString()).toBe('PK');
     expect((await raw.get('/outage/procedure')).status).toBe(200);
+    const last = await api.request('GET', '/outage/price-list/last', undefined, SALES);   // what the Products > Prices panel shows
+    expect(last.status).toBe(200);
+    expect(last.body.lastprint.fresh).toBe(true);
+    expect(last.body.lastprint.by).toBeTruthy();
     expect((await api.request('GET', '/outage/status', undefined, SALES)).status).toBe(404);
     expect((await api.request('POST', '/outage/events', { cause: 'POWER' }, SALES)).status).toBe(404);
   });

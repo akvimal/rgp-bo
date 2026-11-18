@@ -21,8 +21,8 @@ export interface SystemTask {
 export const SYSTEM_TASKS: SystemTask[] = [
   { key: 'outage_check', title: 'Outage readiness check', cadence: 'WEEKLY', day: 1, link: '/secure/checklists?key=outage_readiness', auto: 'checklist:outage_readiness',
     notes: 'Go through the outage readiness checklist: UPS, devices, bill book, torch, float, UPI device. It closes when every item is ticked.' },
-  { key: 'price_list', title: 'Print a fresh price list for the counter', cadence: 'WEEKLY', day: 1, link: '/secure/checklists?key=outage_readiness', auto: 'price_list',
-    notes: "Print this week's price list and put it at the counter. It closes when the list is printed." },
+  { key: 'price_list', title: 'Print a fresh price list for the counter', cadence: 'WEEKLY', day: 1, link: '/secure/products/price', auto: 'price_list',
+    notes: "Print this week's price list (Products > Prices) and put it at the counter. It closes when the list is printed." },
   { key: 'weekly_review', title: 'Do the weekly review', cadence: 'WEEKLY', day: 2, link: '/secure/review', auto: 'weekly_review',
     notes: "Look at last week's discounts, edits, returns and cash, and sign the review. It closes when the week is signed." },
   { key: 'stock_exceptions', title: 'Clear negative stock and expired stock', cadence: 'WEEKLY', day: 3, link: '/secure/store/stock',

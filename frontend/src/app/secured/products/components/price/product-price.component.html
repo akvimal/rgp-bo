@@ -31,6 +31,19 @@
     <button type="button" class="btn btn-outline-primary btn-sm" (click)="openBulk()" [disabled]="!shown.length" data-testid="price-bulk-open"><i class="bi bi-tags me-1"></i>Bulk update prices</button>
     <span class="small text-muted" data-testid="price-bulk-scope">{{bulkIds.length}} product{{bulkIds.length === 1 ? '' : 's'}} {{bulkScope}}<span *ngIf="bulkScope === 'on show'"> (tick rows to choose)</span></span>
 </div>
+<div class="border rounded p-2 mt-2" data-testid="price-list-panel">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="fw-semibold me-2">Price list for the counter</span>
+        <button type="button" class="btn btn-primary btn-sm" [disabled]="!!listBusy" (click)="downloadPriceList('pdf')" data-testid="price-list-pdf"><i class="bi bi-printer me-1"></i>{{listBusy === 'pdf' ? 'Making the list...' : 'Print (PDF)'}}</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" [disabled]="!!listBusy" (click)="downloadPriceList('xlsx')" data-testid="price-list-xlsx">{{listBusy === 'xlsx' ? 'Making the file...' : 'Download Excel'}}</button>
+        <span class="small" [class.text-danger]="lastList && !lastList.fresh" [class.text-muted]="!lastList || lastList.fresh" data-testid="price-list-last">
+            <ng-container *ngIf="lastList">Last printed {{lastList.on | date:'dd MMM yyyy, HH:mm'}} by {{lastList.by}} ({{lastList.count}} products){{lastList.fresh ? '' : ': print a fresh one'}}.</ng-container>
+            <ng-container *ngIf="!lastList">Not printed yet.</ng-container>
+        </span>
+    </div>
+    <div class="small text-muted mt-1">The products in stock with the price a customer pays, with GST, per pack and per unit, and the MRP. It carries the date and time on every page and is kept at the counter for when the system is down. Print one every week.</div>
+    <div class="small text-danger mt-1" *ngIf="listError" data-testid="price-list-error">{{listError}}</div>
+</div>
 <div class="alert alert-success py-2" *ngIf="message" data-testid="price-message">{{message}}</div>
 <div class="alert alert-danger py-2" *ngIf="error" data-testid="price-error-list">{{error}}</div>
 

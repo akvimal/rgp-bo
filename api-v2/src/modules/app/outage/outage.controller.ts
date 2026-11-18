@@ -26,6 +26,12 @@ export class OutageController {
     return new StreamableFile(f.buffer);
   }
 
+  @Get('price-list/last')
+  async lastPrint(@User() user: any) {
+    await this.assertKit(user);
+    return { lastprint: await this.outage.lastPrint(user.id) };
+  }
+
   @Get('price-list')
   async priceList(@Query('format') format: string, @User() user: any, @Res({ passthrough: true }) res: Response) {
     await this.assertKit(user);

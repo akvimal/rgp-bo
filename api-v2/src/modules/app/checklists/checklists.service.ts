@@ -9,10 +9,10 @@ import { isOwnerRole } from 'src/core/roles';
 import { firstOnOrAfter, istDay, RepeatRule } from '../todos/todo-rules';
 import { TodoService } from '../todos/todo.service';
 import { ChecklistDef, ChecklistItem, cleanItems, daysSince, defaultList, DEFAULT_CHECKLISTS, isCurrent, recordRun, slugKey } from './checklist-rules';
+import { lastPriceListPrint } from '../outage/price-list-last';
 import { dayProblem, effectiveSetting, SYSTEM_TASKS, systemTask, TaskSetting } from './system-tasks';
 
 const text = (v: any, max: number): string | null => { const s = String(v ?? '').trim(); return s ? s.slice(0, max) : null; };
-const AUTO_PRICE_LIST_DAYS = 7;
 
 interface Who { id: number; role: string; owner: boolean; businessId: number; storeIds: number[]; canEdit: boolean }
 
@@ -86,17 +86,7 @@ export class ChecklistsService {
     return out;
   }
 
-  /** when the price list was last printed in this business, for the items the system ticks itself */
-  private async lastPriceListPrint(businessId: number) {
-    const [r] = await this.manager.query(
-      `select a.occurred_on, u.full_name as by_name, a.details
-         from audit_event a join app_user u on u.id = a.user_id
-        where a.action = 'outage.price_list_printed'
-          and (select coalesce(x.business_id, (select s.business_id from user_stores us join stores s on s.id = us.store_id where us.user_id = x.id and us.active and not us.archive order by us.is_primary desc, us.id limit 1)) from app_user x where x.id = a.user_id) = $1
-        order by a.id desc limit 1`, [businessId]);
-    if (!r) return null;
-    return { on: r.occurred_on as string, by: r.by_name as string, count: r.details?.count ?? null, fresh: Date.now() - new Date(r.occurred_on).getTime() < AUTO_PRICE_LIST_DAYS * 86400000 };
-  }
+  private lastPriceListPrint(businessId: number) { return lastPriceListPrint(this.manager, businessId); }
 
   async overview(user: any, storeid?: number | null) {
     const { w, stores, store } = await this.scope(user, storeid);

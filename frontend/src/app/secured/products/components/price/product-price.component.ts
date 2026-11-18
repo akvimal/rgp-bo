@@ -1,6 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { ProductsService } from "../../products.service";
 import { priceWithGst } from "../../price-basis";
+import { saveAs } from "file-saver";
 
 /**
  * The price list: every purchased product with its current price, markup and discount, and where it stands against the pricing policy
@@ -35,6 +36,26 @@ export class ProductPriceComponent implements OnInit {
         this.service.pricingMode().subscribe((m:any) => this.basis = m?.settings?.basis === 'incl' ? 'incl' : 'excl', () => this.basis = 'excl');
         this.filter();
         this.loadStatuses();
+        this.loadLastList();
+    }
+
+    // the counter price list
+    listBusy = '';
+    listError = '';
+    lastList: any = null;
+
+    private loadLastList(){ this.service.priceListLast().subscribe((r:any) => this.lastList = r?.lastprint || null, () => this.lastList = null); }
+
+    /** saved under a name that says what it is (price-list-2026-11-18.pdf), not the browser's random one */
+    downloadPriceList(format: 'pdf' | 'xlsx'){
+        this.listError = ''; this.listBusy = format;
+        const d = new Date();
+        const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        this.service.priceListFile(format).subscribe((b: Blob) => {
+            this.listBusy = '';
+            saveAs(b, `price-list-${day}.${format}`);
+            this.loadLastList();
+        }, (err: any) => { this.listBusy = ''; this.listError = err?.error?.message || 'Could not make the price list.'; });
     }
 
     filter(){

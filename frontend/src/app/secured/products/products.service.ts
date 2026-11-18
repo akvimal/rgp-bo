@@ -13,6 +13,10 @@ export class ProductsService {
 
     constructor(private http:HttpClient){}
 
+    /** the counter price list as a file, and when it was last printed */
+    priceListFile(format: 'pdf' | 'xlsx'){ return this.http.get(`${environment.apiHost}/outage/price-list`, { params: { format }, responseType: 'blob' }); }
+    priceListLast(){ return this.http.get<any>(`${environment.apiHost}/outage/price-list/last`); }
+
     pricingReview(){ return this.http.get<any>(`${environment.apiHost}/pricing/review`); }
     pricingPerformance(){ return this.http.get<any>(`${environment.apiHost}/pricing/performance`); }
     pricingImpact(){ return this.http.get<any>(`${environment.apiHost}/pricing/impact`); }

@@ -102,25 +102,9 @@ export class ChecklistsComponent implements OnInit {
     }
 
     // ------------------------------------------------------------------ the printed documents
-    private open(blob: Blob, filename: string, download: boolean) {
-        if (download) { saveAs(blob, filename); return; }
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-    }
-
-    printPriceList(format: 'pdf' | 'xlsx') {
-        this.error = ''; this.printing = format;
-        this.service.priceList(format).subscribe((b: Blob) => {
-            this.printing = '';
-            this.open(b, `price-list-${new Date().toISOString().slice(0, 10)}.${format}`, format === 'xlsx');
-            this.load();
-        }, (err: any) => { this.printing = ''; this.error = this.msg(err, 'Could not make the price list.'); });
-    }
-
     printProcedure() {
         this.error = ''; this.printing = 'procedure';
-        this.service.procedure().subscribe((b: Blob) => { this.printing = ''; this.open(b, 'outage-procedure.pdf', false); },
+        this.service.procedure().subscribe((b: Blob) => { this.printing = ''; saveAs(b, 'outage-procedure.pdf'); },
             (err: any) => { this.printing = ''; this.error = this.msg(err, 'Could not make the procedure.'); });
     }
 
