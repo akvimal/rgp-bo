@@ -66,8 +66,8 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-todos', group: 'home', title: 'To-dos', route: '/secure/todos',
     purpose: 'Jobs you have to do, with a day and time, a reminder, and a note of what you did when you finish.',
-    tasks: ['Mine: add a to-do with the day, the time and a priority, and mark it Done.', 'Make it repeat every day, every week on chosen days, or every month, or have the next one made some days after it is done.', 'My team\'s: managers give a to-do to a person, or to a store\'s staff, and see what is Done lately or Missed.', 'To-dos made by the KPI assistant appear here too, for the people in the role.'],
-    who: 'Everyone. Managers can give to-dos to the people and stores they look after.', watch: ['A to-do left undone can be raised to the manager after the number of days set on it.'], keywords: 'todo to-do reminder task repeat assign',
+    tasks: ['Mine: add a to-do with the day, the time and a priority, and mark it Done.', 'Make it repeat every day, every week on chosen days, or every month, or have the next one made some days after it is done.', 'My team\'s: managers give a to-do to a person, or to a store\'s staff, and see what is Done lately or Missed.', 'Weekly and monthly tasks the system sets for the store (print the price list, weekly review, stock count and so on) appear in the store\'s shared list with an Open button; a store switches them off or moves them in Settings > Checklists.', 'To-dos made by the KPI assistant appear here too, for the people in the role.'],
+    who: 'Everyone. Managers can give to-dos to the people and stores they look after.', watch: ['A to-do left undone can be raised to the manager after the number of days set on it.'], keywords: 'todo to-do reminder task repeat assign system recurring weekly monthly',
   },
   {
     id: 'nav-calendar', group: 'home', title: 'Calendar', route: '/secure/calendar',
@@ -154,7 +154,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-products', group: 'stock', title: 'Products and prices', route: '/secure/products',
     purpose: 'The catalogue of what the shop sells, and the sale price of each product.',
-    tasks: ['Add a product: name, category, composition, schedule, whether it is chronic, HSN and pack.', 'Set or change a sale price: the rules say the lowest and highest price allowed and who must approve.', 'Needs a price: new products bought and not yet priced, each with a suggested price.', 'Price list > Bulk update prices: tick products (or use everything shown) and set the price to the MRP or a percent off it. Preview first; any product whose price cannot be set is skipped and listed with the reason.', 'Data check: products whose pack size or details look wrong.'],
+    tasks: ['Add a product: name, category, composition, schedule, whether it is chronic, HSN and pack.', 'Set or change a sale price: the rules say the lowest and highest price allowed and who must approve.', 'Needs a price: new products bought and not yet priced, each with a suggested price.', 'Price > Print (PDF) or Download Excel: the counter price list of what is in stock, with GST, per pack and per unit. Print one every week for when the system is down; it is saved as price-list-and-the-date.', 'Price list > Bulk update prices: tick products (or use everything shown) and set the price to the MRP or a percent off it. Preview first; any product whose price cannot be set is skipped and listed with the reason.', 'Data check: products whose pack size or details look wrong.'],
     who: 'Store heads and the owner; counter staff may see products.',
     watch: ['A price can never be above the MRP.', 'A big or sudden raise needs approval and is stepped.'], keywords: 'product price catalogue schedule hsn pricing policy',
   },
@@ -173,10 +173,10 @@ export const PAGES: PageGuide[] = [
     watch: ['Sign-off is blocked while any difference is still waiting.', 'Late bills written by hand must be entered before an audit is settled.'], keywords: 'audit count variance certificate plan sign off',
   },
   {
-    id: 'nav-checklists', group: 'stock', title: 'Checklists', route: '/secure/checklists',
+    id: 'nav-checklists', group: 'home', title: 'Checklists', route: '/secure/checklists',
     purpose: 'The lists a store ticks off, and the weekly and monthly tasks the system puts in its to-do list.',
-    tasks: ['Fill in a list (outage readiness, opening, closing, monthly housekeeping) once you have seen each item yourself.', 'Print the price list and the outage procedure from the Outage readiness list.', 'Set up the lists and recurring tasks in Settings > Checklists (people who run the store).'],
-    who: 'Everyone who bills fills them in; store heads change them.', watch: ['A list counts as done only when every item is ticked.', 'Tasks the system can see for itself tick themselves.'], keywords: 'power cut outage manual bill price list opening closing housekeeping recurring weekly monthly',
+    tasks: ['Fill in a list (outage readiness, opening, closing, monthly housekeeping) once you have seen each item yourself.', 'Print the outage procedure (one page, for the bill book) from the Outage readiness list. The price list is printed from Products and prices > Price.', 'Check what is due: the weekly and monthly tasks the system sets also arrive in your To-dos, with an Open button.'],
+    who: 'Everyone who bills fills them in. Setting the lists up is in Settings > Checklists (a Store Head for their own stores, the owner for any store or the business).', watch: ['A list counts as done only when every item is ticked.', 'Tasks the system can see for itself (the outage check, the price list, the weekly review) tick themselves.'], keywords: 'power cut outage manual bill price list opening closing housekeeping recurring weekly monthly',
   },
   {
     id: 'nav-schedule-register', group: 'stock', title: 'Drug register', route: '/secure/schedule-register',
@@ -190,9 +190,9 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-purchases', group: 'buy', title: 'Purchase', route: '/secure/purchases',
     purpose: 'Buying: what to order, the invoices that come in, what you owe vendors, and the GST on purchases.',
-    tasks: ['Ordering: requests, what to reorder, and purchase orders.', 'Invoices: choose the purchase order first (or none), enter the vendor\'s invoice header, add its items, verify them and complete it. Editing a draft invoice has the same header as a new one.', 'Pay vendors, hold or release an invoice, see what is overdue.', 'GST: each month, import GSTR-2B from the portal, run the match and settle what differs, then lock the month (the page has a How this works help).', 'Vendors: the vendor list and each one\'s balance.'],
+    tasks: ['Ordering: requests, what to reorder, and purchase orders.', 'Invoices: choose the purchase order first (or none), enter the vendor\'s invoice header, add its items, verify them and complete it. Editing a draft invoice has the same header as a new one.', 'After completing an invoice, mark it ready for payment: that says it is checked and may go to finance, and no payment can be recorded until you do. Pay vendors, hold or release an invoice, see what is overdue.', 'GST: each month, import GSTR-2B from the portal, run the match and settle what differs, then lock the month (the page has a How this works help).', 'Vendors: the vendor list and each one\'s balance.'],
     who: 'Store heads, the purchaser and the owner.',
-    watch: ['A rate that rose against the last purchase needs a reason, and a big rise needs a Store Head or Business Head.', 'A line in dispute is not counted until it is accepted or rejected.'], keywords: 'invoice vendor order challan payment grn',
+    watch: ['A rate that rose against the last purchase needs a reason, and a big rise needs a Store Head or Business Head.', 'A line in dispute is not counted until it is accepted or rejected.', 'An invoice cannot be paid until it is marked ready for payment (and approved, when approval is on).'], keywords: 'invoice vendor order challan payment grn payment ready mark ready',
   },
   {
     id: 'nav-purchase-requests', group: 'buy', title: 'Purchase requests', route: '/secure/purchases/my-requests',
@@ -440,8 +440,8 @@ export const WALKTHROUGHS: Walkthrough[] = [
   },
   {
     id: 'w-purchase', title: 'Receive a purchase invoice', from: 'nav-purchases',
-    steps: ['Open Purchase, then Invoices, then Add New. Choose the vendor and give the invoice number (or the challan number if the invoice has not come).', 'Add each item: product, batch, expiry, MRP, units, free units, rate, discount and tax. The tax is chosen from your list of rates.', 'Look at the flags: a rate that rose, an MRP far above the rate, a new product\'s margin.', 'Select the lines and press Verify.', 'When every line is verified, press Complete.', 'After completing, give new products their first price (Products and prices > Needs a price).'],
-    tips: ['Check the printed total at the bottom against the vendor\'s invoice.', 'Expiry is needed on every line except a product that never expires.'], keywords: 'invoice grn challan vendor receive',
+    steps: ['Open Purchase, then Invoices, then Add New. Choose the vendor and give the invoice number (or the challan number if the invoice has not come).', 'Add each item: product, batch, expiry, MRP, units, free units, rate, discount and tax. The tax is chosen from your list of rates.', 'Look at the flags: a rate that rose, an MRP far above the rate, a new product\'s margin.', 'Select the lines and press Verify.', 'When every line is verified, press Complete.', 'After completing, press Mark ready for payment (add a note for finance if needed). A payment cannot be recorded until you do; the invoice list shows these as Not ready.', 'After completing, give new products their first price (Products and prices > Needs a price).'],
+    tips: ['Check the printed total at the bottom against the vendor\'s invoice.', 'Expiry is needed on every line except a product that never expires.'], keywords: 'invoice grn challan vendor receive mark ready for payment',
   },
   {
     id: 'w-dispute', title: 'Deal with a rate rise or a line you do not agree with', from: 'nav-purchases',
