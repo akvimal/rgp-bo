@@ -161,6 +161,10 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'KPI ratings to give for {period}: {count}', body: '{count} ratings that only a manager can give are still missing, and payroll is waiting. Open Rate staff.' },
     ta: { title: '{period} க்கான KPI மதிப்பீடுகள்: {count}', body: 'மேலாளர் மட்டுமே கொடுக்கக்கூடிய {count} மதிப்பீடுகள் இன்னும் இல்லை; சம்பளம் காத்திருக்கிறது. ஊழியர் மதிப்பீடு பக்கத்தைத் திறக்கவும்.' },
   },
+  invoices_ready_overdue: {
+    en: { title: 'Invoices ready for payment are overdue: {count}', body: '{count} invoices marked ready for payment are past their due date, {amount} in all. Pay them from Purchase > Invoices > Payment queue.' },
+    ta: { title: 'கட்டணத்திற்குத் தயாரான இன்வாய்ஸ்கள் தாமதமாகிவிட்டன: {count}', body: 'கட்டணத்திற்குத் தயார் எனக் குறிக்கப்பட்ட {count} இன்வாய்ஸ்களின் செலுத்த வேண்டிய தேதி கடந்துவிட்டது; மொத்தம் {amount}. கொள்முதல் > இன்வாய்ஸ் > கட்டண வரிசையில் இருந்து செலுத்தவும்.' },
+  },
   outage_kit_overdue: {
     en: { title: 'Outage readiness not checked for {days} days: {store}', body: 'Last checked on {date}. Complete the Outage readiness checklist on the Checklists page and print a fresh price list from Pricing > Prices.' },
     ta: { title: 'மின்தடை தயார்நிலை {days} நாட்களாகச் சரிபார்க்கப்படவில்லை: {store}', body: 'கடைசியாகச் சரிபார்த்தது {date}. மின்தடை தயார்நிலைப் பக்கத்தில் வாராந்திரப் பட்டியலைச் சரிபார்த்து புதிய விலைப் பட்டியலை அச்சிடவும்.' },

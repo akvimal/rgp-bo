@@ -3,7 +3,8 @@
   <div class="col-12 mt-2">
     <div class="page-toolbar mb-0">
       <div class="btn-group">
-        <a class="btn btn-outline-primary" [class.active]="!isOutstanding" data-testid="inv-tab-invoices" [routerLink]="['/secure/purchases/invoices/list']" [queryParams]="vendorId ? {vendor: vendorId} : {}">Invoices</a>
+        <a class="btn btn-outline-primary" [class.active]="!isOutstanding && !isQueue" data-testid="inv-tab-invoices" [routerLink]="['/secure/purchases/invoices/list']" [queryParams]="vendorId ? {vendor: vendorId} : {}">Invoices</a>
+        <a class="btn btn-outline-primary" [class.active]="isQueue" data-testid="inv-tab-queue" [routerLink]="['/secure/purchases/invoices/queue']" [queryParams]="vendorId ? {vendor: vendorId} : {}" title="What can be paid now, by vendor">Payment queue</a>
         <a class="btn btn-outline-primary" [class.active]="isOutstanding" data-testid="inv-tab-outstanding" [routerLink]="['/secure/purchases/invoices/outstanding']" [queryParams]="vendorId ? {vendor: vendorId} : {}">Outstanding</a>
         <a class="btn btn-outline-primary"  data-testid="inv-tab-byvendor" [routerLink]="['/secure/purchases/invoices/by-vendor']">By vendor</a>
       </div>
@@ -64,7 +65,7 @@
   </div>
 
   <!-- what is owed, in four cards that do not overlap: what can be paid now (by when it falls due), what is held up and needs a decision, what is not received yet, and what is paid -->
-  <div class="col-12 mt-3" data-testid="inv-chips" *ngIf="summary">
+  <div class="col-12 mt-3" data-testid="inv-chips" *ngIf="summary && !isQueue">
     <div class="row g-2">
       <div class="col-12 col-md-6 col-xl-4">
         <div class="card h-100" [class.border-primary]="readyView" data-testid="inv-card-ready">
@@ -111,6 +112,18 @@
       <a role="button" (click)="setView('ready')">Show only what is ready to pay</a></div>
   </div>
 
+  <!-- the stage you are looking at: one click to what needs marking, what is ready to pay, what is held, what is paid -->
+  <div class="col-12 mt-3" *ngIf="summary && !isQueue && !isOutstanding" data-testid="inv-status-tabs">
+    <ul class="nav nav-pills gap-1 flex-wrap">
+      <li class="nav-item"><a class="nav-link py-1" [class.active]="view === 'all'" role="button" (click)="setView('all')" data-testid="inv-stage-all">All <span class="badge bg-light text-dark ms-1">{{summary.all?.count}}</span></a></li>
+      <li class="nav-item"><a class="nav-link py-1" [class.active]="view === 'notready'" role="button" (click)="setView('notready')" data-testid="inv-stage-notready" title="Completed and owed, not yet marked ready for payment">Needs marking <span class="badge ms-1" [ngClass]="summary.notready?.count ? 'bg-warning text-dark' : 'bg-light text-dark'">{{summary.notready?.count}}</span></a></li>
+      <li class="nav-item"><a class="nav-link py-1" [class.active]="readyView" role="button" (click)="setView('ready')" data-testid="inv-stage-ready" title="Marked ready and nothing stops it being paid">Ready to pay <span class="badge ms-1" [ngClass]="summary.ready?.count ? 'bg-success' : 'bg-light text-dark'">{{summary.ready?.count}}</span> <span class="small" *ngIf="summary.ready?.count">&#8377;{{summary.ready?.amount | number:'1.0-0'}}</span></a></li>
+      <li class="nav-item" *ngIf="approval.enabled"><a class="nav-link py-1" [class.active]="view === 'approval'" role="button" (click)="setView('approval')" data-testid="inv-stage-approval">Awaiting approval <span class="badge bg-light text-dark ms-1">{{summary.approval?.count}}</span></a></li>
+      <li class="nav-item"><a class="nav-link py-1" [class.active]="view === 'hold'" role="button" (click)="setView('hold')" data-testid="inv-stage-hold">On hold <span class="badge bg-light text-dark ms-1">{{summary.hold?.count}}</span></a></li>
+      <li class="nav-item"><a class="nav-link py-1" [class.active]="view === 'paid'" role="button" (click)="setView('paid')" data-testid="inv-stage-paid">Paid <span class="badge bg-light text-dark ms-1">{{summary.paid?.count}}</span></a></li>
+    </ul>
+  </div>
+
   <!-- filters -->
   <div class="col-12 mt-3">
     <div class="row g-2 align-items-end" data-testid="inv-filters">
@@ -132,19 +145,68 @@
       <div class="col-6 col-md-2"><label class="form-label small mb-0">to</label><input type="date" class="form-control form-control-sm" data-testid="inv-to" [(ngModel)]="to" (change)="applyFilters()"></div>
       <div class="col-md-6 col-lg-2"><label class="form-label small mb-0">Invoice no.</label><input class="form-control form-control-sm" placeholder="part of the number" data-testid="inv-search" [(ngModel)]="q" (keyup.enter)="applyFilters()" (change)="applyFilters()"></div>
       <div class="col-md-6 col-lg-2"><label class="form-label small mb-0">Product</label><input class="form-control form-control-sm" placeholder="part of the name" data-testid="inv-product" [(ngModel)]="product" (keyup.enter)="applyFilters()" (change)="applyFilters()"></div>
-      <div class="col-6 col-md-3 col-lg-1 text-md-end"><button type="button" class="btn btn-outline-secondary btn-sm" *ngIf="hasFilters || view !== (isOutstanding ? 'pending' : 'all')" data-testid="inv-clear" (click)="clearFilters()">Clear filters</button></div>
+      <div class="col-6 col-md-3 col-lg-1 text-md-end"><button type="button" class="btn btn-outline-secondary btn-sm" *ngIf="hasFilters || (!isQueue && view !== baseView)" data-testid="inv-clear" (click)="clearFilters()">Clear filters</button></div>
+    </div>
+  </div>
+
+  <div class="col-12 mt-1">
+    <a role="button" class="small" (click)="showMore = !showMore" data-testid="inv-more-open">{{showMore ? 'Fewer filters' : 'More filters'}}<span class="badge bg-secondary ms-1" *ngIf="moreCount && !showMore">{{moreCount}}</span></a>
+    <div class="row g-2 align-items-end mt-1" *ngIf="showMore" data-testid="inv-more-filters">
+      <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-0">Falls due</label>
+        <select class="form-select form-select-sm" [(ngModel)]="due" (change)="applyFilters()" data-testid="inv-due"><option value="">Any time</option><option value="overdue">Overdue</option><option value="due7">In the next 7 days</option><option value="later">Later</option></select></div>
+      <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-0">Marked ready from</label><input type="date" class="form-control form-control-sm" [(ngModel)]="readyFrom" (change)="applyFilters()" data-testid="inv-ready-from"></div>
+      <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-0">to</label><input type="date" class="form-control form-control-sm" [(ngModel)]="readyTo" (change)="applyFilters()" data-testid="inv-ready-to"></div>
+      <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-0">Amount from (&#8377;)</label><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="minAmt" (change)="applyFilters()" data-testid="inv-min"></div>
+      <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-0">to (&#8377;)</label><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="maxAmt" (change)="applyFilters()" data-testid="inv-max"></div>
     </div>
   </div>
 
   <div class="col-12 mt-2" *ngIf="message"><div class="alert alert-success py-2 mb-0" data-testid="inv-message">{{message}}</div></div>
   <div class="col-12 mt-2" *ngIf="error"><div class="alert alert-danger py-2 mb-0" data-testid="inv-error">{{error}}</div></div>
 
-  <div class="col-12 mt-3">
+  <!-- the payment queue: what can be paid now, by vendor -->
+  <div class="col-12 mt-3" *ngIf="isQueue" data-testid="inv-queue">
+    <div class="row g-2 mb-2" *ngIf="queue">
+      <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Ready to pay</div><div class="fs-5 fw-bold text-success" data-testid="queue-total">&#8377;{{queue.totals.balance | number:'1.0-0'}}</div><div class="small text-muted">{{queue.totals.count}} invoice{{queue.totals.count === 1 ? '' : 's'}}</div></div></div>
+      <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Overdue</div><div class="fs-5 fw-bold" [class.text-danger]="queue.totals.overdue > 0" data-testid="queue-overdue">&#8377;{{queue.totals.overdue | number:'1.0-0'}}</div></div></div>
+      <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Due in 7 days</div><div class="fs-5 fw-bold">&#8377;{{queue.totals.due7 | number:'1.0-0'}}</div></div></div>
+      <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Vendors</div><div class="fs-5 fw-bold">{{queue.vendors.length}}</div></div></div>
+    </div>
+    <div class="text-muted small" *ngIf="loading">Loading&hellip;</div>
+    <div class="text-center text-muted py-4" *ngIf="!loading && queue && !queue.vendors.length" data-testid="queue-empty">Nothing is marked ready for payment. Mark completed invoices ready from the <a [routerLink]="['/secure/purchases/invoices/list']" [queryParams]="{view: 'notready'}">Needs marking</a> list.</div>
+    <div class="card mb-3" *ngFor="let v of queue?.vendors" [attr.data-vendor]="v.vendor_name" data-testid="queue-vendor">
+      <div class="card-header py-2 d-flex flex-wrap align-items-center gap-3">
+        <input type="checkbox" class="form-check-input mt-0" [checked]="vendorPicked(v)" (change)="toggleVendor(v)" [attr.aria-label]="'Choose all of ' + v.vendor_name" data-testid="queue-vendor-pick">
+        <strong>{{v.vendor_name}}</strong>
+        <span class="small text-muted">{{v.count}} invoice{{v.count === 1 ? '' : 's'}} &middot; oldest due {{v.oldest_due | date:'dd MMM yyyy'}}</span>
+        <span class="ms-auto fw-semibold">&#8377;{{v.balance | number:'1.2-2'}}</span>
+        <span class="badge bg-danger" *ngIf="v.overdue > 0">&#8377;{{v.overdue | number:'1.0-0'}} overdue</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <tbody>
+            <tr *ngFor="let p of v.invoices" data-testid="queue-row" [attr.data-invoice]="p.invoice_no" [attr.data-balance]="p.balance_amount">
+              <td style="width:2rem"><input type="checkbox" class="form-check-input" [checked]="isSelected(p.id)" (change)="toggleRow(p)" [attr.aria-label]="'Choose ' + p.invoice_no" data-testid="inv-pick"></td>
+              <td class="text-nowrap"><a [routerLink]="['../items', p.id]">{{p.invoice_no}}</a></td>
+              <td class="text-nowrap">{{p.invoice_date | date:'dd MMM'}}</td>
+              <td class="text-nowrap">Due {{p.due_date | date:'dd MMM yyyy'}}<span class="small text-danger ms-1" *ngIf="p.days_overdue > 0">{{p.days_overdue}}d late</span></td>
+              <td class="small text-muted">ready {{readyAgo(p)}}<span *ngIf="p.ready_by"> &middot; {{p.ready_by}}</span><span *ngIf="p.ready_note"> &middot; {{p.ready_note}}</span></td>
+              <td class="text-end fw-semibold">{{p.balance_amount | number:'1.2-2'}}</td>
+              <td class="text-end text-nowrap"><button class="btn btn-primary btn-sm py-0" *ngIf="mayRecord" (click)="openPay(p)" data-testid="queue-pay">Pay</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 mt-3" *ngIf="!isQueue">
     <div class="table-responsive">
       <div class="table-responsive">
       <table class="table table-sm table-hover align-middle" data-testid="inv-table">
         <thead class="table-light">
           <tr>
+            <th style="width:2rem" *ngIf="canSelect"><input type="checkbox" class="form-check-input" [checked]="allPicked" (change)="togglePage()" aria-label="Choose every invoice on this page" data-testid="inv-pick-all"></th>
             <th role="button" (click)="sortBy('invoice_no')">No. {{sortIcon('invoice_no')}}</th>
             <th role="button" (click)="sortBy('invoice_date')">Date {{sortIcon('invoice_date')}}</th>
             <th role="button" (click)="sortBy('due_date')">Due {{sortIcon('due_date')}}</th>
@@ -153,12 +215,14 @@
             <th class="text-end" role="button" (click)="sortBy('paid_amount')">Paid {{sortIcon('paid_amount')}}</th>
             <th class="text-end" role="button" (click)="sortBy('balance_amount')">Balance {{sortIcon('balance_amount')}}</th>
             <th class="text-center" role="button" (click)="sortBy('payment_status')">Payment {{sortIcon('payment_status')}}</th>
+            <th role="button" (click)="sortBy('ready_on')" *ngIf="view.startsWith('ready')">Ready since {{sortIcon('ready_on')}}</th>
             <th class="text-center" title="GST 2B reconciliation">GST</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let p of invoices" data-testid="inv-row" [attr.data-vendor]="p.business_name" [attr.data-balance]="p.balance_amount">
+          <tr *ngFor="let p of invoices" data-testid="inv-row" [attr.data-invoice]="p.invoice_no" [attr.data-vendor]="p.business_name" [attr.data-balance]="p.balance_amount" [class.table-success]="p.payment_ready && p.balance_amount > 0 && !p.on_hold && !p.awaiting_approval" [class.table-active]="isSelected(p.id)">
+            <td *ngIf="canSelect"><input type="checkbox" class="form-check-input" [checked]="isSelected(p.id)" (change)="toggleRow(p)" [attr.aria-label]="'Choose ' + (p.invoice_no || p.id)" data-testid="inv-pick"></td>
             <td class="text-nowrap"><a [routerLink]="['../items', p.id]">{{p.invoice_no || (p.challan_no ? 'Challan ' + p.challan_no : 'Draft, no number yet')}}</a>
               <div class="small text-muted" *ngIf="p.awaiting" data-testid="inv-awaiting-note">challan, invoice not yet entered &middot; {{p.days_waiting}}d</div>
               <div class="small text-muted" *ngIf="p.items === 0">no items</div></td>
@@ -168,10 +232,11 @@
             <td class="text-end">{{p.total | number:'1.2-2'}}</td>
             <td class="text-end">{{p.paid_amount | number:'1.2-2'}}<div class="small text-muted" *ngIf="p.last_payment">{{p.last_payment | date:'dd MMM'}}</div></td>
             <td class="text-end fw-semibold" data-testid="inv-balance" [class.text-danger]="p.days_overdue > 0">{{p.balance_amount | number:'1.2-2'}}</td>
-            <td class="text-center"><span class="badge" [ngClass]="payClass(p.payment_status)" data-testid="inv-payment">{{p.payment_status}}</span>
+            <td class="text-center"><span class="badge" [ngClass]="payClass(payLabel(p))" data-testid="inv-payment">{{payLabel(p)}}</span>
               <div class="small text-muted" *ngIf="p.on_hold" [title]="p.hold_reason">{{p.hold_reason}}</div>
-              <div class="small text-muted" *ngIf="p.payment_ready && p.ready_by" data-testid="inv-ready-by" [title]="p.ready_note || ''">ready: {{p.ready_by}}</div>
+              <div class="small text-muted" *ngIf="p.payment_ready && p.ready_by && !view.startsWith('ready')" data-testid="inv-ready-by" [title]="p.ready_note || ''">ready {{readyAgo(p)}} &middot; {{p.ready_by}}</div>
               <div class="small text-muted" *ngIf="approval.enabled && p.approved" data-testid="inv-approved-by">approved by {{p.approved_by}}</div></td>
+            <td *ngIf="view.startsWith('ready')" class="small" data-testid="inv-ready-since">{{p.ready_on | date:'dd MMM'}}<div class="text-muted">{{readyAgo(p)}}<span *ngIf="p.ready_by"> &middot; {{p.ready_by}}</span></div><div class="text-muted" *ngIf="p.ready_note" [title]="p.ready_note">{{p.ready_note}}</div></td>
             <td class="text-center"><span *ngIf="p.status === 'COMPLETE'" class="badge" [ngClass]="gstClass(p.gst_status)" data-testid="inv-gst">{{gstLabel(p.gst_status)}}</span></td>
             <td class="text-end text-nowrap">
               <button class="btn btn-outline-secondary btn-sm py-0" type="button" (click)="openPeek(p.id)" title="View the amounts, items and payments" data-testid="inv-view"><i class="bi bi-eye"></i></button>
@@ -188,7 +253,7 @@
             </div>
             </td>
           </tr>
-          <tr *ngIf="!loading && !invoices.length"><td colspan="10" class="text-center text-muted py-4" data-testid="inv-empty">No invoices match.</td></tr>
+          <tr *ngIf="!loading && !invoices.length"><td colspan="12" class="text-center text-muted py-4" data-testid="inv-empty">No invoices match.</td></tr>
         </tbody>
       </table>
     </div>
@@ -206,6 +271,53 @@
     </div>
   </div>
 </div>
+
+<!-- the chosen invoices: mark them, or pay or withdraw them -->
+<div class="position-sticky bottom-0 border-top bg-white shadow-sm py-2 px-3 d-flex flex-wrap align-items-center gap-2" style="z-index:5" *ngIf="canSelect && selCount" data-testid="inv-bulk-bar">
+  <strong data-testid="inv-bulk-count">{{selCount}} chosen</strong>
+  <span class="text-muted">&#8377;{{selBalance | number:'1.2-2'}}</span>
+  <ng-container *ngIf="selectMode === 'mark'">
+    <input class="form-control form-control-sm w-auto" style="min-width:16rem" maxlength="200" placeholder="One note for finance (optional)" [(ngModel)]="bulkNote" aria-label="Note for finance" data-testid="inv-bulk-note">
+    <button class="btn btn-primary btn-sm" [disabled]="bulkBusy" (click)="markSelected()" data-testid="inv-bulk-mark">Mark ready for payment</button>
+  </ng-container>
+  <ng-container *ngIf="selectMode === 'pay'">
+    <button class="btn btn-primary btn-sm" *ngIf="mayRecord" [disabled]="bulkBusy" (click)="openBulkPay()" data-testid="inv-bulk-pay">Pay chosen</button>
+    <button class="btn btn-outline-secondary btn-sm" [disabled]="bulkBusy" (click)="withdrawSelected()" title="Take the ready mark back (only before anything is paid)" data-testid="inv-bulk-withdraw">Take back to Needs marking</button>
+  </ng-container>
+  <a role="button" class="small ms-auto" (click)="clearSelection()" data-testid="inv-bulk-clear">Clear</a>
+</div>
+
+<!-- pay the chosen invoices: one pay run for each vendor -->
+<p-dialog header="Pay the chosen invoices" [visible]="!!bulkPay" (visibleChange)="$event || (bulkPay = null)" [modal]="true" [style]="{width:'52rem'}">
+  <div *ngIf="bulkPay" data-testid="inv-bulkpay-dialog">
+    <div class="small text-muted mb-2">{{bulkPay.rows.length}} invoice{{bulkPay.rows.length === 1 ? '' : 's'}} from {{bulkPayVendors}} vendor{{bulkPayVendors === 1 ? '' : 's'}}. Each vendor is paid in one pay run. Change an amount for a part payment; clear it to leave that invoice out.</div>
+    <div class="table-responsive mb-2">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light"><tr><th>Invoice</th><th>Vendor</th><th>Due</th><th class="text-end">Balance</th><th style="width:9rem" class="text-end">Pay</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of bulkPay.rows" data-testid="inv-bulkpay-row">
+            <td>{{r.inv.invoice_no}}</td><td>{{r.inv.business_name}}</td><td class="text-nowrap">{{r.inv.due_date | date:'dd MMM'}}</td>
+            <td class="text-end">{{r.inv.balance_amount | number:'1.2-2'}}</td>
+            <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end" [(ngModel)]="r.amount" [attr.aria-label]="'Amount for ' + r.inv.invoice_no" data-testid="inv-bulkpay-amount"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="row g-2">
+      <div class="col-6 col-md-3"><label class="form-label small mb-0">Date</label><input type="date" class="form-control form-control-sm" [(ngModel)]="bulkPay.paydate"></div>
+      <div class="col-6 col-md-3"><label class="form-label small mb-0">Paid by</label>
+        <select class="form-select form-select-sm" [(ngModel)]="bulkPay.paymode" data-testid="inv-bulkpay-mode"><option *ngFor="let m of modes" [value]="m">{{m}}</option></select></div>
+      <div class="col-12 col-md-3"><label class="form-label small mb-0">Reference (UTR / cheque no.)</label><input class="form-control form-control-sm" maxlength="40" [(ngModel)]="bulkPay.transref" data-testid="inv-bulkpay-ref"></div>
+      <div class="col-12 col-md-3"><label class="form-label small mb-0">Remarks</label><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="bulkPay.remarks"></div>
+    </div>
+    <div class="text-danger small mt-2" *ngIf="bulkPay.error" data-testid="inv-bulkpay-error">{{bulkPay.error}}</div>
+    <div class="mt-3 d-flex align-items-center justify-content-end gap-2">
+      <span class="me-auto fw-semibold" data-testid="inv-bulkpay-total">Total &#8377;{{bulkPayTotal | number:'1.2-2'}}</span>
+      <button class="btn btn-outline-secondary btn-sm" (click)="bulkPay = null">Cancel</button>
+      <button class="btn btn-primary btn-sm" [disabled]="bulkPay.busy || bulkPayTotal <= 0" (click)="saveBulkPay()" data-testid="inv-bulkpay-save">{{bulkPay.busy ? 'Paying...' : 'Record payments'}}</button>
+    </div>
+  </div>
+</p-dialog>
 
 <!-- record a payment -->
 <p-dialog [header]="'Pay ' + (payInv?.invoice_no || '')" [visible]="!!payInv" (visibleChange)="$event || (payInv = null)" [modal]="true" [style]="{width:'34rem'}">

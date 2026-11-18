@@ -24,7 +24,8 @@ test.describe('Purchase invoices — pending view @p1', () => {
       expect(list.status).toBe(200);
       expect(list.body.total, `count for ${view}`).toBe(sum[key].count);
       if (list.body.total <= 100 && ['pending', 'overdue', 'due7', 'hold', 'ready', 'ready_overdue', 'ready_due7', 'ready_later'].includes(view)) {
-        const owed = list.body.data.reduce((t: number, r: any) => t + r.balance_amount, 0);
+        // an overdue invoice counts at its full invoice total on the chip, everything else at what is still owed
+        const owed = list.body.data.reduce((t: number, r: any) => t + (view === 'overdue' ? r.total : r.balance_amount), 0);
         expect(Math.abs(owed - sum[key].amount), `amount for ${view}`).toBeLessThan(1);
       }
     }
@@ -34,9 +35,9 @@ test.describe('Purchase invoices — pending view @p1', () => {
 
   test('PINV-7 the cards do not overlap: what is ready to pay, what is held up, by when it falls due @integration', async ({ api, app }) => {
     const sum = (await api.request('GET', '/purchases/summary', undefined, MGR)).body;
-    // everything owed is ready to pay, on hold, or waiting for approval, once
-    expect(sum.ready.count + sum.hold.count + sum.approval.count, 'owed = ready + on hold + awaiting approval').toBe(sum.pending.count);
-    expect(Math.abs(sum.ready.amount + sum.hold.amount + sum.approval.amount - sum.pending.amount)).toBeLessThan(1);
+    // everything owed is needs marking, ready to pay, on hold, or waiting for approval, once
+    expect(sum.notready.count + sum.ready.count + sum.hold.count + sum.approval.count, 'owed = needs marking + ready + on hold + awaiting approval').toBe(sum.pending.count);
+    expect(Math.abs(sum.notready.amount + sum.ready.amount + sum.hold.amount + sum.approval.amount - sum.pending.amount)).toBeLessThan(1);
     // and what is ready is overdue, due in 7 days, or later, once
     expect(sum.ready_overdue.count + sum.ready_due7.count + sum.ready_later.count, 'ready = overdue + due in 7 days + later').toBe(sum.ready.count);
     expect(Math.abs(sum.ready_overdue.amount + sum.ready_due7.amount + sum.ready_later.amount - sum.ready.amount)).toBeLessThan(1);
@@ -49,7 +50,7 @@ test.describe('Purchase invoices — pending view @p1', () => {
     await expectShell(page);
     await expect(page.getByTestId('inv-card-ready')).toContainText('Ready to pay');
     await expect(page.getByTestId('inv-card-held')).toContainText('Held up');
-    await expect(page.getByTestId('inv-held-count')).toContainText(String(sum.hold.count + sum.awaiting.count + (await page.getByTestId('inv-line-approval').count() ? sum.approval.count : 0)));
+    await expect(page.getByTestId('inv-held-count')).toContainText(String(sum.notready.count + sum.hold.count + sum.awaiting.count + (await page.getByTestId('inv-line-approval').count() ? sum.approval.count : 0)));
     for (const part of ['ready_overdue', 'ready_due7', 'ready_later'] as const) {
       await page.getByTestId(`inv-line-${part}`).click();
       await expect(page.getByTestId('inv-count')).toContainText(String(sum[part].count), { timeout: 15_000 });

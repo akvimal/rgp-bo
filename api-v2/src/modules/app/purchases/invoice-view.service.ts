@@ -10,13 +10,21 @@ export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid
 export type InvoiceView = typeof INVOICE_VIEWS[number];
 
 /** `since`: the usual window (for example the last year): invoices dated before it are left out unless something is still owed on them or they are not received yet */
-export interface InvoiceFilter { vendor?: number; from?: string; to?: string; since?: string; q?: string; product?: string }
+export interface InvoiceFilter {
+  vendor?: number; from?: string; to?: string; since?: string; q?: string; product?: string;
+  /** when it falls due: overdue, within 7 days, or later */
+  due?: 'overdue' | 'due7' | 'later';
+  /** the day it was marked ready for payment, from and to */
+  readyfrom?: string; readyto?: string;
+  /** the invoice amount, from and to */
+  min?: number; max?: number;
+}
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // sortable columns -> SQL (all from the wrapped query below)
 const SORTS: Record<string, string> = {
   invoice_date: 'invoice_date', due_date: 'due_date', total: 'total', paid_amount: 'paid', balance_amount: 'balance',
-  business_name: 'lower(business_name)', invoice_no: 'coalesce(invoice_no, challan_no)', payment_status: 'payment_status', items: 'items',
+  business_name: 'lower(business_name)', invoice_no: 'coalesce(invoice_no, challan_no)', payment_status: 'payment_status', items: 'items', ready_on: 'ready_on',
 };
 
 /**
@@ -61,6 +69,14 @@ export class InvoiceViewService {
     if (f.to && DATE.test(f.to)) add('i.invoice_date <= ?::date', f.to);
     if (f.since && DATE.test(f.since)) add(this.sinceSql(), f.since);
     if (f.q && f.q.trim()) add(`(i.invoice_no ilike ? or i.challan_no ilike ?)`, `%${f.q.trim()}%`);
+    // when it falls due, the day it was marked ready, and how much it is
+    if (f.due === 'overdue') where.push(`coalesce(i.due_date, i.invoice_date) < current_date`);
+    if (f.due === 'due7') where.push(`coalesce(i.due_date, i.invoice_date) >= current_date and coalesce(i.due_date, i.invoice_date) <= current_date + 7`);
+    if (f.due === 'later') where.push(`coalesce(i.due_date, i.invoice_date) > current_date + 7`);
+    if (f.readyfrom && DATE.test(f.readyfrom)) add(`(i.payment_ready_on at time zone 'Asia/Kolkata')::date >= ?::date`, f.readyfrom);
+    if (f.readyto && DATE.test(f.readyto)) add(`(i.payment_ready_on at time zone 'Asia/Kolkata')::date <= ?::date`, f.readyto);
+    if (Number.isFinite(f.min as number) && (f.min as number) >= 0) add(`i.total::numeric >= ?`, f.min);
+    if (Number.isFinite(f.max as number) && (f.max as number) > 0) add(`i.total::numeric <= ?`, f.max);
     // invoices that have a line for a product whose name contains the text
     if (f.product && f.product.trim()) add(`exists (select 1 from purchase_invoice_item x join product p on p.id = x.product_id where x.invoice_id = i.id and x.active and not x.archive and p.title ilike ?)`, `%${f.product.trim()}%`);
     const sql = `
@@ -245,6 +261,65 @@ export class InvoiceViewService {
     await this.audit.record({ userId: userid, action: 'invoice.payment_ready', entityType: 'purchases', entityId: invoiceId,
       summary: `invoice ${inv.invoice_no} marked ready for payment${text ? `: ${text}` : ''}`, details: { note: text } });
     return { id: invoiceId, ready: true };
+  }
+
+  /** Marks several invoices ready for payment at once, with one note; each is checked on its own and the ones that cannot be marked come back with the reason. */
+  async markReadyBulk(ids: any, note: string | undefined, userid: number) {
+    const list = this.idList(ids);
+    const done: number[] = [], skipped: { id: number; invoice_no: string | null; reason: string }[] = [];
+    for (const id of list) {
+      try { await this.markReady(id, note, userid); done.push(id); }
+      catch (e: any) {
+        const [r] = await this.manager.query(`select invoice_no from purchase_invoice where id = $1`, [id]);
+        skipped.push({ id, invoice_no: r?.invoice_no ?? null, reason: String(e?.response?.message ?? e?.message ?? 'Could not be marked.') });
+      }
+    }
+    return { done: done.length, ids: done, skipped };
+  }
+
+  async unmarkReadyBulk(ids: any, userid: number) {
+    const list = this.idList(ids);
+    const done: number[] = [], skipped: { id: number; invoice_no: string | null; reason: string }[] = [];
+    for (const id of list) {
+      try { await this.unmarkReady(id, userid); done.push(id); }
+      catch (e: any) {
+        const [r] = await this.manager.query(`select invoice_no from purchase_invoice where id = $1`, [id]);
+        skipped.push({ id, invoice_no: r?.invoice_no ?? null, reason: String(e?.response?.message ?? e?.message ?? 'Could not be taken back.') });
+      }
+    }
+    return { done: done.length, ids: done, skipped };
+  }
+
+  private idList(ids: any): number[] {
+    const list = Array.isArray(ids) ? ids.map((x) => Number(x)).filter((x) => Number.isInteger(x) && x > 0) : [];
+    if (!list.length) throw new BadRequestException('Choose at least one invoice.');
+    if (list.length > 200) throw new BadRequestException('Choose up to 200 invoices at a time.');
+    return Array.from(new Set(list));
+  }
+
+  /**
+   * What finance can pay now: the invoices marked ready for payment that are owed, not on hold and not waiting for approval, grouped by vendor
+   * (overdue first), with each vendor's total, what is overdue and the oldest due date. The same filters as the list apply.
+   */
+  async queue(f: InvoiceFilter) {
+    const { sql, args } = this.base(f, await loadApprovalPolicy(this.manager));
+    const rows = await this.manager.query(`select * from (${sql}) x where ready order by due_date asc, id asc limit 2000`, args);
+    const vendors = new Map<number, any>();
+    const totals = { count: 0, balance: 0, overdue: 0, due7: 0 };
+    for (const r of rows) {
+      const bal = +r.balance, over = +r.days_overdue > 0;
+      let v = vendors.get(r.vendor_id);
+      if (!v) { v = { vendor_id: r.vendor_id, vendor_name: r.business_name, count: 0, balance: 0, overdue: 0, oldest_due: null as string | null, invoices: [] as any[] }; vendors.set(r.vendor_id, v); }
+      v.count += 1; v.balance += bal; if (over) v.overdue += bal;
+      if (!v.oldest_due || String(r.due_date) < v.oldest_due) v.oldest_due = String(r.due_date).slice(0, 10);
+      v.invoices.push({ id: r.id, vendor_id: r.vendor_id, business_name: r.business_name, invoice_no: r.invoice_no, invoice_date: r.invoice_date, due_date: r.due_date, total: +r.total, paid_amount: +r.paid, balance_amount: bal,
+        days_overdue: +r.days_overdue, ready_on: r.ready_on, ready_by: r.ready_by_name, ready_note: r.ready_note, payment_status: r.payment_status });
+      totals.count += 1; totals.balance += bal; if (over) totals.overdue += bal; else if (r.ready_due7) totals.due7 += bal;
+    }
+    const round = (n: number) => Math.round(n * 100) / 100;
+    const list = Array.from(vendors.values()).map((v) => ({ ...v, balance: round(v.balance), overdue: round(v.overdue) }))
+      .sort((a, b) => b.overdue - a.overdue || b.balance - a.balance);
+    return { vendors: list, totals: { count: totals.count, balance: round(totals.balance), overdue: round(totals.overdue), due7: round(totals.due7) } };
   }
 
   /** Takes the mark back (before anything is paid on it): the invoice is not ready for payment again. */

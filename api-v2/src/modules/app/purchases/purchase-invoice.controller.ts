@@ -18,7 +18,9 @@ export class PurchaseInvoiceController {
     constructor(private purchaseInvoiceService:PurchaseInvoiceService, private view:InvoiceViewService, private products:ProductService){}
 
     private filterOf(q:any){
-      return { vendor: /^[0-9]+$/.test(String(q.vendor ?? '')) ? +q.vendor : undefined, from: q.from, to: q.to, since: q.since, q: q.q, product: typeof q.product === 'string' ? q.product : undefined };
+      const num = (v:any) => (v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined);
+      return { vendor: /^[0-9]+$/.test(String(q.vendor ?? '')) ? +q.vendor : undefined, from: q.from, to: q.to, since: q.since, q: q.q, product: typeof q.product === 'string' ? q.product : undefined,
+        due: ['overdue', 'due7', 'later'].includes(q.due) ? q.due : undefined, readyfrom: q.readyfrom, readyto: q.readyto, min: num(q.min), max: num(q.max) } as any;
     }
 
     /** The invoice list: view = all | pending | overdue | due7 | hold | paid | draft, with vendor / date / invoice-no filters and paging. */
@@ -75,6 +77,23 @@ export class PurchaseInvoiceController {
     @Post('/:id/unapprove')
     async unapprove(@Param('id', ParseIntPipe) id:number, @User() currentUser:any) {
       return this.view.unapprove(id, currentUser.id);
+    }
+
+    /** What can be paid now (marked ready, owed, not on hold or waiting for approval), grouped by vendor with overdue first. The list's filters apply. */
+    @Get('/payment-queue')
+    async paymentQueue(@Query() q:any) {
+      return this.view.queue(this.filterOf(q));
+    }
+
+    /** Mark several invoices ready for payment at once (one note), or take the mark back from several. Each is checked on its own; the ones that cannot are returned with the reason. */
+    @Post('/payment-ready-bulk')
+    async paymentReadyBulk(@Body() body:any, @User() currentUser:any) {
+      return this.view.markReadyBulk(body?.ids, body?.note, currentUser.id);
+    }
+
+    @Post('/payment-unready-bulk')
+    async paymentUnreadyBulk(@Body() body:any, @User() currentUser:any) {
+      return this.view.unmarkReadyBulk(body?.ids, currentUser.id);
     }
 
     /** The step after completing an invoice: mark it ready for payment (with an optional note), or take the mark back. */

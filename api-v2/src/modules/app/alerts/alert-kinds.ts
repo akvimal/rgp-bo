@@ -299,6 +299,25 @@ export const KINDS: AlertKind[] = [
     },
   },
   {
+    kind: 'invoices_ready_overdue',
+    label: 'Invoices ready for payment are overdue',
+    description: 'Purchase invoices that were marked ready for payment, are still unpaid and are past their due date (not counting any on hold). The Payment queue lists them.',
+    params: [{ key: 'min', label: 'Raise it when at least this many are overdue', min: 1, max: 100, default: 1, unit: 'invoices' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const [r] = await ctx.manager.query(
+        `select count(*)::int as n, coalesce(sum(i.total::numeric - pd.paid), 0)::float as amount
+           from purchase_invoice i
+           join stores s on s.id = i.store_id
+           join lateral (select coalesce(sum(amount), 0)::numeric as paid from vendor_payment where invoice_id = i.id) pd on true
+          where s.business_id = $1 and i.active and not i.archive and i.status = 'COMPLETE' and i.invoice_no is not null and i.payment_ready_on is not null
+            and coalesce(i.payment_status, 'Unpaid') <> 'On Hold' and coalesce(i.due_date, i.invoice_date) < current_date
+            and i.total::numeric - pd.paid > 0.005`, [ctx.businessId]);
+      if (!r || r.n < p.min) return [];
+      return [{ key: 'invoices_ready_overdue', storeid: null, code: 'invoices_ready_overdue', params: { count: r.n, amount: `Rs ${Math.round(r.amount).toLocaleString('en-IN')}` }, link: '/secure/purchases/invoices/list?view=ready_overdue' }];
+    },
+  },
+  {
     kind: 'outage_kit',
     label: 'Outage readiness not checked',
     description: "A store that has traded in the last 60 days has not completed its Outage readiness checklist (UPS, price list, bill book, light) for this many days. The Checklists page has it.",
@@ -688,6 +707,7 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity; re
   { kind: 'approvals_pending', name: 'Stock adjustments waiting', severity: 'warning' },
   { kind: 'price_policy', name: 'Prices out of policy', severity: 'warning' },
   { kind: 'outage_kit', name: 'Outage readiness not checked', severity: 'warning' },
+  { kind: 'invoices_ready_overdue', name: 'Invoices ready for payment are overdue', severity: 'warning' },
   { kind: 'stock_count_overdue', name: 'Stock count overdue', severity: 'warning' },
   { kind: 'negative_stock', name: 'Negative stock', severity: 'warning' },
   { kind: 'expired_stock', name: 'Expired stock on the shelf', severity: 'warning' },

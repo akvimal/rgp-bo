@@ -38,6 +38,7 @@ describe('alert messages', () => {
       registration_expiring: ['registration_expiring', 'registration_expired'], shift_open_long: ['shift_open_long'], approvals_pending: ['approvals_pending', 'approvals_pending_one'],
       price_policy: ['pricing_cuts', 'pricing_raises', 'pricing_check', 'pricing_unpriced'],
       outage_kit: ['outage_kit_overdue', 'outage_kit_never'],
+      invoices_ready_overdue: ['invoices_ready_overdue'],
       stock_count_overdue: ['stock_count_overdue', 'stock_count_never'],
       customer_request_arrived: ['customer_request_arrived'],
       customer_commitment: ['commitment_ready', 'commitment_hold_ending', 'commitment_hold_over', 'commitment_overdue'],

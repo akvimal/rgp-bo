@@ -16,6 +16,7 @@ const PAGES: RegExp[] = [
   /^\/secure\/products\/pack-check$/,
   /^\/secure\/(checklists|stock-audits|review|compliance|todos|feedback)$/,
   /^\/secure\/quality\/audit$/,
+  /^\/secure\/purchases\/invoices\/list$/,
   /^\/secure\/kpi\/(mine|rate)$/,
 ];
 

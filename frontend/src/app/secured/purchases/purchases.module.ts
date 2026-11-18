@@ -61,6 +61,7 @@ const routes: Routes = [
             { path: '', redirectTo: 'list'},
             { path: 'list', component: InvoiceListComponent},
             { path: 'outstanding', component: InvoiceListComponent},
+            { path: 'queue', component: InvoiceListComponent},
             { path: 'by-vendor', component: PayablesComponent},
             { path: 'new', component: InvoiceFormComponent},
             { path: 'edit/:id', component: InvoiceFormComponent},

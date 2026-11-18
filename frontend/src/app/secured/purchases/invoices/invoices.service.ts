@@ -106,6 +106,20 @@ export class InvoiceService {
         return this.http.post<any>(`${this.apiurl}/purchases/${invoiceid}/payment-unready`, {});
     }
 
+    /** several at once: mark them ready for payment with one note, or take the mark back; the ones that cannot are returned with the reason */
+    markReadyBulk(ids:number[], note?:string){
+        return this.http.post<any>(`${this.apiurl}/purchases/payment-ready-bulk`, { ids, note });
+    }
+
+    unmarkReadyBulk(ids:number[]){
+        return this.http.post<any>(`${this.apiurl}/purchases/payment-unready-bulk`, { ids });
+    }
+
+    /** what can be paid now, grouped by vendor with overdue first (the list's filters apply) */
+    paymentQueue(params:any){
+        return this.http.get<any>(`${this.apiurl}/purchases/payment-queue`, { params });
+    }
+
     hold(invoiceid:number, reason:string){
         return this.http.post(`${this.apiurl}/purchases/${invoiceid}/hold`, { reason });
     }
