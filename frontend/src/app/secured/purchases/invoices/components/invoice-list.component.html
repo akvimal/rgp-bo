@@ -221,7 +221,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let p of invoices" data-testid="inv-row" [attr.data-invoice]="p.invoice_no" [attr.data-vendor]="p.business_name" [attr.data-balance]="p.balance_amount" [class.table-success]="p.payment_ready && p.balance_amount > 0 && !p.on_hold && !p.awaiting_approval" [class.table-active]="isSelected(p.id)">
+          <tr *ngFor="let p of invoices" data-testid="inv-row" [attr.data-invoice]="p.invoice_no" [attr.data-vendor]="p.business_name" [attr.data-balance]="p.balance_amount" [class.table-success]="isMarked(p) && p.balance_amount > 0 && !p.on_hold && !p.awaiting_approval" [class.table-active]="isSelected(p.id)">
             <td *ngIf="canSelect"><input type="checkbox" class="form-check-input" [checked]="isSelected(p.id)" (change)="toggleRow(p)" [attr.aria-label]="'Choose ' + (p.invoice_no || p.id)" data-testid="inv-pick"></td>
             <td class="text-nowrap"><a [routerLink]="['../items', p.id]">{{p.invoice_no || (p.challan_no ? 'Challan ' + p.challan_no : 'Draft, no number yet')}}</a>
               <div class="small text-muted" *ngIf="p.awaiting" data-testid="inv-awaiting-note">challan, invoice not yet entered &middot; {{p.days_waiting}}d</div>
@@ -234,9 +234,9 @@
             <td class="text-end fw-semibold" data-testid="inv-balance" [class.text-danger]="p.days_overdue > 0">{{p.balance_amount | number:'1.2-2'}}</td>
             <td class="text-center"><span class="badge" [ngClass]="payClass(payLabel(p))" data-testid="inv-payment">{{payLabel(p)}}</span>
               <div class="small text-muted" *ngIf="p.on_hold" [title]="p.hold_reason">{{p.hold_reason}}</div>
-              <div class="small text-muted" *ngIf="p.payment_ready && p.ready_by && !view.startsWith('ready')" data-testid="inv-ready-by" [title]="p.ready_note || ''">ready {{readyAgo(p)}} &middot; {{p.ready_by}}</div>
+              <div class="small text-muted" *ngIf="isMarked(p) && p.ready_by && !view.startsWith('ready')" data-testid="inv-ready-by" [title]="p.ready_note || ''">ready {{readyAgo(p)}} &middot; {{p.ready_by}}</div>
               <div class="small text-muted" *ngIf="approval.enabled && p.approved" data-testid="inv-approved-by">approved by {{p.approved_by}}</div></td>
-            <td *ngIf="view.startsWith('ready')" class="small" data-testid="inv-ready-since">{{p.ready_on | date:'dd MMM'}}<div class="text-muted">{{readyAgo(p)}}<span *ngIf="p.ready_by"> &middot; {{p.ready_by}}</span></div><div class="text-muted" *ngIf="p.ready_note" [title]="p.ready_note">{{p.ready_note}}</div></td>
+            <td *ngIf="view.startsWith('ready')" class="small" data-testid="inv-ready-since"><ng-container *ngIf="isMarked(p); else carried">{{p.ready_on | date:'dd MMM'}}<div class="text-muted">{{readyAgo(p)}}<span *ngIf="p.ready_by"> &middot; {{p.ready_by}}</span></div></ng-container><ng-template #carried><span class="text-muted" title="This invoice was already complete and unpaid when marking was introduced, so it counts as ready, but nobody marked it">carried over</span></ng-template><div class="text-muted" *ngIf="p.ready_note" [title]="p.ready_note">{{p.ready_note}}</div></td>
             <td class="text-center"><span *ngIf="p.status === 'COMPLETE'" class="badge" [ngClass]="gstClass(p.gst_status)" data-testid="inv-gst">{{gstLabel(p.gst_status)}}</span></td>
             <td class="text-end text-nowrap">
               <button class="btn btn-outline-secondary btn-sm py-0" type="button" (click)="openPeek(p.id)" title="View the amounts, items and payments" data-testid="inv-view"><i class="bi bi-eye"></i></button>

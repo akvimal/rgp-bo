@@ -1,5 +1,5 @@
 /**
- * Marked-for-payment invoices on the invoice list — PQ-1..6
+ * Marked-for-payment invoices on the invoice list — PQ-1..7
  * Filters by when it falls due, when it was marked ready and how much; marking several at once; the payment queue grouped by vendor; and the screens:
  * the stage tabs, choosing invoices, the sticky bar, and paying the chosen ones.
  */
@@ -135,6 +135,37 @@ test.describe('Invoices marked for payment @p1', () => {
     await expect(page.getByTestId('inv-message')).toContainText('2 invoices paid');
     await expect(page.locator(`[data-testid=queue-row][data-invoice=\"${a.no}\"]`)).toHaveCount(0);
     for (const i of [a, b]) expect(Number((await api.request('GET', `/purchases/${i.id}`, undefined, MGR)).body.paidamount)).toBeGreaterThanOrEqual(168);
+  });
+
+  test('PQ-7 only an invoice a person marked is highlighted; one carried over as ready stays plain until someone marks it @happy', async ({ app, api }) => {
+    const mine = await invoice(api);
+    await ready(api, mine.id, 'pq7');
+    const marked = (await search(api, `vendor=${mine.vendorid}&view=ready`)).data.find((i: any) => i.id === mine.id);
+    expect(marked.ready_marked).toBe(true);
+
+    // an invoice already complete and unpaid when marking was introduced counts as ready but nobody marked it
+    const carried = (await search(api, 'view=ready&sort=due_date&dir=asc')).data.find((i: any) => i.payment_ready && i.ready_marked === false);
+    test.skip(!carried, 'no carried-over invoice in this data set');
+    const { page } = await app.open(MGR, `/secure/purchases/invoices/list?view=ready&vendor=${carried.vendor_id}`);
+    await expectShell(page);
+    const plain = page.locator(`[data-testid=inv-row][data-invoice="${carried.invoice_no}"]`);
+    await expect(plain).toBeVisible();
+    await expect(plain).not.toHaveClass(/table-success/);
+    await expect(plain.getByTestId('inv-payment')).not.toHaveText('Ready for payment');
+    await expect(plain.getByTestId('inv-ready-since')).toContainText('carried over');
+
+    await page.goto(`/secure/purchases/invoices/list?view=ready&vendor=${mine.vendorid}`);
+    const green = page.locator(`[data-testid=inv-row][data-invoice="${mine.no}"]`);
+    await expect(green).toHaveClass(/table-success/);
+    await expect(green.getByTestId('inv-payment')).toHaveText('Ready for payment');
+
+    // a person can take the carried-over invoice as theirs: it is then highlighted like any other
+    await page.goto(`/secure/purchases/invoices/items/${carried.id}`);
+    await expect(page.getByTestId('invoice-ready-carried')).toBeVisible();
+    await page.getByTestId('invoice-mark-carried').click();
+    await expect(page.getByTestId('invoice-ready-carried')).toHaveCount(0);
+    const after = (await search(api, `vendor=${carried.vendor_id}&view=ready`)).data.find((i: any) => i.id === carried.id);
+    expect(after.ready_marked).toBe(true);
   });
 
   test('PQ-6 a person who cannot mark or pay sees the list and the queue without the actions @negative', async ({ app }) => {

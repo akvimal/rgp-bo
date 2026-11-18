@@ -350,8 +350,10 @@
     </div>
     <div class="text-danger small mt-2" *ngIf="readyError" data-testid="invoice-ready-error">{{readyError}}</div>
 </div>
-<div class="alert alert-success py-2 mt-3 mb-0 d-flex flex-wrap justify-content-between align-items-center gap-2" *ngIf="invoice.status !== 'NEW' && invoice.paymentready && (invoice.balanceamount || 0) > 0" data-testid="invoice-ready-done">
-    <span><i class="bi bi-check-circle me-1"></i>Ready for payment, marked by {{invoice.paymentready.by || 'the system'}} on {{invoice.paymentready.on | date:'dd MMM yyyy'}}<span *ngIf="invoice.paymentready.note"> &middot; {{invoice.paymentready.note}}</span></span>
+<div class="alert py-2 mt-3 mb-0 d-flex flex-wrap justify-content-between align-items-center gap-2" [ngClass]="invoice.paymentready?.by ? 'alert-success' : 'alert-light border'" *ngIf="invoice.status !== 'NEW' && invoice.paymentready && (invoice.balanceamount || 0) > 0" data-testid="invoice-ready-done">
+    <span *ngIf="!invoice.paymentready.by" data-testid="invoice-ready-carried"><i class="bi bi-info-circle me-1"></i>Counts as ready for payment: this invoice was already complete and unpaid when marking was introduced, so nobody marked it. You can mark it yourself to record who checked it.</span>
+    <a role="button" class="btn btn-outline-primary btn-sm py-0" *ngIf="!invoice.paymentready.by" (click)="markReady()" data-testid="invoice-mark-carried">Mark it myself</a>
+    <span *ngIf="invoice.paymentready.by"><i class="bi bi-check-circle me-1"></i>Ready for payment, marked by {{invoice.paymentready.by}} on {{invoice.paymentready.on | date:'dd MMM yyyy'}}<span *ngIf="invoice.paymentready.note"> &middot; {{invoice.paymentready.note}}</span></span>
     <a role="button" class="small" *ngIf="!(invoice.paidamount > 0)" (click)="unmarkReady()" data-testid="invoice-unmark-ready">Take the mark back</a>
     <div class="text-danger small w-100" *ngIf="readyError">{{readyError}}</div>
 </div>

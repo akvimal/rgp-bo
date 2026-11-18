@@ -114,7 +114,7 @@ export class InvoiceViewService {
                  coalesce(i.due_date, i.invoice_date) as due_date, i.status, i.total::numeric as total,
                  coalesce(i.payment_status, 'Unpaid') as stored_status, i.gst_recon_status, i.gst_period,
                  i.hold_reason, i.approved_on, i.approval_note, ua.full_name as approved_by_name,
-                 i.payment_ready_on as ready_on, i.payment_ready_note as ready_note, ur.full_name as ready_by_name,
+                 i.payment_ready_on as ready_on, i.payment_ready_note as ready_note, ur.full_name as ready_by_name, (i.payment_ready_by is not null) as ready_marked,
                  (${policy.enabled ? 'true' : 'false'} and i.approved_on is null and (${Number(policy.limit) || 0} <= 0 or i.total::numeric > ${Number(policy.limit) || 0})) as needs_appr,
                  p.paid, p.last_payment, p.payments,
                  (select count(*) from purchase_invoice_item x where x.invoice_id = i.id)::int as items
@@ -167,7 +167,7 @@ export class InvoiceViewService {
       items: r.items, total: +r.total, paid_amount: +r.paid, balance_amount: +r.balance, days_overdue: +r.days_overdue,
       last_payment: r.last_payment, payments: r.payments, on_hold: r.on_hold, hold_reason: r.hold_reason,
       gst_status: r.gst_recon_status, gst_period: r.gst_period,
-      payment_ready: !!r.ready_on, ready_on: r.ready_on, ready_by: r.ready_by_name, ready_note: r.ready_note, not_ready: r.not_ready,
+      payment_ready: !!r.ready_on, ready_marked: !!r.ready_marked, ready_on: r.ready_on, ready_by: r.ready_by_name, ready_note: r.ready_note, not_ready: r.not_ready,
       awaiting_approval: r.awaiting_approval, approved: !!r.approved_on, approved_on: r.approved_on, approved_by: r.approved_by_name, approval_note: r.approval_note,
     }));
     return { data, total: rows[0]?.total_rows ?? 0, page: safePage, limit: safeLimit, view: v };
@@ -250,13 +250,14 @@ export class InvoiceViewService {
    */
   async markReady(invoiceId: number, note: string | undefined, userid: number) {
     const [inv] = await this.manager.query(
-      `select i.id, i.invoice_no, i.status, i.payment_ready_on, i.total::numeric - coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::numeric as balance
+      `select i.id, i.invoice_no, i.status, i.payment_ready_on, i.payment_ready_by, i.total::numeric - coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::numeric as balance
          from purchase_invoice i where i.id = $1 and i.active and not i.archive`, [invoiceId]);
     if (!inv) throw new NotFoundException('Invoice not found.');
     if (inv.status !== 'COMPLETE') throw new BadRequestException('Complete the invoice first: only a completed invoice can be marked ready for payment.');
     if (!inv.invoice_no) throw new BadRequestException("Enter the vendor's invoice number before marking it ready for payment.");
     if (+inv.balance <= 0.005) throw new BadRequestException('This invoice is already paid.');
-    if (inv.payment_ready_on) return { id: invoiceId, ready: true };
+    // already marked by a person: nothing changes. One that only counts as ready (carried over when marking was introduced) takes the person's mark.
+    if (inv.payment_ready_on && inv.payment_ready_by) return { id: invoiceId, ready: true };
     const text = (note || '').trim().slice(0, 200) || null;
     await this.manager.query(`update purchase_invoice set payment_ready_by = $2, payment_ready_on = now(), payment_ready_note = $3, updated_on = now(), updated_by = $2 where id = $1`, [invoiceId, userid, text]);
     await this.audit.record({ userId: userid, action: 'invoice.payment_ready', entityType: 'purchases', entityId: invoiceId,

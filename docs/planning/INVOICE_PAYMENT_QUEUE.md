@@ -21,3 +21,6 @@ Built 2026-11-18 (no migration). Follows "mark ready for payment" (migration 224
 - A marked-by filter and multi-vendor filter.
 
 Tests: `qa/specs/invoice-payment-queue.spec.ts` (PQ-1..6, API and screens), `invoice-view.spec.ts` (PINV-1 and PINV-7 now count Needs marking and compare the overdue chip at full invoice totals), alert unit specs.
+
+## Highlight only what a person marked
+Migration 224 counted every invoice that was already complete and unpaid as ready, so nothing in flight stopped; nobody marked those (`payment_ready_by` is empty). Only an invoice a person marked is highlighted: green row, green **Ready for payment** pill, "ready 3 days ago by Name". A carried-over one stays plain (its Payment column keeps its old label), the Ready since column says **carried over**, and its invoice page says it counts as ready and offers **Mark it myself**, which records the person (a mark by a person replaces the carry-over; marking an invoice a person already marked still changes nothing). The API rows carry `ready_marked`. To start clean instead, clear `payment_ready_on` on the rows whose `payment_ready_by` is null: every such invoice then has to be marked before it can be paid.

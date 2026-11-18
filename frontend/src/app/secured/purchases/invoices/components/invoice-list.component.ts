@@ -290,10 +290,16 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     changeRows() { this.page = 1; this.reload(); }
 
     // ---------------------------------------------------------------- the stage of an invoice, as it is shown
-    /** what the Payment column says: a marked invoice reads Ready for payment, an unmarked one Needs marking */
+    /**
+     * Marked by a person (not just carried over when the step was introduced): only these are highlighted. An invoice that was already complete and
+     * unpaid then was counted as ready so nothing in flight stopped, but nobody marked it, so it stays plain.
+     */
+    isMarked(p: any): boolean { return !!p.payment_ready && !!p.ready_marked; }
+
+    /** what the Payment column says: an invoice someone marked reads Ready for payment, an unmarked one Needs marking */
     payLabel(p: any): string {
         if (p.payment_status === 'Not ready') return 'Needs marking';
-        if (p.payment_ready && p.payment_status === 'Unpaid') return 'Ready for payment';
+        if (this.isMarked(p) && p.payment_status === 'Unpaid') return 'Ready for payment';
         return p.payment_status;
     }
 
