@@ -39,6 +39,7 @@ function allMenuGroups(a: MenuAccess): MenuGroup[] {
       item('nav-dashboard', 'Dashboard', 'dashboard', 'bi-speedometer2', () => a.canOpen('/secure/dashboard')),
       item('nav-shift', 'My shift', 'shift', 'bi-cash-stack', ['shiftdesk.view']),
       item('nav-todos', 'To-dos', 'todos', 'bi-check2-circle', ['todos.view']),
+      item('nav-checklists', 'Checklists', 'checklists', 'bi-list-check', ['checklists.view']),
       item('nav-calendar', 'Calendar', 'calendar', 'bi-calendar3', ['calendar.view']),
       item('nav-reports', 'Reports', 'reports', 'bi-graph-up', ['reports']),
     ] },
@@ -56,7 +57,6 @@ function allMenuGroups(a: MenuAccess): MenuGroup[] {
       item('nav-price-changes', 'Price changes', 'price-changes', 'bi-tag', ['pricechanges.view']),
       item('nav-store', 'Stock', 'store', 'bi-box-seam', ['store.read']),
       item('nav-stock-audits', 'Stock audits', 'stock-audits', 'bi-clipboard-data', ['stockaudit.view']),
-      item('nav-checklists', 'Checklists', 'checklists', 'bi-list-check', ['checklists.view']),
       item('nav-schedule-register', 'Drug register', 'schedule-register', 'bi-capsule', ['scheduleregister.view']),
     ] },
     // the shop's cash: the drawer shifts, the cash book and the vault. They share a permission group with Stock but are their own pages
@@ -116,9 +116,9 @@ export function isCounterRole(roleName: string | null | undefined): boolean {
 
 /** Few headings, the selling work first. The Dashboard stands alone at the top (its group has no heading). */
 const COUNTER_LAYOUT: { key: string; label: string; ids: string[] }[] = [
-  { key: 'home', label: '', ids: ['nav-dashboard', 'nav-todos', 'nav-calendar'] },
+  { key: 'home', label: '', ids: ['nav-dashboard', 'nav-todos', 'nav-checklists', 'nav-calendar'] },
   { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-commitments', 'nav-refills', 'nav-grievances', 'nav-inquiries', 'nav-whatsapp'] },
-  { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-price-changes', 'nav-checklists', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
+  { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-price-changes', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
   { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance', 'nav-discrepancies', 'nav-shifts', 'nav-cash-book', 'nav-vault'] },
   { key: 'people', label: 'People', ids: ['nav-hr', 'nav-leave-approvals', 'nav-attendance-punch', 'nav-attendance-review', 'nav-kpi-rate', 'nav-staff-credit', 'nav-staff-sales'] },
   { key: 'learn', label: 'Learn', ids: ['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge', 'nav-feedback'] },

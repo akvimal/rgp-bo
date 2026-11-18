@@ -131,6 +131,12 @@
             <span>To-dos</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'checklists.view'">
+          <a class="nav-link collapsed" routerLink="checklists" data-testid="nav-checklists" title="Checklists" aria-label="Checklists">
+            <i class="bi bi-list-check"></i>
+            <span>Checklists</span>
+          </a>
+        </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'calendar.view'">
           <a class="nav-link collapsed" routerLink="calendar" data-testid="nav-calendar" title="Calendar" aria-label="Calendar">
             <i class="bi bi-calendar3"></i>
@@ -172,12 +178,6 @@
           <a class="nav-link collapsed" routerLink="price-changes" data-testid="nav-price-changes" title="Price changes" aria-label="Price changes">
             <i class="bi bi-tag"></i>
             <span>Price changes</span>
-          </a>
-        </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'checklists.view'">
-          <a class="nav-link collapsed" routerLink="checklists" data-testid="nav-checklists" title="Checklists" aria-label="Checklists">
-            <i class="bi bi-list-check"></i>
-            <span>Checklists</span>
           </a>
         </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *ngIf="has('refills.view') && !has('grievances.view')">
