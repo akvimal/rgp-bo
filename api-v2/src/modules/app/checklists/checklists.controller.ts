@@ -8,7 +8,7 @@ const sid = (v: string) => (/^\d+$/.test(v ?? '') ? +v : null);
 
 /**
  * Store checklists (run a list, change a store's lists) and the system's weekly and monthly tasks (switch on or off, move to another day).
- * Who may do what is decided in the service: everyone with the page may run a list; changing lists and tasks needs the `edit` action.
+ * Who may do what is decided in the service: everyone with the page may run a list; changing lists and tasks needs the `checklistsetup` permission (Settings > Checklists).
  */
 @ApiTags('Checklists')
 @Controller('checklists')

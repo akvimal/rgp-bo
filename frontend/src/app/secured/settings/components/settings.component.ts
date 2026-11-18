@@ -5,7 +5,7 @@ import { SettingService } from "../settings.service";
 
 const TITLES: { [segment: string]: string } = {
     'users': 'Users', 'alerts': 'Alerts', 'roles': 'Roles', 'store': 'Store settings', 'notifications': 'Notifications',
-    'business-profile': 'Business details', 'businesses': 'Businesses', 'delivery-partners': 'Delivery partners',
+    'checklists': 'Checklists', 'business-profile': 'Business details', 'businesses': 'Businesses', 'delivery-partners': 'Delivery partners',
 };
 
 @Component({

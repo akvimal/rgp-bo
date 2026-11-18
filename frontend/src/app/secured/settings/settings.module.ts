@@ -37,6 +37,7 @@ import { AiKeyCardComponent } from "./alerts/ai-key-card.component";
 import { AiAssistantSettingsComponent } from "./ai-assistant/ai-assistant-settings.component";
 import { AiUsageReportComponent } from "./ai-assistant/ai-usage-report.component";
 import { DashboardSetupComponent } from "./dashboard-setup/dashboard-setup.component";
+import { ChecklistSetupComponent } from "./checklist-setup/checklist-setup.component";
 
 const routes: Routes = [
   { path: '', component: SettingsComponent, canActivate:[AuthGuard], children: [
@@ -68,6 +69,7 @@ const routes: Routes = [
     { path: 'notifications', component: NotificationsComponent },
     { path: 'alerts', component: AlertRulesComponent },
     { path: 'whatsapp', component: WhatsappSettingsComponent },
+    { path: 'checklists', component: ChecklistSetupComponent },
     { path: 'dashboards', component: DashboardSetupComponent }
   ]},
 ];
@@ -99,7 +101,8 @@ const routes: Routes = [
       AiKeyCardComponent,
       AiAssistantSettingsComponent,
       AiUsageReportComponent,
-      DashboardSetupComponent
+      DashboardSetupComponent,
+      ChecklistSetupComponent
     ],
     imports: [
         RouterModule.forChild(routes),

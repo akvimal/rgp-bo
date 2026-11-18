@@ -210,6 +210,22 @@
       ]
     },
     {
+      "key": "checklistsetup",
+      "label": "Checklist setup",
+      "description": "Set up the store's checklists (change, add and remove lists) and switch the system's weekly and monthly tasks on, off or to another day. A Store Head does it for their own stores, the owner for any store or the whole business.",
+      "group": "Setup",
+      "path": "/secure/settings/checklists",
+      "settingsPath": true,
+      "bundle": true,
+      "bundleLabel": "Can set up checklists",
+      "actions": [
+        {
+          "key": "manage",
+          "label": "Manage"
+        }
+      ]
+    },
+    {
       "key": "alerts",
       "label": "Alerts",
       "description": "Set up which alerts the shop gets (deposits, licences, shifts, approvals), who sees them and how loudly.",
@@ -1164,10 +1180,6 @@
         {
           "key": "view",
           "label": "Open the page and fill in the checklists"
-        },
-        {
-          "key": "edit",
-          "label": "Change the store's checklists, and switch recurring tasks on, off or to another day"
         }
       ]
     },

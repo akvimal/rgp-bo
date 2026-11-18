@@ -175,7 +175,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-checklists', group: 'stock', title: 'Checklists', route: '/secure/checklists',
     purpose: 'The lists a store ticks off, and the weekly and monthly tasks the system puts in its to-do list.',
-    tasks: ['Fill in a list (outage readiness, opening, closing, monthly housekeeping) once you have seen each item yourself.', 'Print the price list and the outage procedure from the Outage readiness list.', 'Change the lists of the store, and switch recurring tasks on, off or to another day (people who run the store).'],
+    tasks: ['Fill in a list (outage readiness, opening, closing, monthly housekeeping) once you have seen each item yourself.', 'Print the price list and the outage procedure from the Outage readiness list.', 'Set up the lists and recurring tasks in Settings > Checklists (people who run the store).'],
     who: 'Everyone who bills fills them in; store heads change them.', watch: ['A list counts as done only when every item is ticked.', 'Tasks the system can see for itself tick themselves.'], keywords: 'power cut outage manual bill price list opening closing housekeeping recurring weekly monthly',
   },
   {
@@ -391,6 +391,12 @@ export const PAGES: PageGuide[] = [
     purpose: 'What the shop is told about, who is told and how loudly, and whether alerts also go to staff on Telegram.',
     tasks: ['Switch a built-in alert on or off and change its numbers.', 'Add your own alert, or describe it in a sentence (the assistant drafts it once its key is added under Settings > AI assistant).', 'Add the Telegram bot of the shop (Add the bot) and see who has connected and how the messages went.'],
     who: 'The Business Head.', keywords: 'alert rule telegram notification',
+  },
+  {
+    id: 'setup-checklists', group: 'setup', title: 'Checklists setup', route: '/secure/settings/checklists', needs: ['checklistsetup.manage'],
+    purpose: 'Set up the lists a store ticks off and the weekly and monthly tasks the system puts in its to-do list.',
+    tasks: ['Change a checklist, add your own, hide one or put it back to the shared list.', 'Switch a recurring task off or move it to another day for the store.', 'Owner: save a list or task for every store at once.'],
+    who: 'A Store Head sets up their own stores; the Business Head or owner any store, or the whole business.', keywords: 'checklist outage opening closing housekeeping recurring task weekly monthly setup',
   },
   {
     id: 'setup-dashboards', group: 'setup', title: 'Dashboards', route: '/secure/settings/dashboards', needs: ['dashsetup.view'],

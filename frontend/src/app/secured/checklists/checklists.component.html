@@ -4,7 +4,7 @@
 </div>
 
 <p class="small text-muted mb-2" data-testid="cl-intro">
-  The lists a store ticks off (outage readiness, opening, closing, housekeeping), and the weekly and monthly tasks the system puts in the store's to-do list.
+  The lists a store ticks off: outage readiness, opening, closing and housekeeping. The weekly and monthly tasks the system sets arrive in your to-dos.
 </p>
 
 <div class="alert alert-danger py-2" *ngIf="error" data-testid="cl-error">{{error}}</div>
@@ -19,14 +19,12 @@
     </select>
   </div>
 
-  <ul class="nav nav-tabs mb-3" data-testid="cl-tabs">
-    <li class="nav-item"><a class="nav-link" [class.active]="tab === 'run'" href="javascript:void(0)" (click)="setTab('run')" data-testid="cl-tab-run">Check</a></li>
-    <li class="nav-item" *ngIf="canEdit"><a class="nav-link" [class.active]="tab === 'lists'" href="javascript:void(0)" (click)="setTab('lists')" data-testid="cl-tab-lists">Change the lists</a></li>
-    <li class="nav-item"><a class="nav-link" [class.active]="tab === 'tasks'" href="javascript:void(0)" (click)="setTab('tasks')" data-testid="cl-tab-tasks">Recurring tasks</a></li>
-  </ul>
+  <div class="small mb-2" *ngIf="canEdit" data-testid="cl-setup-link">
+    <i class="bi bi-gear me-1"></i><a routerLink="/secure/settings/checklists">Set up checklists and recurring tasks</a> (Settings)
+  </div>
 
   <!-- ============================================================ fill in a list -->
-  <ng-container *ngIf="tab === 'run'">
+  <ng-container>
     <div class="d-flex flex-wrap gap-2 mb-3" data-testid="cl-lists">
       <button type="button" class="btn btn-sm" *ngFor="let l of activeLists" [ngClass]="l.key === key ? 'btn-primary' : 'btn-outline-secondary'" (click)="pick(l.key)" [attr.data-testid]="'cl-pick-' + l.key">
         {{l.title}}
@@ -96,102 +94,5 @@
     <div class="text-muted" *ngIf="!current && !loading" data-testid="cl-none">There are no checklists for this store.</div>
   </ng-container>
 
-  <!-- ============================================================ change the lists -->
-  <ng-container *ngIf="tab === 'lists' && canEdit">
-    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center" data-testid="cl-edit-lists">
-      <button type="button" class="btn btn-sm" *ngFor="let l of lists" [ngClass]="l.key === key ? 'btn-primary' : 'btn-outline-secondary'" (click)="pickEdit(l.key)" [attr.data-testid]="'cl-edit-pick-' + l.key">
-        {{l.title}}<span class="badge bg-secondary ms-1" *ngIf="!l.active">hidden</span>
-      </button>
-      <button type="button" class="btn btn-sm btn-outline-primary" (click)="adding = !adding" data-testid="cl-add-open">+ A new checklist</button>
-    </div>
-    <div class="border rounded p-3 mb-3" *ngIf="adding" data-testid="cl-add-form">
-      <label class="form-label" for="cl-new-title">Name of the checklist</label>
-      <div class="d-flex gap-2">
-        <input type="text" class="form-control w-auto" id="cl-new-title" maxlength="120" [(ngModel)]="newTitle" data-testid="cl-new-title">
-        <button type="button" class="btn btn-primary" [disabled]="newTitle.trim().length < 2" (click)="createList()" data-testid="cl-add">Add</button>
-      </div>
-    </div>
-
-    <div class="alert alert-danger py-2" *ngIf="editError" data-testid="cl-edit-error">{{editError}}</div>
-    <div *ngIf="edit" data-testid="cl-edit">
-      <p class="small text-muted">This store uses {{sourceLabel(edit.source)}}.</p>
-      <div class="row g-3 mb-2">
-        <div class="col-md-6">
-          <label class="form-label">Title</label>
-          <input type="text" class="form-control" maxlength="120" [(ngModel)]="edit.title" data-testid="cl-edit-title">
-        </div>
-        <div class="col-md-6 d-flex align-items-end">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="cl-edit-active" [(ngModel)]="edit.active" data-testid="cl-edit-active">
-            <label class="form-check-label" for="cl-edit-active">Use this checklist at the store</label>
-          </div>
-        </div>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-sm align-middle" data-testid="cl-edit-items">
-          <thead><tr><th>Item</th><th style="width:9rem">Ticked by</th><th style="width:9rem"></th></tr></thead>
-          <tbody>
-            <tr *ngFor="let i of edit.items; let n = index" data-testid="cl-edit-row">
-              <td><input type="text" class="form-control" maxlength="200" [(ngModel)]="i.label" [attr.data-testid]="'cl-edit-label-' + n"></td>
-              <td>
-                <span class="small text-muted" *ngIf="i.auto">the system</span>
-                <select class="form-select" *ngIf="!i.auto" [(ngModel)]="i.kind"><option value="tick">a tick</option><option value="text">some text</option></select>
-              </td>
-              <td class="text-nowrap text-end">
-                <a role="button" class="me-2" (click)="move(n, -1)" title="Move up">&uarr;</a>
-                <a role="button" class="me-2" (click)="move(n, 1)" title="Move down">&darr;</a>
-                <a role="button" class="text-danger" (click)="removeItem(n)" [attr.data-testid]="'cl-edit-remove-' + n">Remove</a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <button type="button" class="btn btn-outline-secondary btn-sm mb-3" (click)="addItem()" data-testid="cl-edit-additem">+ Add an item</button>
-      <div class="d-flex flex-wrap gap-3 align-items-center">
-        <select class="form-select w-auto" *ngIf="canOwner" [(ngModel)]="edit.scope" data-testid="cl-edit-scope">
-          <option value="store">Save for this store</option>
-          <option value="business">Save for every store without its own copy</option>
-        </select>
-        <button type="button" class="btn btn-primary" (click)="saveEdit()" data-testid="cl-edit-save">Save</button>
-        <button type="button" class="btn btn-outline-danger" *ngIf="edit.source !== 'default' && (edit.source === 'store' || canOwner)" (click)="resetEdit()" data-testid="cl-edit-reset">
-          {{edit.custom ? 'Remove this checklist' : 'Put back to the shared list'}}
-        </button>
-      </div>
-    </div>
-  </ng-container>
-
-  <!-- ============================================================ recurring tasks -->
-  <ng-container *ngIf="tab === 'tasks'">
-    <p class="small text-muted mb-2">These are made for the store as repeating to-dos that anyone at the counter can tick. A task the system can see for itself (a checklist completed, a price list printed, the weekly review signed) ticks itself.
-      {{canEdit ? 'Switch a task off, or move it to another day.' : 'The people who run the store switch them off or move them.'}}</p>
-    <div class="alert alert-danger py-2" *ngIf="tasksError" data-testid="cl-tasks-error">{{tasksError}}</div>
-    <div class="table-responsive" *ngIf="tasks">
-      <table class="table table-sm align-middle" data-testid="cl-tasks">
-        <thead><tr><th>Task</th><th>Repeats</th><th>Day</th><th>On</th><th>Open now</th><th>Last done</th></tr></thead>
-        <tbody>
-          <tr *ngFor="let t of tasks.tasks" [attr.data-testid]="'cl-task-' + t.key" [class.text-muted]="!t.enabled">
-            <td>
-              <div class="fw-semibold">{{t.title}} <span class="badge bg-info text-dark" *ngIf="t.auto">ticks itself</span></div>
-              <div class="small text-muted">{{t.notes}}</div>
-            </td>
-            <td class="text-nowrap">{{t.cadence === 'WEEKLY' ? 'Every week' : 'Every month'}}</td>
-            <td>
-              <select class="form-select form-select-sm w-auto" [disabled]="!tasks.canedit" [ngModel]="t.day" (ngModelChange)="moveTask(t, $event)" [attr.data-testid]="'cl-task-day-' + t.key">
-                <option *ngFor="let d of dayOptions(t)" [ngValue]="d.v">{{d.n}}</option>
-              </select>
-            </td>
-            <td>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" [disabled]="!tasks.canedit" [ngModel]="t.enabled" (ngModelChange)="toggleTask(t, $event)" [attr.data-testid]="'cl-task-on-' + t.key">
-              </div>
-            </td>
-            <td class="small"><a *ngIf="t.open" routerLink="/secure/todos">due {{t.open.due | date:'dd MMM'}}</a><span *ngIf="!t.open" class="text-muted">{{t.enabled && t.next ? 'next ' + (t.next | date:'dd MMM') : '-'}}</span></td>
-            <td class="small">{{t.lastdone ? (t.lastdone.on | date:'dd MMM yyyy') + (t.lastdone.by ? ' by ' + t.lastdone.by : '') : '-'}}
-              <a role="button" class="ms-1" *ngIf="tasks.canedit && t.own" (click)="followBusiness(t)" title="Go back to the business's setting">reset</a></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </ng-container>
 </ng-container>
 </div>

@@ -1,5 +1,7 @@
 /**
  * Checklists and system tasks — CHK-1..5
+ * Filling a list in is for everyone who bills (checklists.view); setting lists and recurring tasks up is admin work (checklistsetup.manage): a Store Head
+ * for their own stores, the owner roles for any store or the whole business.
  * The outage kit page was taken apart: the weekly check became one of several configurable store checklists, the price list and procedure stand
  * alone, the outage log is gone, and the weekly and monthly jobs are repeating to-dos the system keeps for each store.
  */
@@ -66,6 +68,12 @@ test.describe('Checklists @p1', () => {
     expect(bad.status).toBe(400);
     expect((await api.request('PUT', '/checklists/opening', { storeid: sid, items }, SALES)).status).toBe(403);
     expect((await api.request('PUT', '/checklists/opening', { storeid: sid, scope: 'business', items }, HEAD)).status).toBe(403);
+    // the owner may also set a list up for every store, and take it back
+    expect((await api.request('PUT', '/checklists/opening', { scope: 'business', items }, OWNER)).status).toBeLessThan(300);
+    const wide = (await api.request('GET', `/checklists?storeid=${sid}`, undefined, SALES)).body.lists.find((l: any) => l.key === 'opening');
+    expect(wide.source).toBe('business');
+    expect((await api.request('DELETE', '/checklists/opening?scope=business', undefined, HEAD)).status).toBe(403);
+    expect((await api.request('DELETE', '/checklists/opening?scope=business', undefined, OWNER)).status).toBeLessThan(300);
 
     expect((await api.request('PUT', '/checklists/opening', { storeid: sid, items }, HEAD)).status).toBeLessThan(300);
     const mine = (await api.request('GET', `/checklists?storeid=${sid}`, undefined, HEAD)).body.lists.find((l: any) => l.key === 'opening');
@@ -95,6 +103,8 @@ test.describe('Checklists @p1', () => {
 
     expect((await api.request('PUT', '/checklists/tasks/price_list', { storeid: sid, day: 9 }, HEAD)).status).toBe(400);   // not a weekday
     expect((await api.request('PUT', '/checklists/tasks/price_list', { storeid: sid, day: 4 }, SALES)).status).toBe(403);
+    expect((await api.request('GET', '/checklists/tasks', undefined, SALES)).status).toBe(403);                              // reading the setup is part of setting up
+    expect((await api.request('PUT', '/checklists/tasks/price_list', { scope: 'business', enabled: true }, HEAD)).status).toBe(403);   // a Store Head sets up their own stores, not the business
 
     expect((await api.request('PUT', '/checklists/tasks/price_list', { storeid: sid, day: 4 }, HEAD)).status).toBeLessThan(300);
     const moved = (await api.request('GET', `/checklists/tasks?storeid=${sid}`, undefined, HEAD)).body.tasks.find((x: any) => x.key === 'price_list');

@@ -34,11 +34,17 @@ export class ChecklistsService {
   ) {}
 
   // ------------------------------------------------------------------ who is asking
-  /** may this role do `action` on the checklists page (view also covers the old outage kit permission) */
-  async can(roleId: number | string, action: 'view' | 'edit'): Promise<boolean> {
+  /**
+   * view: fill in the checklists (the Checklists page; the old outage kit permission still counts).
+   * manage: set them up (Settings > Checklists): change, add and remove lists, switch recurring tasks on, off or to another day. It is its own
+   * permission, `checklistsetup`; the owner roles hold it by name, a Store Head by grant, and only for their own stores (see scope).
+   */
+  async can(roleId: number | string, action: 'view' | 'manage'): Promise<boolean> {
     const [r] = await this.manager.query(
       `select exists (select 1 from app_role r, json_array_elements(r.permissions) e, json_array_elements(e->'policies') p
-                       where r.id = $1 and ((e->>'resource' = 'checklists' and p->>'action' = $2) or ($2 = 'view' and e->>'resource' = 'outage'))) as can`, [roleId, action]);
+                       where r.id = $1 and (($2 = 'manage' and e->>'resource' = 'checklistsetup' and p->>'action' = 'manage')
+                                         or ($2 = 'view' and e->>'resource' = 'checklists' and p->>'action' = 'view')
+                                         or ($2 = 'view' and e->>'resource' = 'outage'))) as can`, [roleId, action]);
     return !!r?.can;
   }
 
@@ -46,11 +52,13 @@ export class ChecklistsService {
     const [u] = await this.manager.query(`select u.id, r.name as role, r.id as role_id from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [user.id]);
     if (!u) throw new ForbiddenException();
     const owner = isOwnerRole(u.role);
-    if (!owner && !(await this.can(u.role_id, 'view'))) throw new ForbiddenException('Checklists are not open to your role.');
+    const canManage = owner || (await this.can(u.role_id, 'manage'));
+    // setting up checklists is admin work: a role that may set them up may also open the page that reads them
+    if (!owner && !canManage && !(await this.can(u.role_id, 'view'))) throw new ForbiddenException('Checklists are not open to your role.');
     const businessId = await businessOfUser(this.manager, u.id);
     if (!businessId) throw new ForbiddenException('Your account is not placed in a business.');
     const stores = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [u.id]);
-    return { id: u.id, role: u.role, owner, businessId, storeIds: stores.map((s: any) => +s.store_id), canEdit: owner || (await this.can(u.role_id, 'edit')) };
+    return { id: u.id, role: u.role, owner, businessId, storeIds: stores.map((s: any) => +s.store_id), canEdit: canManage };
   }
 
   /** the stores this person may look at, and the one asked for (it must be one of them) or the first */
@@ -65,7 +73,7 @@ export class ChecklistsService {
     return { w, stores, store: store ?? null };
   }
 
-  private needEdit(w: Who) { if (!w.canEdit) throw new ForbiddenException('Only the people who run the store change its checklists and tasks.'); }
+  private needEdit(w: Who) { if (!w.canEdit) throw new ForbiddenException('Setting up checklists and recurring tasks is for a Store Head (their own stores) or the business owner.'); }
 
   // ------------------------------------------------------------------ the lists
   /** the lists a store uses: each shipped list, as the store or its business changed it, and the lists the store or business added */
@@ -200,6 +208,7 @@ export class ChecklistsService {
   /** the library for a store, with what applies to it (its own setting, the business's, or the default) and what is open now */
   async tasks(user: any, storeid?: number | null) {
     const { w, stores, store } = await this.scope(user, storeid);
+    this.needEdit(w);
     if (!store) return { store: null, stores, tasks: [], canedit: w.canEdit, owner: w.owner };
     await this.sync(w.businessId, store.id);
     const pharmacy = await this.modules.packOnForBusiness(w.businessId, 'pharmacy');

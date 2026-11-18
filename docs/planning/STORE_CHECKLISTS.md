@@ -16,13 +16,13 @@ Built 2026-11-18 (migration 223). Replaces the Outage kit page.
 - A store (Store Head) or the business (owner only) keeps its own copy in `checklist_template`; store beats business beats shipped list. Stores can add their own lists, hide a shipped one, or put one back.
 - Item kinds: tick, text (e.g. last bill book number), and automatic (the price-list item ticks itself when the list was printed in the last 7 days).
 - Each run is a `checklist_run` that keeps the wording as ticked. Old readiness checks were copied across by the migration.
-- Permission `checklists`: `view` (fill in; given to everyone who bills) and `edit` (change lists and tasks; Store Head and owners). The old `outage` resource still counts as `view` and for printing.
+- Permissions: `checklists` `view` (fill in; given to everyone who bills; the old `outage` resource still counts) and, from migration 225, `checklistsetup` `manage` (admin: change, add and remove lists, set recurring tasks) on its own page, **Settings > Checklists** (`/secure/settings/checklists`). The owner roles set up for any store or the whole business; a Store Head only for their own stores (the API refuses business scope and other stores). Reading the recurring-task setup needs `manage` too. The Checklists page is for filling lists in only.
 
 ## System tasks (weekly and monthly to-dos)
 - Library in `checklists/system-tasks.ts`: outage check, price list, weekly review, negative/expired stock (weekly); stock count, housekeeping checklist, GST report check, cash book vs bank, drug register [pharmacy pack] (monthly).
 - Each is a repeating **store-pool** to-do (`todo_template.system_key`), made for every store that sold in the last 60 days. Setting per store or per business (`system_task_setting`): on/off and day. Synced on save and nightly (03:30).
 - A task the system can see closes itself: completing the checklist, printing the price list, signing the weekly review (`TodoService.completeSystemTask`). The others are ticked by hand.
-- System repeats cannot be stopped from the to-do list; switch them off under Checklists > Recurring tasks.
+- System repeats cannot be stopped from the to-do list; switch them off under Settings > Checklists > Recurring tasks.
 - To-do rows carry a `link`; the to-do list shows an **Open** button.
 
 ## Not built / notes

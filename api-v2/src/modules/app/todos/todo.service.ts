@@ -340,7 +340,7 @@ export class TodoService {
     const me = await this.me(user);
     const [t] = await this.manager.query(`select * from todo_template where id = $1 and business_id = $2 and active and not archive`, [Number(id), me.business]);
     if (!t) throw new NotFoundException('That repeat is not here any more.');
-    if (t.system_key) throw new BadRequestException('This is a task the system asks every store to do. Switch it off, or move it to another day, in Checklists > Recurring tasks.');
+    if (t.system_key) throw new BadRequestException('This is a task the system asks every store to do. Switch it off, or move it to another day, in Settings > Checklists > Recurring tasks.');
     const mayStop = me.owner || t.created_by === me.id || t.assigned_by === me.id || (me.head && me.canAssign && t.store_id !== null && me.storeIds.includes(t.store_id));
     if (!mayStop) throw new ForbiddenException('Only the person who set this repeat, or a manager, stops it.');
     await this.manager.query(`update todo_template set active = false, next_due_on = null where id = $1`, [t.id]);
