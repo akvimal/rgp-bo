@@ -1,6 +1,6 @@
 import { Component, OnInit } from "@angular/core";
-import { ProductsService } from "../../products.service";
-import { priceWithGst } from "../../price-basis";
+import { ProductsService } from "../../products/products.service";
+import { priceWithGst } from "../../products/price-basis";
 import { saveAs } from "file-saver";
 
 /**

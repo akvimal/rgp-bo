@@ -13,7 +13,7 @@ const PAGES = [
   '/secure/sales/deliveries',
   '/secure/customers/cust/list',
   '/secure/products/master/list',
-  '/secure/products/price',
+  '/secure/pricing/prices',
   '/secure/purchases/vendors/list',
   '/secure/store/stock/products',
   '/secure/store/stock/expiry',

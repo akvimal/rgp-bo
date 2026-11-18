@@ -3,7 +3,7 @@
     so customers never see a sudden rise; a price above the legal ceiling goes down at once. A Store Head can apply a step on class B and C products; class A needs the Business Head.</p>
 <div class="alert alert-light border py-2 small mb-2 d-flex flex-wrap justify-content-between gap-2" *ngIf="mode" data-testid="policy-mode">
   <span><i class="bi bi-tag me-1"></i><span data-testid="policy-mode-text">{{modeText}}</span></span>
-  <a routerLink="/secure/products/pricing-rules" data-testid="policy-mode-change">Change how you price</a>
+  <a routerLink="/secure/pricing/rules" data-testid="policy-mode-change">Change how you price</a>
 </div>
 <div class="small text-muted mb-2" *ngIf="mode?.basis === 'incl'" data-testid="policy-basis-note">Prices on this page are before GST. The price list shows what the customer pays, with GST.</div>
 <app-price-units></app-price-units>
@@ -149,7 +149,7 @@
     <div class="small text-muted">{{impact.summary.changes}} price changes in the window, {{impact.summary.withvolume}} with enough sales to compare.</div>
   </div>
 
-  <p class="small text-muted mt-4 mb-0">The class limits and the rules for raising prices are on the <a routerLink="/secure/products/pricing-rules" data-testid="policy-to-rules">Pricing rules</a> page.</p>
+  <p class="small text-muted mt-4 mb-0">The class limits and the rules for raising prices are on the <a routerLink="/secure/pricing/rules" data-testid="policy-to-rules">Pricing rules</a> page.</p>
 </ng-container>
 
 <p-dialog [header]="'Accept ' + (exceptionFor?.title || '')" [visible]="!!exceptionFor" (visibleChange)="$event || (exceptionFor = null)" [modal]="true" [style]="{width:'30rem'}">

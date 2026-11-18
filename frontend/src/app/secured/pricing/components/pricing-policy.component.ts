@@ -1,5 +1,5 @@
 import { Component, OnInit } from "@angular/core";
-import { ProductsService } from "../products.service";
+import { ProductsService } from "../../products/products.service";
 
 /**
  * The price policy: prices that are out of policy (above the legal ceiling, below the class floor markup, deeper than the class

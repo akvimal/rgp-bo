@@ -6,7 +6,7 @@ Built 2026-11-18 (migration 223). Replaces the Outage kit page.
 | Was (Outage kit page) | Now |
 |---|---|
 | Weekly 9-item readiness check | The **Outage readiness** checklist, one of several lists on **Checklists** (`/secure/checklists`). `/secure/outage` redirects there. |
-| Price list printout (PDF/Excel) | Stands alone: **Print price list** on Products > Master, and on the Outage readiness list. API `GET /outage/price-list`. |
+| Price list printout (PDF/Excel) | Stands alone: **Print price list** on Pricing > Prices, and on the Outage readiness list. API `GET /outage/price-list`. |
 | Outage procedure PDF | Button on the Outage readiness list. API `GET /outage/procedure`. |
 | Outage log (events) | **Retired.** `outage_event` is left in the database, unused. |
 | `outage_kit` alert, `outage_check` compliance item | Kept; they read `checklist_run` (template `outage_readiness`) instead of `outage_readiness_log`. |

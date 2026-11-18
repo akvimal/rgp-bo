@@ -1,3 +1,4 @@
+import { PriceUnitsComponent } from './components/price-units.component';
 import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
 import { RouterModule } from "@angular/router";
@@ -28,6 +29,7 @@ import { TermPipe } from "./label.service";
 
 @NgModule({
     declarations: [
+      PriceUnitsComponent,
       ProductSelectComponent,
       StockSelectComponent,
       CustomerSelectComponent,
@@ -58,7 +60,8 @@ import { TermPipe } from "./label.service";
         SidebarModule,
         RouterModule
     ],
-    exports: [IsAuthDirective,
+    exports: [PriceUnitsComponent,
+      IsAuthDirective,
       IsNavAuthDirective,
       TextWrapPipe, 
       TermPipe,

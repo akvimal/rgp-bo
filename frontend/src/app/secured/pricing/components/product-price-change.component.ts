@@ -1,8 +1,8 @@
 import { Component, EventEmitter, Input, OnDestroy, Output, SimpleChanges } from "@angular/core";
 import { DateUtilService } from "src/app/secured/date-util.service";
-import { ProductsService } from "../../products.service";
-import { priceBeforeGst, priceWithGst } from "../../price-basis";
-import { quickPrices, QuickLadder } from "../../quick-price";
+import { ProductsService } from "../../products/products.service";
+import { priceBeforeGst, priceWithGst } from "../../products/price-basis";
+import { quickPrices, QuickLadder } from "../../products/quick-price";
 
 const MARGIN_WARN = 300;     // above this the price is saved with a warning
 const MARGIN_LIMIT = 1000;   // above this it is refused as a typing mistake

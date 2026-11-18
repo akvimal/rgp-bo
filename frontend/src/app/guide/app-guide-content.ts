@@ -138,12 +138,6 @@ export const PAGES: PageGuide[] = [
     who: 'The owner and store heads.', keywords: 'grievance complaint customer resolve overdue',
   },
   {
-    id: 'nav-price-changes', group: 'stock', title: 'Price changes', route: '/secure/price-changes',
-    purpose: 'What changed in the shop\'s selling prices, for the counter, so you can tell a customer why a price moved.',
-    tasks: ['Choose the days (7 or 14 days, this month or last month, or your own dates).', 'Hide small moves with "Changed by at least %", or find one product by name.', 'Print the sheet and keep it beside the till.', 'Only products in stock are listed: bought in the last year, not expired, with stock left.'],
-    who: 'Everyone who serves at the counter. It shows selling prices only, never cost.', keywords: 'price change increase decrease mrp sheet print',
-  },
-  {
     id: 'nav-inquiries', group: 'sell', title: 'Requests and inquiries', route: '/secure/inquiries',
     purpose: 'What customers asked for that the shop did not have, so it is followed up.',
     tasks: ['Write down an inquiry or a request at the counter.', 'Work through Open, Overdue and Mine; close it when done.'],
@@ -152,11 +146,18 @@ export const PAGES: PageGuide[] = [
 
   // ---- inventory
   {
-    id: 'nav-products', group: 'stock', title: 'Products and prices', route: '/secure/products',
-    purpose: 'The catalogue of what the shop sells, and the sale price of each product.',
-    tasks: ['Add a product: name, category, composition, schedule, whether it is chronic, HSN and pack.', 'Set or change a sale price: the rules say the lowest and highest price allowed and who must approve.', 'Needs a price: new products bought and not yet priced, each with a suggested price.', 'Price > Print (PDF) or Download Excel: the counter price list of what is in stock, with GST, per pack and per unit. Print one every week for when the system is down; it is saved as price-list-and-the-date.', 'Price list > Bulk update prices: tick products (or use everything shown) and set the price to the MRP or a percent off it. Preview first; any product whose price cannot be set is skipped and listed with the reason.', 'Data check: products whose pack size or details look wrong.'],
+    id: 'nav-products', group: 'stock', title: 'Products', route: '/secure/products',
+    purpose: 'The catalogue of what the shop sells. Prices are set under Pricing.',
+    tasks: ['Add a product: name, category, composition, schedule, whether it is chronic, HSN and pack.', 'Edit a product, or archive one you no longer sell.', 'Pack check: products whose pack size or details look wrong, so they can be priced.'],
     who: 'Store heads and the owner; counter staff may see products.',
-    watch: ['A price can never be above the MRP.', 'A big or sudden raise needs approval and is stepped.'], keywords: 'product price catalogue schedule hsn pricing policy',
+    watch: ['A product with a pack size or cost that looks wrong cannot be priced until it is checked.'], keywords: 'product catalogue schedule hsn pack check master',
+  },
+  {
+    id: 'nav-pricing', group: 'stock', title: 'Pricing', route: '/secure/pricing',
+    purpose: 'The sale price of every product and the rules it follows, and what changed in the prices. Offers and sales will be set up here later.',
+    tasks: ['Prices: set or change a sale price (the rules say the lowest and highest price allowed and who must approve), and see the products that still need a price, each with a suggested price.', 'Prices > Print (PDF) or Download Excel: the counter price list of what is in stock, with GST, per pack and per unit. Print one every week for when the system is down; it is saved as price-list and the date.', 'Prices > Bulk update prices: tick products (or use everything shown) and set the price to the MRP or a percent off it. Preview first; any product whose price cannot be set is skipped and listed with the reason.', 'Price changes: what changed in the selling prices, for the counter, so you can tell a customer why a price moved. Choose the days, hide small moves, and print the sheet to keep beside the till. Only products in stock are listed.', 'Pricing policy and Pricing rules: where prices stand against the rules, and how the shop prices (at the MRP, a discount off it, or a margin).'],
+    who: 'Store heads and the owner set prices and rules. Everyone who serves at the counter can read the price changes sheet, which shows selling prices only, never cost.',
+    watch: ['A price can never be above the MRP.', 'A big or sudden raise needs approval and is stepped.'], keywords: 'price pricing change increase decrease mrp sheet print policy rules bulk list offer sale',
   },
   {
     id: 'nav-store', group: 'stock', title: 'Stock', route: '/secure/store',
@@ -175,7 +176,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-checklists', group: 'home', title: 'Checklists', route: '/secure/checklists',
     purpose: 'The lists a store ticks off, and the weekly and monthly tasks the system puts in its to-do list.',
-    tasks: ['Fill in a list (outage readiness, opening, closing, monthly housekeeping) once you have seen each item yourself.', 'Print the outage procedure (one page, for the bill book) from the Outage readiness list. The price list is printed from Products and prices > Price.', 'Check what is due: the weekly and monthly tasks the system sets also arrive in your To-dos, with an Open button.'],
+    tasks: ['Fill in a list (outage readiness, opening, closing, monthly housekeeping) once you have seen each item yourself.', 'Print the outage procedure (one page, for the bill book) from the Outage readiness list. The price list is printed from Pricing > Prices.', 'Check what is due: the weekly and monthly tasks the system sets also arrive in your To-dos, with an Open button.'],
     who: 'Everyone who bills fills them in. Setting the lists up is in Settings > Checklists (a Store Head for their own stores, the owner for any store or the business).', watch: ['A list counts as done only when every item is ticked.', 'Tasks the system can see for itself (the outage check, the price list, the weekly review) tick themselves.'], keywords: 'power cut outage manual bill price list opening closing housekeeping recurring weekly monthly',
   },
   {
@@ -440,7 +441,7 @@ export const WALKTHROUGHS: Walkthrough[] = [
   },
   {
     id: 'w-purchase', title: 'Receive a purchase invoice', from: 'nav-purchases',
-    steps: ['Open Purchase, then Invoices, then Add New. Choose the vendor and give the invoice number (or the challan number if the invoice has not come).', 'Add each item: product, batch, expiry, MRP, units, free units, rate, discount and tax. The tax is chosen from your list of rates.', 'Look at the flags: a rate that rose, an MRP far above the rate, a new product\'s margin.', 'Select the lines and press Verify.', 'When every line is verified, press Complete.', 'After completing, press Mark ready for payment (add a note for finance if needed). A payment cannot be recorded until you do; the invoice list shows these as Not ready.', 'After completing, give new products their first price (Products and prices > Needs a price).'],
+    steps: ['Open Purchase, then Invoices, then Add New. Choose the vendor and give the invoice number (or the challan number if the invoice has not come).', 'Add each item: product, batch, expiry, MRP, units, free units, rate, discount and tax. The tax is chosen from your list of rates.', 'Look at the flags: a rate that rose, an MRP far above the rate, a new product\'s margin.', 'Select the lines and press Verify.', 'When every line is verified, press Complete.', 'After completing, press Mark ready for payment (add a note for finance if needed). A payment cannot be recorded until you do; the invoice list shows these as Not ready.', 'After completing, give new products their first price (Pricing > Prices > Needs a price).'],
     tips: ['Check the printed total at the bottom against the vendor\'s invoice.', 'Expiry is needed on every line except a product that never expires.'], keywords: 'invoice grn challan vendor receive mark ready for payment',
   },
   {
@@ -449,8 +450,8 @@ export const WALKTHROUGHS: Walkthrough[] = [
     tips: ['A rise above the approval limit can only be completed by a Store Head or Business Head.'], keywords: 'dispute reject price rise',
   },
   {
-    id: 'w-price', title: 'Set or change a price', from: 'nav-products',
-    steps: ['Open Products and prices, then Price (or Needs a price for a new product).', 'Open the product\'s Set the price box. It shows the lowest and highest price allowed and a suggested price.', 'Type the price. A warning says if it breaks a rule and who must approve it.', 'Save. A raise is stepped: a big one happens in steps over days.'],
+    id: 'w-price', title: 'Set or change a price', from: 'nav-pricing',
+    steps: ['Open Pricing, then Prices (or Needs a price for a new product).', 'Open the product\'s Set the price box. It shows the lowest and highest price allowed and a suggested price.', 'Type the price. A warning says if it breaks a rule and who must approve it.', 'Save. A raise is stepped: a big one happens in steps over days.'],
     tips: ['The price can never be above the MRP.'], keywords: 'price mrp policy approve raise cut',
   },
   {

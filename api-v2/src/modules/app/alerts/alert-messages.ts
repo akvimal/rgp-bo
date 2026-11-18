@@ -162,11 +162,11 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     ta: { title: '{period} க்கான KPI மதிப்பீடுகள்: {count}', body: 'மேலாளர் மட்டுமே கொடுக்கக்கூடிய {count} மதிப்பீடுகள் இன்னும் இல்லை; சம்பளம் காத்திருக்கிறது. ஊழியர் மதிப்பீடு பக்கத்தைத் திறக்கவும்.' },
   },
   outage_kit_overdue: {
-    en: { title: 'Outage readiness not checked for {days} days: {store}', body: 'Last checked on {date}. Complete the Outage readiness checklist on the Checklists page and print a fresh price list from Products > Prices.' },
+    en: { title: 'Outage readiness not checked for {days} days: {store}', body: 'Last checked on {date}. Complete the Outage readiness checklist on the Checklists page and print a fresh price list from Pricing > Prices.' },
     ta: { title: 'மின்தடை தயார்நிலை {days} நாட்களாகச் சரிபார்க்கப்படவில்லை: {store}', body: 'கடைசியாகச் சரிபார்த்தது {date}. மின்தடை தயார்நிலைப் பக்கத்தில் வாராந்திரப் பட்டியலைச் சரிபார்த்து புதிய விலைப் பட்டியலை அச்சிடவும்.' },
   },
   outage_kit_never: {
-    en: { title: 'Outage readiness has never been checked: {store}', body: 'If the power goes, billing stops. Open the Checklists page, complete the Outage readiness list and print the price list from Products > Prices.' },
+    en: { title: 'Outage readiness has never been checked: {store}', body: 'If the power goes, billing stops. Open the Checklists page, complete the Outage readiness list and print the price list from Pricing > Prices.' },
     ta: { title: 'மின்தடை தயார்நிலை இதுவரை சரிபார்க்கப்படவில்லை: {store}', body: 'மின்சாரம் போனால் பில்லிங் நின்றுவிடும். மின்தடை தயார்நிலைப் பக்கத்தைத் திறந்து பட்டியலைச் சரிபார்த்து விலைப் பட்டியலை அச்சிடவும்.' },
   },
   pricing_cuts: {

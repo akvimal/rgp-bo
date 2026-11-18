@@ -53,8 +53,8 @@ function allMenuGroups(a: MenuAccess): MenuGroup[] {
       item('nav-whatsapp', 'WhatsApp', 'whatsapp', 'bi-whatsapp', ['whatsapp.view']),
     ] },
     { key: 'stock', label: 'Inventory', items: [
-      item('nav-products', 'Products and prices', 'products', 'bi-boxes', ['products']),
-      item('nav-price-changes', 'Price changes', 'price-changes', 'bi-tag', ['pricechanges.view']),
+      item('nav-products', 'Products', 'products', 'bi-boxes', ['products']),
+      item('nav-pricing', 'Pricing', 'pricing', 'bi-tag', ['products.price', 'pricechanges.view']),
       item('nav-store', 'Stock', 'store', 'bi-box-seam', ['store.read']),
       item('nav-stock-audits', 'Stock audits', 'stock-audits', 'bi-clipboard-data', ['stockaudit.view']),
       item('nav-schedule-register', 'Drug register', 'schedule-register', 'bi-capsule', ['scheduleregister.view']),
@@ -118,7 +118,7 @@ export function isCounterRole(roleName: string | null | undefined): boolean {
 const COUNTER_LAYOUT: { key: string; label: string; ids: string[] }[] = [
   { key: 'home', label: '', ids: ['nav-dashboard', 'nav-todos', 'nav-checklists', 'nav-calendar'] },
   { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-commitments', 'nav-refills', 'nav-grievances', 'nav-inquiries', 'nav-whatsapp'] },
-  { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-price-changes', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
+  { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-pricing', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
   { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance', 'nav-discrepancies', 'nav-shifts', 'nav-cash-book', 'nav-vault'] },
   { key: 'people', label: 'People', ids: ['nav-hr', 'nav-leave-approvals', 'nav-attendance-punch', 'nav-attendance-review', 'nav-kpi-rate', 'nav-staff-credit', 'nav-staff-sales'] },
   { key: 'learn', label: 'Learn', ids: ['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge', 'nav-feedback'] },

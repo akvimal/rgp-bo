@@ -85,7 +85,7 @@
       <!-- the printed documents belong to the outage readiness list -->
       <ng-container *ngIf="current.key === 'outage_readiness'">
         <h6 class="mt-4 text-primary">Price list and procedure</h6>
-        <p class="small text-muted mb-2">The price list is printed from <a routerLink="/secure/products/price" data-testid="cl-pricelist-link">Products &gt; Prices</a>; printing it ticks the price list item above.
+        <p class="small text-muted mb-2">The price list is printed from <a routerLink="/secure/pricing/prices" data-testid="cl-pricelist-link">Pricing &gt; Prices</a>; printing it ticks the price list item above.
           <span data-testid="cl-lastprint"><ng-container *ngIf="data.pricelist">Last printed {{data.pricelist.on | date:'dd MMM yyyy, HH:mm'}} by {{data.pricelist.by}}{{data.pricelist.fresh ? '' : ': print a fresh one'}}.</ng-container>
             <ng-container *ngIf="!data.pricelist">It has not been printed yet.</ng-container></span></p>
         <button type="button" class="btn btn-outline-primary" [disabled]="!!printing" (click)="printProcedure()" data-testid="cl-print-procedure">{{printing === 'procedure' ? 'Making the page...' : 'Print the outage procedure (one page, for the bill book)'}}</button>

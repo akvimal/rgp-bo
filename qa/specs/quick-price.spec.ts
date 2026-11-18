@@ -54,7 +54,7 @@ test.describe('Quick price pick @p1', () => {
     const p = await boughtProduct(api, 100, 200);
     try {
       expect((await putMode(api, { quickStepPct: 40, quickMaxChoices: 3 })).status).toBeLessThan(300);      // 0, 40, 80 and 120% (120 is not offered: past 100)
-      const { page } = await app.open(MGR, '/secure/products/price');
+      const { page } = await app.open(MGR, '/secure/pricing/prices');
       await page.getByPlaceholder('Product').fill(p.title);
       const row = page.locator('tbody tr', { hasText: p.title });
       await expect(row).toHaveCount(1);

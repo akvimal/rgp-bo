@@ -438,7 +438,7 @@
       "label": "Price changes sheet",
       "description": "What changed in the selling prices over a period (what the customer pays), to read at the counter or print. It shows no cost.",
       "group": "Sell",
-      "path": "/secure/price-changes",
+      "path": "/secure/pricing/changes",
       "actions": [
         {
           "key": "view",
@@ -748,7 +748,12 @@
       "label": "Products",
       "description": "Manage the product catalog and pricing.",
       "group": "Inventory",
-      "path": "/secure/products",
+      "path": [
+        "/secure/products",
+        "/secure/pricing/prices",
+        "/secure/pricing/policy",
+        "/secure/pricing/rules"
+      ],
       "actions": [
         {
           "key": "price",

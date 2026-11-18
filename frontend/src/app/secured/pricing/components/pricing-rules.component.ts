@@ -1,5 +1,5 @@
 import { Component, OnInit } from "@angular/core";
-import { ProductsService } from "../products.service";
+import { ProductsService } from "../../products/products.service";
 
 /**
  * Pricing rules: the limits of each product class (the lowest markup and the deepest discount) and the rules for how prices change,

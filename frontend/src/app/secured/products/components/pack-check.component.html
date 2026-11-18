@@ -5,7 +5,7 @@
 <div class="alert alert-danger py-2" *ngIf="error" data-testid="pack-error">{{error}}</div>
 <div class="alert alert-success py-2 d-flex flex-wrap align-items-center gap-2" *ngIf="done" data-testid="pack-done">
     <span><b>{{done.title}}</b>: pack changed from {{done.from}} to {{done.to}}. Now:</span>
-    <a class="btn btn-sm btn-outline-success" routerLink="/secure/products/price" data-testid="pack-done-price">Review the price</a>
+    <a class="btn btn-sm btn-outline-success" routerLink="/secure/pricing/prices" data-testid="pack-done-price">Review the price</a>
     <a class="btn btn-sm btn-outline-secondary" [routerLink]="['/secure/products/master/edit', done.id]" data-testid="pack-done-open">Open the product</a>
     <button type="button" class="btn-close ms-auto" aria-label="Close" (click)="done = null"></button>
 </div>

@@ -93,7 +93,7 @@ test('PM-4 a worked example shows what a setting does before it is saved, and sa
 });
 
 test('PM-5 the screens: choose how to price with a worked example, see it on the policy page, and prices show with GST when the business says so', async ({ app, api }) => {
-  const { page } = await app.open(MGR, '/secure/products/pricing-rules');
+  const { page } = await app.open(MGR, '/secure/pricing/rules');
   await expect(page.getByTestId('mode-cards')).toBeVisible();
   await page.getByTestId('mode-card-MRP').click();
   await expect(page.getByTestId('mode-example-summary')).toContainText('Sells at the MRP');
@@ -106,11 +106,11 @@ test('PM-5 the screens: choose how to price with a worked example, see it on the
   await expect(page.getByTestId('mode-max-discount')).toBeVisible();
   await expect(page.getByTestId('mode-example-summary')).toContainText('% off the MRP');
 
-  const policy = await app.open(MGR, '/secure/products/pricing-policy');
+  const policy = await app.open(MGR, '/secure/pricing/policy');
   await expect(policy.page.getByTestId('policy-mode-text')).toContainText('You sell at the MRP');
   await expect(policy.page.getByTestId('policy-basis-note')).toBeVisible();
 
-  const list = await app.open(MGR, '/secure/products/price');
+  const list = await app.open(MGR, '/secure/pricing/prices');
   await expect(list.page.getByRole('columnheader', { name: /Price with GST/ })).toBeVisible();
 });
 
@@ -118,7 +118,7 @@ test('PM-6 with GST included the price dialog takes what the customer pays, caps
   expect((await putMode(api, { mode: 'DISCOUNT', discountPct: 10, maxDiscountPct: 15, basis: 'incl' })).status).toBeLessThan(300);
   const id = await boughtProduct(api);
   const title = (await api.request('GET', `/products/prices/${id}`, undefined, MGR)).body?.price?.title as string;
-  const { page } = await app.open(MGR, '/secure/products/price');
+  const { page } = await app.open(MGR, '/secure/pricing/prices');
   await page.getByPlaceholder('Product').fill(title);
   const row = page.locator('tbody tr', { hasText: title });
   await expect(page.locator('tbody tr')).toHaveCount(1);                                    // the list has finished filtering, so the row will not move under the click
@@ -142,7 +142,7 @@ test('PM-7 the group limits are a grid of plain-named groups with product counts
   const before = (await api.request('GET', '/pricing/policy', undefined, MGR)).body;
   expect(Object.keys(before.counts).length).toBeGreaterThan(0);                           // the server says how many products sit in each group
   const start = before.classes.find((c: any) => c.class_key === 'HIGH_A');
-  const { page } = await app.open(MGR, '/secure/products/pricing-rules');
+  const { page } = await app.open(MGR, '/secure/pricing/rules');
   const adv = page.getByTestId('rules-advanced');                                         // open by itself when the business uses smart groups
   if (!(await adv.evaluate((d: any) => d.open))) await adv.locator('summary').click();
   await expect(page.getByTestId('rules-classes')).toBeVisible();
@@ -205,7 +205,7 @@ test('PM-10 a business that already has prices can look at them first: bands, wh
   expect(r.recommendation.reason.length).toBeGreaterThan(10);
   expect((await api.request('GET', '/pricing/check', undefined, SALES)).status).toBe(403);       // it shows cost: for those who may see cost
 
-  const { page } = await app.open(MGR, '/secure/products/pricing-rules');
+  const { page } = await app.open(MGR, '/secure/pricing/rules');
   await page.getByTestId('price-check-run').click();
   await expect(page.getByTestId('price-check-summary')).toContainText('priced product');
   await expect(page.getByTestId('price-check-advice')).toContainText('Suggested:');

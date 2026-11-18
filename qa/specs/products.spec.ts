@@ -144,7 +144,7 @@ test.describe('Products & Pricing @p1', () => {
   });
 
   test('PROD-6 the price estimator screen opens from the shell @happy', async ({ app }) => {
-    const { page } = await app.open(MGR, '/secure/products/price');
+    const { page } = await app.open(MGR, '/secure/pricing/prices');
     await expectShell(page);
     await expect(page.getByRole('table').first()).toBeVisible();
   });

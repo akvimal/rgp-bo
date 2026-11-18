@@ -114,9 +114,9 @@
 
         <div class="alert alert-info py-2 small mt-4 mb-0" *ngIf="isNew" data-testid="prod-f-price-note">
           A new product has no sale price yet. When its first purchase is received it is listed under <b>Pricing policy &gt; Needs a price</b> with a suggested price.
-          You can also set it on the <a routerLink="/secure/products/price">Price</a> page.
+          You can also set it on the <a routerLink="/secure/pricing/prices">Price</a> page.
         </div>
-        <div class="small text-muted mt-3 mb-0" *ngIf="!isNew">Prices are set on the <a routerLink="/secure/products/price">Price</a> page.</div>
+        <div class="small text-muted mt-3 mb-0" *ngIf="!isNew">Prices are set on the <a routerLink="/secure/pricing/prices">Price</a> page.</div>
 
         <div class="d-flex gap-2 align-items-center mt-4">
           <button type="submit" class="btn btn-primary" [disabled]="!form.valid || saving" data-testid="prod-f-save">Save</button>

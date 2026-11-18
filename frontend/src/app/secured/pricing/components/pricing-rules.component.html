@@ -4,7 +4,7 @@
     <h5 class="card-title p-0 m-0 mb-1" data-testid="rules-title">Pricing rules</h5>
     <p class="small text-muted mb-3">
       The limits that decide which prices are out of policy, and the rules for changing them. The prices that break them are listed under
-      <a routerLink="/secure/products/pricing-policy">Pricing policy</a>.
+      <a routerLink="/secure/pricing/policy">Pricing policy</a>.
       <span *ngIf="!canedit && !loading"> You can read these; only the Business Head can change them.</span>
     </p>
     <div class="alert alert-danger py-2" *ngIf="error" data-testid="rules-error">{{error}}</div>

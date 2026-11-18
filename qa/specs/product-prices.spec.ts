@@ -96,7 +96,7 @@ test.describe('Product prices @p1', () => {
 
   test('PRICE-5 the price page flags problem rows and the dialog explains the cap @happy', async ({ app, api }) => {
     const p = await boughtProduct(api, 100, 200);
-    const { page } = await app.open(MGR, '/secure/products/price');
+    const { page } = await app.open(MGR, '/secure/pricing/prices');
     await expectShell(page);
     await expect(page.getByTestId('price-flag-filter')).toBeVisible();
     await page.getByPlaceholder('Product').fill(p.title);
@@ -121,13 +121,13 @@ test.describe('Product prices @p1', () => {
     await expect(page.getByTestId('price-message')).toContainText('Price saved at 170');
   });
 
-  test('PRICE-7 the Price page is the price list: no calculator, no Pricing menu entry, loads without errors @happy', async ({ app }) => {
-    const { page } = await app.open(MGR, '/secure/products/price');
+  test('PRICE-7 the Price page is the price list: no calculator, under the Pricing menu entry, loads without errors @happy', async ({ app }) => {
+    const { page } = await app.open(MGR, '/secure/pricing/prices');
     await expectShell(page);
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
-    await expect(page.locator('#sidebar-nav').getByText('Pricing', { exact: true })).toHaveCount(0);   // not in the left menu
+    await expect(page.getByTestId('nav-pricing')).toBeVisible();                                      // Pricing is its own entry in the left menu
     await expect(page.getByTestId('price-calc-panel')).toHaveCount(0);                                // the calculator is gone
     await expect(page.getByText('Price calculator')).toHaveCount(0);
     await expect(page.getByTestId('price-intro')).toBeVisible();

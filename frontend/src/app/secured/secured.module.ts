@@ -122,9 +122,10 @@ const routes: Routes = [
       loadChildren: () => import('./compliance/compliance.module').then(m => m.ComplianceModule)
     },
     {
-      path: 'price-changes', canActivate:[AuthGuard],
-      loadChildren: () => import('./price-changes/price-changes.module').then(m => m.PriceChangesModule)
+      path: 'pricing', canActivate:[AuthGuard],
+      loadChildren: () => import('./pricing/pricing.module').then(m => m.PricingModule)
     },
+    { path: 'price-changes', redirectTo: 'pricing/changes', pathMatch: 'full' },
     {
       path: 'todos', canActivate:[AuthGuard],
       loadChildren: () => import('./todos/todos.module').then(m => m.TodosModule)
