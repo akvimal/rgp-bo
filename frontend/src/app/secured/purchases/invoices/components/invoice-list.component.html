@@ -89,6 +89,7 @@
             <div class="small text-muted" title="These cannot be paid yet: someone has to act">Held up</div>
             <div class="fs-5 fw-bold" data-testid="inv-held-count">{{heldCount}} invoice{{heldCount === 1 ? '' : 's'}}</div>
             <div class="small mt-1 d-flex flex-column" data-testid="inv-held-lines">
+              <a role="button" class="text-decoration-none" [class.fw-bold]="view === 'notready'" (click)="setView('notready')" data-testid="inv-line-notready" title="Completed and owed, but nobody has marked them ready for payment yet">Not ready for payment <span class="text-muted">{{summary.notready?.count}} &middot; &#8377;{{summary.notready?.amount | number:'1.0-0'}}</span></a>
               <a role="button" class="text-decoration-none" [class.fw-bold]="view === 'hold'" (click)="setView('hold')" data-testid="inv-line-hold">On hold <span class="text-muted">{{summary.hold.count}} &middot; &#8377;{{summary.hold.amount | number:'1.0-0'}}</span></a>
               <a *ngIf="approval.enabled" role="button" class="text-decoration-none" [class.fw-bold]="view === 'approval'" (click)="setView('approval')" data-testid="inv-line-approval" title="Received and checked, waiting for a Business Head to clear them for payment">Awaiting approval <span class="text-muted">{{summary.approval?.count}} &middot; &#8377;{{summary.approval?.amount | number:'1.0-0'}}</span></a>
               <a role="button" class="text-decoration-none" [class.fw-bold]="view === 'awaiting'" (click)="setView('awaiting')" data-testid="inv-line-awaiting" title="Goods received on a challan, the vendor's invoice not yet entered: in stock, not yet payable">Awaiting invoice <span class="text-muted">{{summary.awaiting?.count}} received<span *ngIf="summary.awaiting?.oldest_days"> &middot; oldest {{summary.awaiting.oldest_days}}d</span></span></a>
@@ -169,12 +170,14 @@
             <td class="text-end fw-semibold" data-testid="inv-balance" [class.text-danger]="p.days_overdue > 0">{{p.balance_amount | number:'1.2-2'}}</td>
             <td class="text-center"><span class="badge" [ngClass]="payClass(p.payment_status)" data-testid="inv-payment">{{p.payment_status}}</span>
               <div class="small text-muted" *ngIf="p.on_hold" [title]="p.hold_reason">{{p.hold_reason}}</div>
+              <div class="small text-muted" *ngIf="p.payment_ready && p.ready_by" data-testid="inv-ready-by" [title]="p.ready_note || ''">ready: {{p.ready_by}}</div>
               <div class="small text-muted" *ngIf="approval.enabled && p.approved" data-testid="inv-approved-by">approved by {{p.approved_by}}</div></td>
             <td class="text-center"><span *ngIf="p.status === 'COMPLETE'" class="badge" [ngClass]="gstClass(p.gst_status)" data-testid="inv-gst">{{gstLabel(p.gst_status)}}</span></td>
             <td class="text-end text-nowrap">
               <button class="btn btn-outline-secondary btn-sm py-0" type="button" (click)="openPeek(p.id)" title="View the amounts, items and payments" data-testid="inv-view"><i class="bi bi-eye"></i></button>
               <div class="d-flex flex-wrap gap-1 justify-content-end" style="min-width:8rem">
               <a class="btn btn-primary btn-sm py-0" data-testid="inv-add-invoice" *ngIf="p.awaiting" [routerLink]="['../edit', p.id]" title="The vendor's invoice has come: enter its number, date and total">Add invoice no.</a>
+              <button class="btn btn-primary btn-sm py-0" data-testid="inv-mark-ready" *ngIf="p.not_ready" (click)="markReady(p)" title="Checked: may go to finance for payment">Mark ready</button>
               <button class="btn btn-primary btn-sm py-0" data-testid="inv-pay" *ngIf="canPay(p)" (click)="openPay(p)" title="Record a payment">Pay</button>
               <button class="btn btn-outline-secondary btn-sm py-0" data-testid="inv-history" *ngIf="p.payments > 0" (click)="openHistory(p)" title="Payments recorded">Payments</button>
               <button class="btn btn-success btn-sm py-0" data-testid="inv-approve" *ngIf="p.awaiting_approval && approval.canmanage" (click)="approveInv(p)" title="Clear this invoice for payment">Approve</button>

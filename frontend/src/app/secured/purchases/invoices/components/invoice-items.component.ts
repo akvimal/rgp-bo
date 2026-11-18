@@ -29,6 +29,10 @@ export class InvoiceItemsComponent {
     outstandingBalance:number = 0;
     importFeedback:string = '';
     completeError:string = '';
+    // the step after completing: marked ready for payment
+    readyNote:string = '';
+    readyError:string = '';
+    readyBusy:boolean = false;
     priceByItem:{[itemid:number]:any} = {};
     impactByItem:{[itemid:number]:any} = {};
     impactSummary:any = null;
@@ -277,6 +281,23 @@ export class InvoiceItemsComponent {
         }, (err:any) => {
             this.completeError = (Array.isArray(err?.error?.message) ? err.error.message.join(' ') : err?.error?.message) || 'Could not complete the invoice.';
         });
+    }
+
+    markReady(){
+        this.readyError = ''; this.readyBusy = true;
+        this.invService.markReady(this.invoice.id, this.readyNote).subscribe(() => {
+            this.readyBusy = false; this.readyNote = '';
+            this.fetchItems(this.invoice.id);
+        }, (err:any) => {
+            this.readyBusy = false;
+            this.readyError = (Array.isArray(err?.error?.message) ? err.error.message.join(' ') : err?.error?.message) || 'Could not mark the invoice ready for payment.';
+        });
+    }
+
+    unmarkReady(){
+        this.readyError = '';
+        this.invService.unmarkReady(this.invoice.id).subscribe(() => this.fetchItems(this.invoice.id),
+            (err:any) => this.readyError = (Array.isArray(err?.error?.message) ? err.error.message.join(' ') : err?.error?.message) || 'Could not take the mark back.');
     }
 
     /** the vendor's previous rate for each line, so a rise is seen (and explained) before the invoice is completed */

@@ -26,6 +26,7 @@ async function completedInvoice(api: any, tag: string) {
   }, MGR);
   await api.request('PUT', '/purchaseitems', { ids: [it.body.id], values: { status: 'VERIFIED' } }, MGR);
   await api.request('PUT', '/purchases/confirm', { ids: [inv.body.id], values: { status: 'COMPLETE', total: lineTotal } }, MGR);
+  await api.request('POST', `/purchases/${inv.body.id}/payment-ready`, {}, MGR);
   return { id: inv.body.id, vendorid: v, total: lineTotal };
 }
 

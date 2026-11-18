@@ -79,6 +79,7 @@ test.describe('Vendors @p1', () => {
     expect(outstanding, 'an invoice with a balance').toBeTruthy();
     const before = Number(outstanding.balance_amount);
     const amount = 150;
+    await api.request('POST', `/purchases/${outstanding.id}/payment-ready`, {}, MGR);
 
     const pay = await api.request('POST', '/vendorpayments', {
       vendorid: outstanding.vendor_id, invoiceid: outstanding.id,
@@ -96,6 +97,7 @@ test.describe('Vendors @p1', () => {
     test.skip(!inv, 'no outstanding invoice with a usable balance');
     const bal = Number(inv.balance_amount);
     const half = Math.floor(bal / 2);
+    await api.request('POST', `/purchases/${inv.id}/payment-ready`, {}, MGR);
 
     await api.request('POST', '/vendorpayments', { vendorid: inv.vendor_id, invoiceid: inv.id, paydate: '2026-09-04', amount: half, paymode: 'Transfer' }, MGR);
     let cur = await api.request('GET', `/purchases/${inv.id}`, undefined, MGR);

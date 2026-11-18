@@ -125,6 +125,7 @@ test.describe('Purchase invoice header form @p1', () => {
 
     await api.request('PUT', '/purchaseitems', { ids: [it.body.id], values: { status: 'VERIFIED' } }, MGR);
     await api.request('PUT', '/purchases/confirm', { ids: [inv.body.id], values: { status: 'COMPLETE' } }, MGR);
+    await api.request('POST', `/purchases/${inv.body.id}/payment-ready`, {}, MGR);
     await api.request('POST', '/vendorpayments', { vendorid: vendor, invoiceid: inv.body.id, paydate: '2026-09-10', amount: 40, paymode: 'Transfer' }, MGR);
     await page.reload();
     await expect(page.getByTestId('invoice-payments')).toBeVisible();

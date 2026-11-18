@@ -56,7 +56,11 @@
         This invoice is fully paid. Payment history remains visible, and new payments are disabled.
       </div>
 
-      <form class="row g-3" *ngIf="(balanceamount || 0) > 0" [formGroup]="form" (ngSubmit)="submit()" data-testid="invoice-pay-form">
+      <div *ngIf="(balanceamount || 0) > 0 && !ready" class="alert alert-light border py-2 mb-0" data-testid="invoice-pay-not-ready">
+        This invoice is not marked ready for payment yet. Mark it ready above, then record the payment here.
+      </div>
+
+      <form class="row g-3" *ngIf="(balanceamount || 0) > 0 && ready" [formGroup]="form" (ngSubmit)="submit()" data-testid="invoice-pay-form">
         <div class="col-md-6 col-lg-4">
           <label for="paydate" class="form-label">Date</label>
           <input type="date" class="form-control" id="paydate" formControlName="paydate">

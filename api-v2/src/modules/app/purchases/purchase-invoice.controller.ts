@@ -77,6 +77,17 @@ export class PurchaseInvoiceController {
       return this.view.unapprove(id, currentUser.id);
     }
 
+    /** The step after completing an invoice: mark it ready for payment (with an optional note), or take the mark back. */
+    @Post('/:id/payment-ready')
+    async paymentReady(@Param('id', ParseIntPipe) id:number, @Body() body:any, @User() currentUser:any) {
+      return this.view.markReady(id, body?.note, currentUser.id);
+    }
+
+    @Post('/:id/payment-unready')
+    async paymentUnready(@Param('id', ParseIntPipe) id:number, @User() currentUser:any) {
+      return this.view.unmarkReady(id, currentUser.id);
+    }
+
     @Post('/:id/release')
     async release(@Param('id', ParseIntPipe) id:number, @User() currentUser:any) {
       return this.view.release(id, currentUser.id);

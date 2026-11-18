@@ -6,7 +6,7 @@ import { permsOf } from 'src/core/role-rules';
 import { PurchasingAction, canDoPurchasing } from './purchasing-access';
 import { ApprovalPolicy, loadApprovalPolicy } from './invoice-approval';
 
-export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft', 'awaiting', 'approval', 'ready', 'ready_overdue', 'ready_due7', 'ready_later'] as const;
+export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft', 'awaiting', 'approval', 'ready', 'ready_overdue', 'ready_due7', 'ready_later', 'notready'] as const;
 export type InvoiceView = typeof INVOICE_VIEWS[number];
 
 /** `since`: the usual window (for example the last year): invoices dated before it are left out unless something is still owed on them or they are not received yet */
@@ -73,16 +73,19 @@ export class InvoiceViewService {
              (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid <= 0.005) as is_paid,
              (w.status <> 'COMPLETE') as draft,
              (w.status = 'COMPLETE' and w.invoice_no is null) as awaiting,
-             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.needs_appr) as awaiting_approval,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.needs_appr and w.ready_on is not null) as awaiting_approval,
+             -- completed and owed, but nobody has said it is ready for payment yet
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.ready_on is null) as not_ready,
              -- what can be paid now: owed, not on hold and not waiting for approval; split by when it falls due, so every one of them is counted once
-             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr) as ready,
-             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr and w.due_date < current_date) as ready_overdue,
-             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr and w.due_date >= current_date and w.due_date <= current_date + 7) as ready_due7,
-             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr and w.due_date > current_date + 7) as ready_later,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr and w.ready_on is not null) as ready,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr and w.ready_on is not null and w.due_date < current_date) as ready_overdue,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr and w.ready_on is not null and w.due_date >= current_date and w.due_date <= current_date + 7) as ready_due7,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr and w.ready_on is not null and w.due_date > current_date + 7) as ready_later,
              case when w.status <> 'COMPLETE' then 'Draft'
                   when w.invoice_no is null then 'Awaiting invoice'
                   when w.total - w.paid <= 0.005 then 'Paid'
                   when w.stored_status = 'On Hold' then 'On Hold'
+                  when w.ready_on is null then 'Not ready'
                   when w.needs_appr then 'Awaiting approval'
                   when w.paid > 0.005 then 'Part Paid'
                   else 'Unpaid' end as payment_status,
@@ -94,12 +97,14 @@ export class InvoiceViewService {
                  coalesce(i.due_date, i.invoice_date) as due_date, i.status, i.total::numeric as total,
                  coalesce(i.payment_status, 'Unpaid') as stored_status, i.gst_recon_status, i.gst_period,
                  i.hold_reason, i.approved_on, i.approval_note, ua.full_name as approved_by_name,
+                 i.payment_ready_on as ready_on, i.payment_ready_note as ready_note, ur.full_name as ready_by_name,
                  (${policy.enabled ? 'true' : 'false'} and i.approved_on is null and (${Number(policy.limit) || 0} <= 0 or i.total::numeric > ${Number(policy.limit) || 0})) as needs_appr,
                  p.paid, p.last_payment, p.payments,
                  (select count(*) from purchase_invoice_item x where x.invoice_id = i.id)::int as items
             from purchase_invoice i
             join vendor v on v.id = i.vendor_id
             left join app_user ua on ua.id = i.approved_by
+            left join app_user ur on ur.id = i.payment_ready_by
             left join lateral (select coalesce(sum(amount), 0)::numeric as paid, max(pay_date) filter (where amount > 0) as last_payment,
                                       (count(*) filter (where amount > 0))::int as payments
                                  from vendor_payment where invoice_id = i.id) p on true
@@ -122,6 +127,7 @@ export class InvoiceViewService {
       case 'ready_overdue': return 'ready_overdue';
       case 'ready_due7': return 'ready_due7';
       case 'ready_later': return 'ready_later';
+      case 'notready': return 'not_ready';
       default: return 'true';
     }
   }
@@ -130,7 +136,7 @@ export class InvoiceViewService {
     const { sql, args } = this.base(f, await loadApprovalPolicy(this.manager));
     const v = (INVOICE_VIEWS as readonly string[]).includes(view) ? view : 'all';
     // unpaid views read best oldest-due first; the rest newest first
-    const defaultSort = ['pending', 'overdue', 'due7', 'hold', 'approval', 'ready', 'ready_overdue', 'ready_due7', 'ready_later'].includes(v) ? 'due_date asc' : v === 'awaiting' ? 'invoice_date asc' : 'invoice_date desc';
+    const defaultSort = ['pending', 'overdue', 'due7', 'hold', 'approval', 'ready', 'ready_overdue', 'ready_due7', 'ready_later', 'notready'].includes(v) ? 'due_date asc' : v === 'awaiting' ? 'invoice_date asc' : 'invoice_date desc';
     const col = sort && SORTS[sort] ? `${SORTS[sort]} ${dir === 'asc' ? 'asc' : 'desc'}, id desc` : `${defaultSort}, id desc`;
     const safeLimit = Math.min(100, Math.max(1, limit || 25));
     const safePage = Math.max(1, page || 1);
@@ -144,6 +150,7 @@ export class InvoiceViewService {
       items: r.items, total: +r.total, paid_amount: +r.paid, balance_amount: +r.balance, days_overdue: +r.days_overdue,
       last_payment: r.last_payment, payments: r.payments, on_hold: r.on_hold, hold_reason: r.hold_reason,
       gst_status: r.gst_recon_status, gst_period: r.gst_period,
+      payment_ready: !!r.ready_on, ready_on: r.ready_on, ready_by: r.ready_by_name, ready_note: r.ready_note, not_ready: r.not_ready,
       awaiting_approval: r.awaiting_approval, approved: !!r.approved_on, approved_on: r.approved_on, approved_by: r.approved_by_name, approval_note: r.approval_note,
     }));
     return { data, total: rows[0]?.total_rows ?? 0, page: safePage, limit: safeLimit, view: v };
@@ -163,6 +170,7 @@ export class InvoiceViewService {
               count(*) filter (where draft)::int as draft_n, coalesce(round(sum(total) filter (where draft), 2), 0) as draft_amt,
               count(*) filter (where awaiting)::int as awaiting_n, coalesce(round(sum(total) filter (where awaiting), 2), 0) as awaiting_amt,
               coalesce(max(days_waiting) filter (where awaiting), 0)::int as awaiting_oldest,
+              count(*) filter (where not_ready)::int as notready_n, coalesce(round(sum(balance) filter (where not_ready), 2), 0) as notready_amt,
               count(*) filter (where ready)::int as ready_n, coalesce(round(sum(balance) filter (where ready), 2), 0) as ready_amt,
               count(*) filter (where ready_overdue)::int as ready_overdue_n, coalesce(round(sum(balance) filter (where ready_overdue), 2), 0) as ready_overdue_amt,
               count(*) filter (where ready_due7)::int as ready_due7_n, coalesce(round(sum(balance) filter (where ready_due7), 2), 0) as ready_due7_amt,
@@ -179,6 +187,8 @@ export class InvoiceViewService {
       draft: { count: n('draft_n'), amount: n('draft_amt') },
       awaiting: { count: n('awaiting_n'), amount: n('awaiting_amt'), oldest_days: n('awaiting_oldest') },
       approval: { count: n('appr_n'), amount: n('appr_amt') },
+      // completed and owed but not yet marked payment ready: the next step after completing an invoice
+      notready: { count: n('notready_n'), amount: n('notready_amt') },
       // what can be paid now, and when it falls due: the three parts add up to the whole, and none of it is on hold or waiting for approval
       ready: { count: n('ready_n'), amount: n('ready_amt') },
       ready_overdue: { count: n('ready_overdue_n'), amount: n('ready_overdue_amt') },
@@ -215,6 +225,38 @@ export class InvoiceViewService {
     await this.audit.record({ userId: userid, action: 'invoice.held', entityType: 'purchases', entityId: invoiceId,
       summary: `invoice ${inv.invoice_no} put on hold: ${why}`, details: { reason: why } });
     return { id: invoiceId, on_hold: true };
+  }
+
+  /**
+   * The step after completing an invoice: says it is checked and may go to finance. Needed before a payment can be recorded. Anyone who works on
+   * purchase invoices may do it; the person and an optional note are kept.
+   */
+  async markReady(invoiceId: number, note: string | undefined, userid: number) {
+    const [inv] = await this.manager.query(
+      `select i.id, i.invoice_no, i.status, i.payment_ready_on, i.total::numeric - coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::numeric as balance
+         from purchase_invoice i where i.id = $1 and i.active and not i.archive`, [invoiceId]);
+    if (!inv) throw new NotFoundException('Invoice not found.');
+    if (inv.status !== 'COMPLETE') throw new BadRequestException('Complete the invoice first: only a completed invoice can be marked ready for payment.');
+    if (!inv.invoice_no) throw new BadRequestException("Enter the vendor's invoice number before marking it ready for payment.");
+    if (+inv.balance <= 0.005) throw new BadRequestException('This invoice is already paid.');
+    if (inv.payment_ready_on) return { id: invoiceId, ready: true };
+    const text = (note || '').trim().slice(0, 200) || null;
+    await this.manager.query(`update purchase_invoice set payment_ready_by = $2, payment_ready_on = now(), payment_ready_note = $3, updated_on = now(), updated_by = $2 where id = $1`, [invoiceId, userid, text]);
+    await this.audit.record({ userId: userid, action: 'invoice.payment_ready', entityType: 'purchases', entityId: invoiceId,
+      summary: `invoice ${inv.invoice_no} marked ready for payment${text ? `: ${text}` : ''}`, details: { note: text } });
+    return { id: invoiceId, ready: true };
+  }
+
+  /** Takes the mark back (before anything is paid on it): the invoice is not ready for payment again. */
+  async unmarkReady(invoiceId: number, userid: number) {
+    const [inv] = await this.manager.query(
+      `select i.id, i.invoice_no, i.payment_ready_on, coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::numeric as paid from purchase_invoice i where i.id = $1`, [invoiceId]);
+    if (!inv) throw new NotFoundException('Invoice not found.');
+    if (!inv.payment_ready_on) return { id: invoiceId, ready: false };
+    if (+inv.paid > 0.005) throw new BadRequestException('A payment has been recorded against this invoice, so it stays ready.');
+    await this.manager.query(`update purchase_invoice set payment_ready_by = null, payment_ready_on = null, payment_ready_note = null, updated_on = now(), updated_by = $2 where id = $1`, [invoiceId, userid]);
+    await this.audit.record({ userId: userid, action: 'invoice.payment_unready', entityType: 'purchases', entityId: invoiceId, summary: `invoice ${inv.invoice_no}: payment ready mark withdrawn`, details: {} });
+    return { id: invoiceId, ready: false };
   }
 
   /** clearing invoices for payment and changing the rule need the `invoices.approvepay` action (the owner roles hold it by name) */

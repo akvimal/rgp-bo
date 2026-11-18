@@ -91,6 +91,8 @@ export async function stockIn(m: Manifest) {
         // COMPLETE is the real invoice-level terminal status (matches the UI's "Complete" button);
         // payments can only be recorded against a COMPLETE invoice (issue: WS-1 payment validation)
         await PUT('/purchases/confirm', { ids: [invid], values: { status: 'COMPLETE', total: +invTotal.toFixed(2) } }, { token: bh });
+        // the step after completing: marked ready for payment (a payment is refused until it is)
+        await POST(`/purchases/${invid}/payment-ready`, {}, { token: bh }).catch(() => {});
         // pay ~half of them in full/part so both "outstanding" and "paid" states exist
         if (gi % 2 === 0) {
           await POST('/vendorpayments', {

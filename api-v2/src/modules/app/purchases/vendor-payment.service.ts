@@ -181,7 +181,10 @@ export class VendorPaymentService {
         if (invoice.paymentstatus === 'On Hold') {
             throw new BadRequestException(`${invoice.invoiceno} is on hold - clear the hold before paying it.`);
         }
-        const [appr] = await tm.query(`select approved_on from purchase_invoice where id = $1`, [invoice.id]);
+        const [appr] = await tm.query(`select approved_on, payment_ready_on from purchase_invoice where id = $1`, [invoice.id]);
+        if (!appr?.payment_ready_on) {
+            throw new BadRequestException(`${invoice.invoiceno} has not been marked ready for payment yet. Mark it ready from the invoice page or the invoice list.`);
+        }
         if (needsApproval(await loadApprovalPolicy(tm), invoice.total, appr?.approved_on)) {
             throw new BadRequestException(`${invoice.invoiceno} has not been approved for payment yet. A Business Head approves it from the invoice list.`);
         }

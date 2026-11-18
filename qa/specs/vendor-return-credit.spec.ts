@@ -28,6 +28,7 @@ async function invoice(api: any, vendorid: number, productid: number, qty: numbe
   if (complete) {
     const done = await api.request('PUT', '/purchases/confirm', { ids: [inv.body.id], values: { status: 'COMPLETE', total } }, MGR);
     expect(done.status, JSON.stringify(done.body)).toBeLessThan(300);
+    await api.request('POST', `/purchases/${inv.body.id}/payment-ready`, {}, MGR);
   }
   const got = (await api.request('GET', `/purchases/${inv.body.id}`, undefined, MGR)).body;
   return { id: inv.body.id as number, itemid: it.body.id as number, storeid: got.storeid as number, total, no: got.invoiceno as string, ptr };

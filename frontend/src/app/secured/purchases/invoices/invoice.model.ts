@@ -12,6 +12,8 @@ export interface Invoice {
     vendor?:any,
     status?:string,
     paymentstatus?:string,
+    /** set once the invoice is marked ready for payment: who, when, and the note */
+    paymentready?:{ on:string, by?:string, note?:string } | null,
     total?:number,
     printedtotal?:number,
     cashdiscount?:number,

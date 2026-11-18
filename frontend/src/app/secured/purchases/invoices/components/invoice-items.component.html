@@ -340,6 +340,21 @@
     (<a [routerLink]="['../../edit',invoice.id]">Add invoice no.</a>). If the invoice rates differ from the challan, raise a
     <a routerLink="/secure/vendor-issues">vendor issue</a> to correct the invoice.
 </div>
+<!-- the step after completing an invoice: say it is checked and may go to finance. A payment cannot be recorded until then. -->
+<div class="alert alert-primary mt-3 mb-0" *ngIf="invoice.status !== 'NEW' && invoice.invoiceno && (invoice.balanceamount || 0) > 0 && !invoice.paymentready" data-testid="invoice-ready-prompt">
+    <div class="fw-semibold">Next step: mark this invoice ready for payment</div>
+    <div class="small mb-2">The goods and the bill agree. Say it is checked and may go to finance; a payment cannot be recorded until you do.</div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <input type="text" class="form-control w-auto" style="min-width:16rem" maxlength="200" [(ngModel)]="readyNote" placeholder="Note for finance (optional)" aria-label="Note for finance" data-testid="invoice-ready-note">
+        <button type="button" class="btn btn-primary" [disabled]="readyBusy" (click)="markReady()" data-testid="invoice-mark-ready">Mark ready for payment</button>
+    </div>
+    <div class="text-danger small mt-2" *ngIf="readyError" data-testid="invoice-ready-error">{{readyError}}</div>
+</div>
+<div class="alert alert-success py-2 mt-3 mb-0 d-flex flex-wrap justify-content-between align-items-center gap-2" *ngIf="invoice.status !== 'NEW' && invoice.paymentready && (invoice.balanceamount || 0) > 0" data-testid="invoice-ready-done">
+    <span><i class="bi bi-check-circle me-1"></i>Ready for payment, marked by {{invoice.paymentready.by || 'the system'}} on {{invoice.paymentready.on | date:'dd MMM yyyy'}}<span *ngIf="invoice.paymentready.note"> &middot; {{invoice.paymentready.note}}</span></span>
+    <a role="button" class="small" *ngIf="!(invoice.paidamount > 0)" (click)="unmarkReady()" data-testid="invoice-unmark-ready">Take the mark back</a>
+    <div class="text-danger small w-100" *ngIf="readyError">{{readyError}}</div>
+</div>
 <app-invoice-payment *ngIf="invoice.status !== 'NEW' && invoice.invoiceno"
     class="d-block"
     [invoiceid]="invoice.id"
@@ -347,6 +362,7 @@
     [invoiceamt]="invoice.total"
     [balanceamount]="invoice.balanceamount"
     [paymentstatus]="invoice.paymentstatus"
+    [ready]="!!invoice.paymentready"
     (payUpdated)="onPaid($event)"></app-invoice-payment>
 
 <app-purchase-history [product]="historyProduct" [invoiceId]="invoice.id" (closed)="historyProduct = null"></app-purchase-history>

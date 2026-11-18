@@ -14,6 +14,8 @@ export class InvoicePaymentComponent implements OnInit, OnChanges {
     @Input() invoiceamt:any;
     @Input() balanceamount:any;
     @Input() paymentstatus:any;
+    /** marked ready for payment: until it is, no payment can be recorded */
+    @Input() ready:boolean = true;
     @Output() payUpdated = new EventEmitter();
 
     /** the panel can be folded away; the choice is remembered in this browser */

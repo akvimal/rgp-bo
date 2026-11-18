@@ -466,15 +466,17 @@ export class PurchaseInvoiceService {
     const m = this.purchaseInvoiceRepository.manager;
     const policy = await loadApprovalPolicy(m);
     const approvedOn = new Map<number, any>();
-    if (policy.enabled && invoices.length) {
-      const rows = await m.query(`select id, approved_on from purchase_invoice where id = any($1::int[])`, [invoices.map((i: any) => i.id)]);
-      rows.forEach((r: any) => approvedOn.set(r.id, r.approved_on));
+    const readyOn = new Map<number, any>();
+    if (invoices.length) {
+      const rows = await m.query(`select id, approved_on, payment_ready_on from purchase_invoice where id = any($1::int[])`, [invoices.map((i: any) => i.id)]);
+      rows.forEach((r: any) => { approvedOn.set(r.id, r.approved_on); readyOn.set(r.id, r.payment_ready_on); });
     }
     return invoices
       .map((invoice: any) => this.mapInvoice(invoice))
       .filter((inv: any) => +(inv.balanceamount || 0) > 0)
       .map((mapped: any) => ({
         needs_approval: needsApproval(policy, mapped.total, approvedOn.get(mapped.id)),
+        not_ready: !readyOn.get(mapped.id),
         id: mapped.id,
         vendor_id: mapped.vendorid,
         invoice_no: mapped.invoiceno,
@@ -511,6 +513,7 @@ export class PurchaseInvoiceService {
           total_overdue: 0,
           on_hold_count: 0,
           approval_count: 0,
+          not_ready_count: 0,
           oldest_due_date: null as string | null,
           ageing: { d0_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0 },
         });
@@ -527,7 +530,8 @@ export class PurchaseInvoiceService {
       if (inv.payment_status === 'On Hold') {
         row.on_hold_count += 1;
       }
-      if (inv.needs_approval && inv.payment_status !== 'On Hold') row.approval_count += 1;
+      if (inv.needs_approval && inv.payment_status !== 'On Hold' && !inv.not_ready) row.approval_count += 1;
+      if (inv.not_ready && inv.payment_status !== 'On Hold') row.not_ready_count += 1;
       if (inv.due_date && (!row.oldest_due_date || inv.due_date < row.oldest_due_date)) {
         row.oldest_due_date = inv.due_date;
       }
@@ -596,7 +600,12 @@ export class PurchaseInvoiceService {
         if(invoice && invoice.status === 'COMPLETE'){
           try { (invoice as any).total = await this.expectedTotal(+id); } catch { /* keep the stored total */ }
         }
-        return invoice ? this.mapInvoice(invoice) : null;
+        if(!invoice) return null;
+        const mapped:any = this.mapInvoice(invoice);
+        const [rd] = await this.manager.query(
+          `select i.payment_ready_on as ready_on, i.payment_ready_note as ready_note, u.full_name as ready_by from purchase_invoice i left join app_user u on u.id = i.payment_ready_by where i.id = $1`, [+id]);
+        mapped.paymentready = rd?.ready_on ? { on: rd.ready_on, by: rd.ready_by, note: rd.ready_note } : null;
+        return mapped;
     }
 
     async getGRN(key:string){

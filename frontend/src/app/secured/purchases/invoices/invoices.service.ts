@@ -97,6 +97,15 @@ export class InvoiceService {
         return this.http.get<any[]>(`${this.apiurl}/purchases/${invoiceid}/payments`);
     }
 
+    /** the step after completing an invoice: mark it ready for payment (with an optional note), or take the mark back */
+    markReady(invoiceid:number, note?:string){
+        return this.http.post<any>(`${this.apiurl}/purchases/${invoiceid}/payment-ready`, { note });
+    }
+
+    unmarkReady(invoiceid:number){
+        return this.http.post<any>(`${this.apiurl}/purchases/${invoiceid}/payment-unready`, {});
+    }
+
     hold(invoiceid:number, reason:string){
         return this.http.post(`${this.apiurl}/purchases/${invoiceid}/hold`, { reason });
     }
