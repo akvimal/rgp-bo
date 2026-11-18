@@ -4,6 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { businessOfUser, BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
+import { affectedRows } from 'src/core/db-result';
 import { isOwnerRole, NOT_A_PERSON, ROLE } from 'src/core/roles';
 import { uploadedFilePath } from 'src/modules/app/files/upload-path';
 import { sep } from 'path';
@@ -317,7 +318,7 @@ export class TodoService {
       `update todo_item set status = 'DONE', completed_by = $3, completed_on = now(), done_note = $4
         where business_id = $1 and system_key = $2 and status = 'OPEN' and not archive and ($5::int[] is null or store_id = any($5::int[])) returning id`,
       [businessId, systemKey, userId, note.slice(0, 300), storeIds]);
-    return rows.length;
+    return affectedRows(rows);
   }
 
   // ---------------------------------------------------------------- repeats

@@ -159,3 +159,27 @@ export const PROCEDURE: { heading: string; steps: string[] }[] = [
 ];
 
 export const procedureFor = (pharmacy: boolean) => (pharmacy ? PROCEDURE : PROCEDURE.map((p) => ({ ...p, steps: p.steps.filter((s) => !PHARMACY_STEPS.includes(s)) })));
+
+/**
+ * The checklists in the order a store wants them: the keys of the saved order first (those that still exist, once each), then any checklist the order does
+ * not name (one added since) in the order it came. With no saved order the lists come as given.
+ */
+export function orderLists<T extends { key: string }>(lists: T[], saved: string[] | null | undefined): T[] {
+  if (!saved || !saved.length) return lists;
+  const byKey = new Map(lists.map((l) => [l.key, l]));
+  const out: T[] = [];
+  for (const k of saved) { const l = byKey.get(k); if (l && !out.includes(l)) out.push(l); }
+  for (const l of lists) if (!out.includes(l)) out.push(l);
+  return out;
+}
+
+/** an order asked for: the keys, trimmed, once each, only those that exist; a problem in plain words when nothing usable was sent */
+export function cleanOrder(raw: any, known: string[]): { keys: string[]; problem: string | null } {
+  if (!Array.isArray(raw) || !raw.length) return { keys: [], problem: 'Send the checklists in the order you want them.' };
+  const seen = new Set<string>();
+  const keys: string[] = [];
+  for (const k of raw) { const key = String(k ?? '').trim(); if (known.includes(key) && !seen.has(key)) { seen.add(key); keys.push(key); } }
+  if (!keys.length) return { keys: [], problem: 'None of those are checklists of this store.' };
+  for (const k of known) if (!seen.has(k)) keys.push(k);          // a checklist left out keeps its place at the end
+  return { keys, problem: null };
+}

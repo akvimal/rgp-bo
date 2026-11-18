@@ -1,5 +1,5 @@
 /**
- * Checklists and system tasks — CHK-1..5
+ * Checklists and system tasks — CHK-1..7
  * Filling a list in is for everyone who bills (checklists.view); setting lists and recurring tasks up is admin work (checklistsetup.manage): a Store Head
  * for their own stores, the owner roles for any store or the whole business.
  * The outage kit page was taken apart: the weekly check became one of several configurable store checklists, the price list and procedure stand
@@ -124,6 +124,66 @@ test.describe('Checklists @p1', () => {
     const back = (await api.request('GET', `/checklists/tasks?storeid=${sid}`, undefined, HEAD)).body.tasks.find((x: any) => x.key === 'price_list');
     expect(back.enabled).toBe(true);
     expect(back.day).toBe(1);
+  });
+
+  test('CHK-6 the order of the checklists: a Store Head keeps the order of a store, the owner sets one for every store, and both can be put back @happy', async ({ api }) => {
+    const first = (await api.request('GET', '/checklists', undefined, HEAD)).body;
+    const sid = first.store.id;
+    const keysOf = async (email: string) => (await api.request('GET', `/checklists?storeid=${sid}`, undefined, email)).body.lists.map((l: any) => l.key);
+    const standard = first.lists.map((l: any) => l.key);
+    expect(first.ordersource).toBe('default');
+
+    // refused: staff, a Store Head for the business, an empty order, an order of nothing that exists
+    expect((await api.request('PUT', '/checklists/order', { storeid: sid, keys: standard }, SALES)).status).toBe(403);
+    expect((await api.request('PUT', '/checklists/order', { storeid: sid, scope: 'business', keys: standard }, HEAD)).status).toBe(403);
+    expect((await api.request('PUT', '/checklists/order', { storeid: sid, keys: [] }, HEAD)).status).toBe(400);
+    expect((await api.request('PUT', '/checklists/order', { storeid: sid, keys: ['nope', 'nada'] }, HEAD)).status).toBe(400);
+
+    // the Store Head reverses the store's order; everyone at the store sees it
+    const reversed = [...standard].reverse();
+    expect((await api.request('PUT', '/checklists/order', { storeid: sid, keys: reversed }, HEAD)).status).toBeLessThan(300);
+    expect(await keysOf(SALES)).toEqual(reversed);
+    expect((await api.request('GET', `/checklists?storeid=${sid}`, undefined, SALES)).body.ordersource).toBe('store');
+    // a list left out of the order keeps its place at the end
+    await api.request('PUT', '/checklists/order', { storeid: sid, keys: ['closing'] }, HEAD);
+    const partial = await keysOf(HEAD);
+    expect(partial[0]).toBe('closing');
+    expect(partial.sort()).toEqual([...standard].sort());
+
+    // put back to the standard order, and nothing is left to put back
+    expect((await api.request('DELETE', `/checklists/order?storeid=${sid}&scope=store`, undefined, HEAD)).status).toBeLessThan(300);
+    expect(await keysOf(SALES)).toEqual(standard);
+    expect((await api.request('DELETE', `/checklists/order?storeid=${sid}&scope=store`, undefined, HEAD)).status).toBe(404);
+
+    // the owner sets an order for every store; a store's own order still wins; both can be taken back
+    expect((await api.request('PUT', '/checklists/order', { scope: 'business', keys: ['closing', 'opening'] }, OWNER)).status).toBeLessThan(300);
+    expect((await keysOf(SALES))[0]).toBe('closing');
+    expect((await api.request('GET', `/checklists?storeid=${sid}`, undefined, SALES)).body.ordersource).toBe('business');
+    await api.request('PUT', '/checklists/order', { storeid: sid, keys: ['monthly_housekeeping'] }, HEAD);
+    expect((await keysOf(SALES))[0]).toBe('monthly_housekeeping');
+    await api.request('DELETE', `/checklists/order?storeid=${sid}&scope=store`, undefined, HEAD);
+    expect((await keysOf(SALES))[0]).toBe('closing');
+    expect((await api.request('DELETE', '/checklists/order?scope=business', undefined, HEAD)).status).toBe(403);
+    expect((await api.request('DELETE', '/checklists/order?scope=business', undefined, OWNER)).status).toBeLessThan(300);
+    expect(await keysOf(SALES)).toEqual(standard);
+  });
+
+  test('CHK-7 the order is changed on the Settings screen and the Checklists page follows it @happy', async ({ app, api }) => {
+    const { page } = await app.open(HEAD, '/secure/settings/checklists');
+    await expect(page.getByTestId('cls-lists')).toBeVisible();
+    await page.getByTestId('cls-order-open').click();
+    await expect(page.getByTestId('cls-order-panel')).toBeVisible();
+    await page.getByTestId('cls-order-down-outage_readiness').click();             // outage readiness moves below Opening
+    await page.getByTestId('cls-order-save').click();
+    await expect(page.getByTestId('cls-message')).toContainText('The order is saved for this store');
+    await expect(page.getByTestId('cls-order-line')).toContainText("this store's own order");
+
+    const run = await app.open(HEAD, '/secure/checklists');
+    await expect(run.page.getByTestId('cl-lists')).toBeVisible();
+    await expect(run.page.locator('[data-testid^="cl-pick-"]').first()).toHaveAttribute('data-testid', 'cl-pick-opening');   // opens on the first in the new order
+
+    const sid = (await api.request('GET', '/checklists', undefined, HEAD)).body.store.id;
+    await api.request('DELETE', `/checklists/order?storeid=${sid}&scope=store`, undefined, HEAD);            // leave the store as it was
   });
 
   test('CHK-5 another business\'s store is refused, and a role without the permission is turned away @negative', async ({ api }) => {

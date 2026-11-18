@@ -29,6 +29,12 @@ export class ChecklistsController {
   @Delete('tasks/:key')
   resetTask(@Param('key') key: string, @Query('storeid') storeid: string, @User() user: any) { return this.checklists.resetTask(user, key, storeid); }
 
+  @Put('order')
+  saveOrder(@Body() body: any, @User() user: any) { return this.checklists.saveOrder(user, body); }
+
+  @Delete('order')
+  resetOrder(@Query() q: { storeid?: string; scope?: string }, @User() user: any) { return this.checklists.resetOrder(user, q); }
+
   @Post()
   add(@Body() body: any, @User() user: any) { return this.checklists.addList(user, body); }
 

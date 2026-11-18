@@ -19,6 +19,12 @@ export class ChecklistsService {
         return this.http.delete<any>(`${this.api}/${key}`, { params: { ...(storeid ? { storeid: String(storeid) } : {}), scope } });
     }
 
+    /** the order the checklists are shown in: for the store, or (the owner) for every store without its own */
+    saveOrder(body: any) { return this.http.put<any>(`${this.api}/order`, body); }
+    resetOrder(storeid: number | null, scope: 'store' | 'business') {
+        return this.http.delete<any>(`${this.api}/order`, { params: { ...(storeid ? { storeid: String(storeid) } : {}), scope } });
+    }
+
     tasks(storeid?: number | null) { return this.http.get<any>(`${this.api}/tasks`, this.params(storeid)); }
     saveTask(key: string, body: any) { return this.http.put<any>(`${this.api}/tasks/${key}`, body); }
     resetTask(key: string, storeid: number | null) { return this.http.delete<any>(`${this.api}/tasks/${key}`, this.params(storeid)); }

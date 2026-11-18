@@ -29,3 +29,7 @@ Built 2026-11-18 (migration 223). Replaces the Outage kit page.
 - Monthly tasks other than those above (stock count, GST, bank, drug register) are tick-by-hand; no auto-close yet.
 - Alert `outage_kit` and the to-do overlap by design; the alert only fires when the check is late.
 - Tests: `api-v2/src/modules/app/checklists/checklist-rules.spec.ts`, `qa/specs/checklists.spec.ts` (CHK-1..5).
+
+## Order of the checklists (migration 228)
+- The order the lists are shown in (the buttons on the Checklists page and in Settings > Checklists) is kept per store, or by the owner for every store without its own (`checklist_order`, an ordered array of keys). Store beats business beats the order shipped in code; a list not named in the order (one added later) comes last. Settings > Checklists > Change the order has up and down arrows, a save, and Put back to the shared order. API: `PUT/DELETE /checklists/order` (same scope rules as editing a list); the overview carries `ordersource`.
+- Fixed on the way: `delete/update ... returning` through `manager.query` returns `[rows, count]` here, so `result.length` was always 2 (a reset that removed nothing reported success; the system-task close count was inflated; the approval-rule setting never inserted a missing row). `core/db-result.ts` `affectedRows()` now answers "did it change anything" in those places.

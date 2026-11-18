@@ -29,6 +29,29 @@
       </button>
       <button type="button" class="btn btn-sm btn-outline-primary" (click)="adding = !adding" data-testid="cls-add-open">+ A new checklist</button>
     </div>
+    <div class="small mb-2" data-testid="cls-order-line">
+      Shown in {{orderSourceLabel}}.
+      <a role="button" (click)="toggleOrder()" data-testid="cls-order-open">{{orderOpen ? 'Close' : 'Change the order'}}</a>
+    </div>
+    <div class="border rounded p-3 mb-3" *ngIf="orderOpen" data-testid="cls-order-panel">
+      <div class="small text-muted mb-2">This is the order the checklists are shown in, on the Checklists page and here: the first one is opened first.</div>
+      <div class="alert alert-danger py-2" *ngIf="orderError" data-testid="cls-order-error">{{orderError}}</div>
+      <ol class="list-group list-group-numbered mb-2" style="max-width:34rem">
+        <li class="list-group-item d-flex align-items-center gap-2 py-1" *ngFor="let r of orderRows; let n = index" [attr.data-testid]="'cls-order-row-' + r.key">
+          <span class="flex-grow-1">{{r.title}}<span class="badge bg-secondary ms-1" *ngIf="!r.active">hidden</span></span>
+          <button type="button" class="btn btn-outline-secondary btn-sm py-0" [disabled]="n === 0" (click)="moveListOrder(n, -1)" title="Move up" [attr.aria-label]="'Move ' + r.title + ' up'" [attr.data-testid]="'cls-order-up-' + r.key">&uarr;</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm py-0" [disabled]="n === orderRows.length - 1" (click)="moveListOrder(n, 1)" title="Move down" [attr.aria-label]="'Move ' + r.title + ' down'" [attr.data-testid]="'cls-order-down-' + r.key">&darr;</button>
+        </li>
+      </ol>
+      <div class="d-flex flex-wrap gap-3 align-items-center">
+        <select class="form-select w-auto" *ngIf="canOwner" [(ngModel)]="orderScope" data-testid="cls-order-scope">
+          <option value="store">Save for this store</option>
+          <option value="business">Save for every store without its own order</option>
+        </select>
+        <button type="button" class="btn btn-primary" (click)="saveOrder()" data-testid="cls-order-save">Save the order</button>
+        <button type="button" class="btn btn-outline-danger" *ngIf="canResetOrder" (click)="resetOrder()" data-testid="cls-order-reset">Put back to the shared order</button>
+      </div>
+    </div>
     <div class="border rounded p-3 mb-3" *ngIf="adding" data-testid="cls-add-form">
       <label class="form-label" for="cls-new-title">Name of the checklist</label>
       <div class="d-flex gap-2">

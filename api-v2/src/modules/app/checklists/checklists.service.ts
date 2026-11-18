@@ -4,11 +4,12 @@ import { Cron } from '@nestjs/schedule';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { businessOfUser } from 'src/core/business-of-user';
+import { affectedRows } from 'src/core/db-result';
 import { ModulesService } from 'src/core/modules/modules.service';
 import { isOwnerRole } from 'src/core/roles';
 import { firstOnOrAfter, istDay, RepeatRule } from '../todos/todo-rules';
 import { TodoService } from '../todos/todo.service';
-import { ChecklistDef, ChecklistItem, cleanItems, daysSince, defaultList, DEFAULT_CHECKLISTS, isCurrent, recordRun, slugKey } from './checklist-rules';
+import { ChecklistDef, ChecklistItem, cleanItems, cleanOrder, daysSince, defaultList, DEFAULT_CHECKLISTS, isCurrent, orderLists, recordRun, slugKey } from './checklist-rules';
 import { lastPriceListPrint } from '../outage/price-list-last';
 import { dayProblem, effectiveSetting, SYSTEM_TASKS, systemTask, TaskSetting } from './system-tasks';
 
@@ -91,7 +92,14 @@ export class ChecklistsService {
       const r = pick(k);
       out.push({ key: k, title: r.title, description: 'A checklist of your own.', every: 'WEEKLY', items: r.items, source: r.store_id !== null ? 'store' : 'business', custom: true, active: !!r.active });
     }
-    return out;
+    return orderLists(out, (await this.savedOrder(businessId, storeId)).keys);
+  }
+
+  /** the order saved for a store, else the business's, else none (the order shipped in code applies) */
+  private async savedOrder(businessId: number, storeId: number | null): Promise<{ keys: string[] | null; source: 'store' | 'business' | 'default' }> {
+    const rows = await this.manager.query(`select store_id, keys from checklist_order where business_id = $1 and (store_id is null or store_id = $2)`, [businessId, storeId]);
+    const own = rows.find((r: any) => r.store_id !== null), wide = rows.find((r: any) => r.store_id === null);
+    return own ? { keys: own.keys, source: 'store' } : wide ? { keys: wide.keys, source: 'business' } : { keys: null, source: 'default' };
   }
 
   private lastPriceListPrint(businessId: number) { return lastPriceListPrint(this.manager, businessId); }
@@ -108,7 +116,7 @@ export class ChecklistsService {
     const [any, complete] = await Promise.all([lastRuns(false), lastRuns(true)]);
     const pricelist = await this.lastPriceListPrint(w.businessId);
     return {
-      store, stores, canedit: w.canEdit, owner: w.owner, today, pricelist,
+      store, stores, canedit: w.canEdit, owner: w.owner, today, pricelist, ordersource: (await this.savedOrder(w.businessId, store.id)).source,
       pharmacy: await this.modules.packOnForBusiness(w.businessId, 'pharmacy'),
       lists: lists.map((l) => {
         const lc = complete.get(l.key) ?? null;
@@ -192,7 +200,7 @@ export class ChecklistsService {
   async resetList(user: any, key: string, q: { storeid?: string; scope?: string }) {
     const { w, storeId } = await this.target(user, q);
     const res = await this.manager.query(`delete from checklist_template where business_id = $1 and key = $2 and store_id is not distinct from $3 returning id`, [w.businessId, key, storeId]);
-    if (!res.length) throw new NotFoundException('There is no changed copy of that checklist to remove.');
+    if (!affectedRows(res)) throw new NotFoundException('There is no changed copy of that checklist to remove.');
     await this.audit.record({ userId: w.id, action: 'checklist.reset', entityType: 'checklist', entityId: 0, summary: `Checklist "${key}" ${defaultList(key) ? 'put back to the shared list' : 'removed'}`, details: { key } });
     return { key };
   }
@@ -202,6 +210,29 @@ export class ChecklistsService {
       `insert into checklist_template (business_id, store_id, key, title, items, active, updated_by) values ($1, $2, $3, $4, $5::jsonb, $6, $7)
        on conflict (business_id, (coalesce(store_id, 0)), key) do update set title = excluded.title, items = excluded.items, active = excluded.active, updated_by = excluded.updated_by, updated_on = now()`,
       [w.businessId, storeId, key, title, JSON.stringify(items), active, w.id]);
+  }
+
+  /** the order the checklists are shown in, for this store or (the owner) for every store that has none of its own */
+  async saveOrder(user: any, body: any) {
+    const { w, storeId } = await this.target(user, body);
+    const known = (await this.lists(w.businessId, storeId)).map((l) => l.key);
+    const { keys, problem } = cleanOrder(body?.keys, known);
+    if (problem) throw new BadRequestException(problem);
+    await this.manager.query(
+      `insert into checklist_order (business_id, store_id, keys, updated_by) values ($1, $2, $3::jsonb, $4)
+       on conflict (business_id, (coalesce(store_id, 0))) do update set keys = excluded.keys, updated_by = excluded.updated_by, updated_on = now()`,
+      [w.businessId, storeId, JSON.stringify(keys), w.id]);
+    await this.audit.record({ userId: w.id, action: 'checklist.order', entityType: 'checklist', entityId: 0, summary: `Checklist order changed${storeId ? '' : ' for every store'}`, details: { keys } });
+    return { keys };
+  }
+
+  /** back to the shared order: the store's own goes (a Store Head or the owner), or the business's (the owner) */
+  async resetOrder(user: any, q: { storeid?: string; scope?: string }) {
+    const { w, storeId } = await this.target(user, q);
+    const res = await this.manager.query(`delete from checklist_order where business_id = $1 and store_id is not distinct from $2 returning id`, [w.businessId, storeId]);
+    if (!affectedRows(res)) throw new NotFoundException('There is no changed order to put back.');
+    await this.audit.record({ userId: w.id, action: 'checklist.order_reset', entityType: 'checklist', entityId: 0, summary: `Checklist order put back${storeId ? '' : ' for every store'}`, details: {} });
+    return { ok: true };
   }
 
   // ------------------------------------------------------------------ system tasks

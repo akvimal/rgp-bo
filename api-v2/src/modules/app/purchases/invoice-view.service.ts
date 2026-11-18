@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
+import { affectedRows } from 'src/core/db-result';
 import { permsOf } from 'src/core/role-rules';
 import { PurchasingAction, canDoPurchasing } from './purchasing-access';
 import { ApprovalPolicy, loadApprovalPolicy } from './invoice-approval';
@@ -356,7 +357,7 @@ export class InvoiceViewService {
     const before = await loadApprovalPolicy(this.manager);
     const put = async (key: string, value: string, why: string) => {
       const upd = await this.manager.query(`update app_setting set setting_value = $2, updated_on = now(), updated_by = $3 where setting_key = $1 returning id`, [key, value, userid]);
-      if (!upd.length) await this.manager.query(
+      if (!affectedRows(upd)) await this.manager.query(
         `insert into app_setting (category, setting_key, setting_value, description, active, archive, created_by, updated_by) values ('purchasing', $1, $2, $4, true, false, $3, $3)`, [key, value, userid, why]);
     };
     await put('invoice_approval', body?.enabled ? 'on' : 'off', 'Purchase invoices must be approved for payment before they can be paid (on / off)');

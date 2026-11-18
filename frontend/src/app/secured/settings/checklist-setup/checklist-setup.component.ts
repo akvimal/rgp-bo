@@ -26,6 +26,12 @@ export class ChecklistSetupComponent implements OnInit {
     adding = false;
     newTitle = '';
 
+    // the order the lists are shown in
+    orderOpen = false;
+    orderRows: { key: string; title: string; active: boolean }[] = [];
+    orderScope: 'store' | 'business' = 'store';
+    orderError = '';
+
     // the system's tasks
     tasks: any = null;
     tasksError = '';
@@ -61,6 +67,39 @@ export class ChecklistSetupComponent implements OnInit {
     }
 
     changeStore(id: any) { this.storeid = +id; this.loading = true; this.message = ''; this.load(); if (this.tab === 'tasks') this.loadTasks(); }
+
+    // ------------------------------------------------------------------ the order of the lists
+    toggleOrder() {
+        this.orderOpen = !this.orderOpen; this.orderError = '';
+        if (this.orderOpen) { this.orderRows = this.lists.map((l: any) => ({ key: l.key, title: l.title, active: l.active })); this.orderScope = 'store'; }
+    }
+
+    moveListOrder(i: number, by: number) {
+        const j = i + by;
+        if (j < 0 || j >= this.orderRows.length) return;
+        const [x] = this.orderRows.splice(i, 1);
+        this.orderRows.splice(j, 0, x);
+    }
+
+    saveOrder() {
+        this.orderError = ''; this.message = '';
+        this.service.saveOrder({ storeid: this.storeid, scope: this.orderScope, keys: this.orderRows.map((r) => r.key) }).subscribe(() => {
+            this.message = this.orderScope === 'business' ? 'The order is saved for every store without its own.' : 'The order is saved for this store.';
+            this.orderOpen = false; this.load();
+        }, (err: any) => this.orderError = this.msg(err, 'Could not save the order.'));
+    }
+
+    /** whose order this store follows: its own, the one for every store, or the standard one */
+    get orderSource(): string { return this.data?.ordersource || 'default'; }
+    get orderSourceLabel(): string { return this.orderSource === 'store' ? "this store's own order" : this.orderSource === 'business' ? 'the order set for every store' : 'the standard order'; }
+    get canResetOrder(): boolean { return this.orderSource === 'store' || (this.orderSource === 'business' && this.canOwner); }
+
+    resetOrder() {
+        this.orderError = '';
+        this.service.resetOrder(this.storeid, this.orderSource === 'business' ? 'business' : 'store').subscribe(() => {
+            this.message = 'The order is put back to the shared one.'; this.orderOpen = false; this.load();
+        }, (err: any) => this.orderError = this.msg(err, 'Could not put the order back.'));
+    }
 
     // ------------------------------------------------------------------ changing a list
     startEdit() {

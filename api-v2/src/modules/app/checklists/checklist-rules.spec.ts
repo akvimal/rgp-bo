@@ -1,4 +1,4 @@
-import { cleanItems, daysSince, defaultList, DEFAULT_CHECKLISTS, isCurrent, procedureFor, recordRun } from './checklist-rules';
+import { cleanItems, cleanOrder, daysSince, defaultList, DEFAULT_CHECKLISTS, isCurrent, orderLists, procedureFor, recordRun } from './checklist-rules';
 import { dayProblem, effectiveSetting, SYSTEM_TASKS, systemTask } from './system-tasks';
 
 describe('checklist items', () => {
@@ -73,5 +73,23 @@ describe('system tasks', () => {
     expect(dayProblem(systemTask('price_list')!, 9)).toBeTruthy();
     expect(dayProblem(systemTask('stock_count')!, 0)).toBeNull();
     expect(dayProblem(systemTask('stock_count')!, 32)).toBeTruthy();
+  });
+});
+
+describe('the order of the checklists', () => {
+  const lists = ['a', 'b', 'c', 'd'].map((key) => ({ key }));
+  it('follows the saved order, then any list the order does not name', () => {
+    expect(orderLists(lists, ['c', 'a']).map((l) => l.key)).toEqual(['c', 'a', 'b', 'd']);
+    expect(orderLists(lists, null).map((l) => l.key)).toEqual(['a', 'b', 'c', 'd']);
+    expect(orderLists(lists, []).map((l) => l.key)).toEqual(['a', 'b', 'c', 'd']);
+  });
+  it('ignores a key that no longer exists and a key named twice', () => {
+    expect(orderLists(lists, ['zzz', 'd', 'd', 'b']).map((l) => l.key)).toEqual(['d', 'b', 'a', 'c']);
+  });
+  it('cleans an order asked for: known keys once each, the rest kept at the end', () => {
+    expect(cleanOrder([' d ', 'x', 'a', 'd'], ['a', 'b', 'c', 'd'])).toEqual({ keys: ['d', 'a', 'b', 'c'], problem: null });
+    expect(cleanOrder([], ['a']).problem).toBeTruthy();
+    expect(cleanOrder('a', ['a']).problem).toBeTruthy();
+    expect(cleanOrder(['x', 'y'], ['a']).problem).toBeTruthy();
   });
 });
