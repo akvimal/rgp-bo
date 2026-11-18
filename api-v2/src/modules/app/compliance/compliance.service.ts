@@ -8,6 +8,7 @@ import { businessOfUser } from 'src/core/business-of-user';
 import { isManagerRole, isOwnerRole } from 'src/core/roles';
 import { addDays, isRequired, itemOf, ITEMS, ladderFor, Step, stepOf, waiverEnd } from './compliance-rules';
 import { lastFullWeek } from '../review/review-rules';
+import { owedVaultDays } from '../store/vault-count-due';
 
 const TZ = 'Asia/Kolkata';
 const STOCK_COUNT_EVERY = 14;
@@ -84,6 +85,12 @@ export class ComplianceService {
          from store_shifts sh join stores st on st.id = sh.store_id
         where st.business_id = $1 and sh.status = 'OPEN' and sh.shift_date < $2::date`, [businessId, today]);
     for (const sh of shifts) owed.push({ item_key: 'shift_close', store_id: sh.store_id, person_id: sh.person, period_key: String(sh.id), due_on: addDays(sh.day, 1), detail: { shift: sh.name, day: sh.day } });
+
+    // the vault count owed after a store's day closed (only stores that keep a vault; the last couple of days)
+    for (const v of await owedVaultDays(m, ids, today)) {
+      const st = active.find((a: any) => +a.id === +v.store_id);
+      owed.push({ item_key: 'vault_count', store_id: v.store_id, person_id: null, period_key: v.day, due_on: v.day, detail: { store: String(st?.location ?? '').trim(), day: v.day } });
+    }
 
     const parked = await m.query(
       `select s.id, s.store_id, coalesce(s.acting_user_id, s.created_by) as person, s.bill_no, s.total::float as total,

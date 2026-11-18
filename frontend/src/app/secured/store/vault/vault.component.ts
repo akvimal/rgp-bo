@@ -148,12 +148,15 @@ export class VaultComponent implements OnInit, OnDestroy {
     this.files.view(path).subscribe((b: any) => window.open(URL.createObjectURL(b), "_blank"), () => this.error = "The slip could not be opened.");
   }
 
+  /** a count that does not match the books says why (the server asks too) */
+  get countNeedsReason(): boolean { return this.panel === "count" && !!this.state && Math.abs(this.total - Number(this.state.balance || 0)) >= 0.005; }
+
   get canSubmit(): boolean {
     if (this.busy) return false;
-    if (this.panel === "count") return true;               // an empty vault can be counted
     if (this.total <= 0) return false;
     if (this.panel === "dropnow") return !!this.dropShiftId;
     if (this.panel === "adjust") return this.reason.trim().length > 0;
+    if (this.panel === "count") return !this.countNeedsReason || this.reason.trim().length >= 3;
     return true;
   }
 
@@ -176,7 +179,7 @@ export class VaultComponent implements OnInit, OnDestroy {
       case "dropnow": this.vault.dropNow(id, Number(this.dropShiftId), this.rows, notes).subscribe({
         next: (res: any) => done(res?.status === "PENDING" ? "Put in the vault. A second person must confirm it before it counts in the vault." : "Put in the vault. The drawer's expected cash is lower by the same amount.")(res), error: fail }); break;
       case "change": this.vault.change(id, this.rows, notes).subscribe({ next: done("Change given from the vault."), error: fail }); break;
-      case "count": this.vault.count(id, this.rows, notes).subscribe({ next: done("Count recorded.", true), error: fail }); break;
+      case "count": this.vault.count(id, this.rows, notes, this.reason.trim() || undefined).subscribe({ next: done("Count recorded.", true), error: fail }); break;
       case "adjust": this.vault.adjust(id, { direction: this.direction, denominations: this.rows, reason: this.reason.trim(), notes }).subscribe({ next: done("Adjustment recorded."), error: fail }); break;
     }
   }

@@ -92,9 +92,9 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-shift', group: 'home', title: 'My shift', route: '/secure/shift',
     purpose: 'Your cash for the shift: open it, and close it with the cash and the card or UPI totals counted.',
-    tasks: ['Open your shift with the cash in the drawer before billing.', 'Close it at the end: count the cash by denomination and enter what each payment terminal shows.', 'Do the checklist items, or say why one cannot be done.'],
+    tasks: ['Open your shift with the cash in the drawer before billing.', 'Close it at the end: count the cash by denomination and enter what each payment terminal shows.', 'Do the checklist items, or say why one cannot be done.', 'After the last shift of the day closes, the vault is counted: a Count the vault box appears here for a Store Head or the person who closed the day. Count each note and coin; if it does not match the books you say why.'],
     who: 'Counter staff and anyone who bills.',
-    watch: ['A bill cannot be completed without an open shift.', 'A shift left open from an earlier day can stop the next one opening.'], keywords: 'cash drawer open close denomination',
+    watch: ['A bill cannot be completed without an open shift.', 'A shift left open from an earlier day can stop the next one opening.', 'If yesterday\'s vault was not counted, opening the next shift needs the count done, or a reason you type (your store head sees it).'], keywords: 'cash drawer open close denomination vault count',
   },
   {
     id: 'nav-reports', group: 'home', title: 'Reports', route: '/secure/reports',
@@ -305,7 +305,7 @@ export const PAGES: PageGuide[] = [
   // ---- oversight
   {
     id: 'nav-compliance', group: 'oversight', title: 'Compliance', route: '/secure/compliance',
-    purpose: 'The regular duties of the shop (counts, shift closes, reviews, licences), who owns each and whether it is on time.',
+    purpose: 'The regular duties of the shop (counts, the vault count after the day closes, shift closes, reviews, licences), who owns each and whether it is on time.',
     tasks: ['See what is due, late or escalated.', 'Give a waiver, with a reason, for a duty that cannot be done in time.'],
     who: 'Store heads and the owner.', watch: ['A late duty rises step by step: a reminder, then the store head, then the owner, then a block.'], keywords: 'compliance late waiver escalate duty licence',
   },
@@ -436,8 +436,8 @@ export const WALKTHROUGHS: Walkthrough[] = [
   },
   {
     id: 'w-shift', title: 'Open and close your shift', from: 'nav-shift',
-    steps: ['Open My shift. Enter the cash in the drawer and open it.', 'Bill through the day.', 'At the end press Close. Count the cash by denomination and enter what each card or UPI terminal shows.', 'Do the checklist items, or give the reason one cannot be done.', 'Submit. A difference is shown to your store head.'],
-    tips: ['Close every shift: an unclosed one can stop the next from opening.'], keywords: 'shift cash drawer close open',
+    steps: ['Open My shift. Enter the cash in the drawer and open it.', 'Bill through the day.', 'At the end press Close. Count the cash by denomination and enter what each card or UPI terminal shows.', 'Do the checklist items, or give the reason one cannot be done.', 'Submit. A difference is shown to your store head.', 'If this closed the day and the store keeps a vault, count the vault now (the Count the vault box on My shift). A difference from the books needs a reason.'],
+    tips: ['Close every shift: an unclosed one can stop the next from opening.', 'A handover to the next person does not need a vault count; only the end of the day does.'], keywords: 'shift cash drawer close open',
   },
   {
     id: 'w-purchase', title: 'Receive a purchase invoice', from: 'nav-purchases',

@@ -39,6 +39,8 @@ export const CONFIG_DEFS: ConfigDef[] = [
   // the ladder: days after the due date at which each step starts
   i('compliance', 'stock_count_late_days', 'Stock count: days late before the store head is told', 3, 1, 7, 'days'),
   i('compliance', 'shift_close_required_days', 'An unclosed shift: days before opening a shift needs it closed or a reason', 1, 0, 3, 'days'),
+  i('compliance', 'vault_count_late_days', 'Vault count after the day closes: days late before the store head is told', 1, 0, 3, 'days'),
+  i('compliance', 'vault_count_required_days', 'Vault count after the day closes: days late before opening a shift needs it done or a reason', 1, 0, 3, 'days'),
   i('compliance', 'outage_late_days', 'Outage readiness check: days late before the store head is told', 2, 1, 7, 'days'),
   i('compliance', 'review_late_days', 'Weekly review: days late before the Business Head is told', 2, 1, 7, 'days'),
   i('compliance', 'stock_count_required_days', 'Stock count: days late before closing a shift needs it done or a reason', 6, 1, 21, 'days'),

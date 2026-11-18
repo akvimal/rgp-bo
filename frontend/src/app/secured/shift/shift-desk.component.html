@@ -18,6 +18,25 @@
       </div>
     </div>
 
+    <!-- after the day's last close: the vault is counted (by a manager or the person who closed the day). A difference from the books needs a reason. -->
+    <div class="card border-primary mb-3" *ngIf="vaultCount?.due" data-testid="shiftdesk-vault-count">
+      <div class="card-body">
+        <h2 class="h6">Count the vault</h2>
+        <div class="small text-muted mb-2">The day of {{ vaultCount.day | date:'d MMM' }} has closed. Count every note and coin in the vault. If it does not match the books you will be asked why.</div>
+        <ng-container *ngIf="vaultCount.maycount; else notYourCount">
+          <app-denomination-grid [rows]="vcRows" (rowsChange)="vcRows = $event" (totalChange)="vcTotal = $event"></app-denomination-grid>
+          <div class="small mt-1">Counted &#8377;{{ vcTotal | number:'1.0-0' }}</div>
+          <div class="mt-2" *ngIf="vcNeedsReason" data-testid="shiftdesk-vault-count-reason-box">
+            <label class="form-label small mb-1">Why does the count differ from the books? *</label>
+            <input class="form-control form-control-sm" style="max-width:34rem" maxlength="300" [(ngModel)]="vcReason" data-testid="shiftdesk-vault-count-reason">
+          </div>
+          <div class="small text-danger mt-1" *ngIf="vcError" data-testid="shiftdesk-vault-count-error">{{ vcError }}</div>
+          <button class="btn btn-primary btn-sm mt-2" type="button" [disabled]="vcBusy || !vcRows.length || (vcNeedsReason && vcReason.trim().length < 3)" (click)="submitVaultCount()" data-testid="shiftdesk-vault-count-save">{{ vcBusy ? 'Saving...' : 'Save the vault count' }}</button>
+        </ng-container>
+        <ng-template #notYourCount><div class="small" data-testid="shiftdesk-vault-count-other">A Store Head, or the person who closed the day, counts the vault. Until it is counted, the next shift opens only with a reason.</div></ng-template>
+      </div>
+    </div>
+
     <ng-container *ngIf="storeId !== null && storeId !== undefined">
       <div class="d-flex align-items-center flex-wrap gap-2 mb-3" *ngIf="operators.length && !selfOnly" data-testid="shiftdesk-operator-box">
         <label class="form-label mb-0 fw-semibold small" for="shift-operator">At the counter</label>

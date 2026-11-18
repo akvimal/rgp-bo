@@ -47,6 +47,14 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   templateId: any = "";
   templateSuggestion: any = null;
   vaultState: any = null;
+  /** the vault count owed after the store's day closed: whether one is due, for which day, and whether this person may do it (a manager, or the person who closed the day) */
+  vaultCount: any = null;
+  vcRows: DenominationRow[] = [];
+  vcTotal = 0;
+  vcReason = "";
+  vcNeedsReason = false;
+  vcBusy = false;
+  vcError = "";
   /** the checklists in force for this store (its own, the business's or the standard); the built-in ones when they cannot be fetched */
   lists: any = null;
 
@@ -81,11 +89,13 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
       this.storeId = id;
       this.shiftContext.refresh(id);
       this.loadStaff();
+      this.loadVaultCount();
     }));
     this.subs.add(this.shiftContext.profile$.subscribe((p: any) => { this.staffBased = p?.shiftmode === "staff"; if (this.staffBased) this.closeType = "END_OF_DAY"; }));
     this.subs.add(this.shiftContext.openShift$.subscribe((s: any) => {
       this.openShift = s;
       if (!s && this.mode === "close") { this.mode = ""; }
+      if (!s) this.loadVaultCount();
       this.loadSummary();
     }));
     this.subs.add(this.operatorContext.selectedOperatorId$.subscribe((id: any) => (this.operatorId = id)));
@@ -105,6 +115,25 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   private loadStaff() {
     if (!this.storeId) { this.staff = []; return; }
     this.http.get(`${environment.apiHost}/store-cash/users`, { params: { storeid: String(this.storeId) } }).subscribe((r: any) => this.staff = r || [], () => this.staff = []);
+  }
+
+  loadVaultCount() {
+    if (!this.storeId) { this.vaultCount = null; return; }
+    this.vaultApi.countDue(this.storeId).subscribe((r: any) => this.vaultCount = r?.due ? r : null, () => this.vaultCount = null);
+  }
+
+  /** the vault is counted by note and coin; if it does not match the books the server asks why, and the person says */
+  submitVaultCount() {
+    if (!this.storeId || !this.vcRows.length) return;
+    this.vcBusy = true; this.vcError = "";
+    this.vaultApi.count(this.storeId, this.vcRows, undefined, this.vcReason.trim() || undefined).subscribe({
+      next: (r: any) => {
+        this.vcBusy = false; this.vcRows = []; this.vcTotal = 0; this.vcReason = ""; this.vcNeedsReason = false;
+        this.message = r?.variance ? `Vault counted. It is Rs ${Math.abs(Math.round(r.variance)).toLocaleString("en-IN")} ${r.variance < 0 ? "short of" : "over"} the books; your reason is recorded.` : "Vault counted. It matches the books.";
+        this.loadVaultCount();
+      },
+      error: err => { this.vcBusy = false; this.vcNeedsReason = !!err?.error?.needsreason || this.vcNeedsReason; this.vcError = err?.error?.message || "The count could not be saved."; },
+    });
   }
 
   loadSummary() {
@@ -326,6 +355,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
           ? `Handed over to ${taker}. Their shift is open with Rs ${Math.round(this.denomTotal).toLocaleString("en-IN")} in the drawer.`
           : "Shift closed." + (dropped ? ` Rs ${Math.round(dropped.amount).toLocaleString("en-IN")} put in the vault${dropped.status === "PENDING" ? " (waiting for a manager to confirm)" : ""}.` : "");
         this.shiftContext.reload();
+        this.loadVaultCount();
       },
       error: err => { this.busy = false; if (!this.gateFrom(err, "close")) this.error = err?.error?.message || "Unable to close the shift"; },
     });

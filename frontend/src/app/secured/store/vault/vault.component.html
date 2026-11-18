@@ -39,6 +39,7 @@
             <span class="fw-semibold" [class.text-danger]="state.lastcount.variance < 0" [class.text-success]="state.lastcount.variance > 0">
               {{ state.lastcount.variance >= 0 ? '+' : '' }}&#8377;{{ state.lastcount.variance | number:'1.0-0' }}</span>
             <div class="small text-muted">{{ state.lastcount.countedon | date:'medium' }}<span *ngIf="state.lastcount.countedby"> by {{ state.lastcount.countedby }}</span></div>
+            <div class="small" *ngIf="state.lastcount.reason" data-testid="vault-lastcount-reason">Reason: {{ state.lastcount.reason }}</div>
           </div>
           <ng-template #noCount><div class="text-muted small">The vault has not been counted yet.</div></ng-template>
 
@@ -102,6 +103,10 @@
           <div class="small mt-1" *ngIf="uploadingSlip">Uploading...</div>
           <div class="small text-success mt-1" *ngIf="receiptpath" data-testid="vault-slip-attached"><i class="bi bi-paperclip"></i> Attached: {{ receiptName || 'the slip' }}
             <a href="javascript:void(0)" class="ms-2" (click)="clearSlip()" data-testid="vault-slip-clear">Remove</a></div>
+        </div>
+        <div class="col-12" *ngIf="countNeedsReason" data-testid="vault-count-reason-box">
+          <label class="form-label small mb-1">Why does the count differ from the books? *</label>
+          <input class="form-control form-control-sm" maxlength="300" [(ngModel)]="reason" placeholder="e.g. a deposit was banked but not entered" data-testid="vault-count-reason">
         </div>
         <div class="col-12" *ngIf="panel === 'adjust'">
           <label class="form-label small mb-1">Reason *</label>

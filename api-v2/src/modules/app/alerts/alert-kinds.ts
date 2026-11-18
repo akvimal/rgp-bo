@@ -439,7 +439,7 @@ export const KINDS: AlertKind[] = [
         `select i.id, i.item_key, i.step, i.store_id, s.location, to_char(i.due_on, 'YYYY-MM-DD') as due_on
            from compliance_instance i left join stores s on s.id = i.store_id
           where i.business_id = $1 and i.state = 'OPEN' and not i.not_mine and (i.step = 'escalated' or (i.item_key = 'parked_bill' and i.step = 'late'))`, [ctx.businessId]);
-      const labels: Record<string, string> = { stock_count: 'The stock count', outage_check: 'The outage readiness check', weekly_review: 'The weekly review', shift_close: 'Closing the shift', licence: 'The licence renewal', parked_bill: 'A parked bill' };
+      const labels: Record<string, string> = { stock_count: 'The stock count', outage_check: 'The outage readiness check', weekly_review: 'The weekly review', shift_close: 'Closing the shift', vault_count: 'The vault count', licence: 'The licence renewal', parked_bill: 'A parked bill' };
       return rows.map((r: any) => ({
         key: `compliance:${r.id}`, storeid: r.store_id, code: r.item_key === 'parked_bill' && r.step === 'late' ? 'compliance_parked' : 'compliance_escalated',
         params: { store: String(r.location ?? '').trim(), item: labels[r.item_key] || r.item_key, date: r.due_on, days: Math.max(0, daysBetween(r.due_on, ctx.today)) },

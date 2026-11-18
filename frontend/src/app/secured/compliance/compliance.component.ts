@@ -122,6 +122,7 @@ export class ComplianceComponent implements OnInit {
             case 'weekly_review': return `Week of ${d.week}`;
             case 'licence': return `${String(d.type || '').replace(/_/g, ' ')} ${d.number || ''} ends ${d.valid_to}`;
             case 'shift_close': return `${d.shift || 'Shift'} of ${d.day} is still open`;
+            case 'vault_count': return `The day of ${d.day} closed and the vault was not counted`;
             case 'parked_bill': return `Bill ${d.bill} from ${d.day}`;
             default: return '';
         }

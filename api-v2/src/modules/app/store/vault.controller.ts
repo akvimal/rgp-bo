@@ -62,6 +62,12 @@ export class VaultController {
     return this.service.change(storeid, body, u?.id);
   }
 
+  /** is a vault count owed after the store's day closed, and may the caller do it (open to anyone at the store, not only a manager) */
+  @Get(':storeid/count-due')
+  countDue(@Param('storeid', ParseIntPipe) storeid: number, @User() u: any) {
+    return this.service.countDue(storeid, u?.id);
+  }
+
   @Post(':storeid/count')
   count(@Param('storeid', ParseIntPipe) storeid: number, @Body() body: any, @User() u: any) {
     return this.service.count(storeid, body, u?.id);

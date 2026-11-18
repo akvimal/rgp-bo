@@ -80,3 +80,20 @@ describe('isRequired ("do this to continue")', () => {
     expect(isRequired(stock, {}, { dueOn: '2026-10-01', today: '2026-10-20', done: true })).toBe(false);
   });
 });
+
+describe('the vault count after the day closes', () => {
+  const vault = itemOf('vault_count')!;
+  it('is a cash item the store head owns, gated at the next shift open', () => {
+    expect(vault.cls).toBe('cash');
+    expect(vault.owner).toBe('store_head');
+    expect(vault.gate?.phase).toBe('open');
+  });
+  it('is due on the day, late the next day, and required (or a reason) when the next day opens', () => {
+    expect(stepOf({ dueOn: '2026-11-18', today: '2026-11-18', ...ladderFor(vault, {}), remindDays: 0 })).toBe('due');
+    expect(stepOf({ dueOn: '2026-11-18', today: '2026-11-19', ...ladderFor(vault, {}), remindDays: 0 })).toBe('late');
+    expect(isRequired(vault, {}, { dueOn: '2026-11-18', today: '2026-11-18' })).toBe(false);          // the same evening: nothing stops the day
+    expect(isRequired(vault, {}, { dueOn: '2026-11-18', today: '2026-11-19' })).toBe(true);           // the next morning: count it, or say why
+    expect(isRequired(vault, { vault_count_required_days: 0 }, { dueOn: '2026-11-18', today: '2026-11-18' })).toBe(true);
+    expect(isRequired(vault, {}, { dueOn: '2026-11-18', today: '2026-11-19', waivedUntil: '2026-11-20' })).toBe(false);
+  });
+});

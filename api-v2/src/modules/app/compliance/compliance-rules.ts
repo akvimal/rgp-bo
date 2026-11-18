@@ -33,6 +33,7 @@ export const ITEMS: ItemDef[] = [
   { key: 'outage_check', label: 'Outage readiness weekly check', cls: 'operating', owner: 'store_head', remindDays: 2, lateKey: 'outage_late_days', lateDefault: 2 },
   { key: 'weekly_review', label: 'Weekly review sign-off', cls: 'operating', owner: 'store_head', remindDays: 0, lateKey: 'review_late_days', lateDefault: 2 },
   { key: 'shift_close', label: 'Close the shift and count the cash', cls: 'cash', owner: 'person', remindDays: 0, lateDefault: 0, gate: { key: 'shift_close_required_days', default: 1, phase: 'open' } },
+  { key: 'vault_count', label: 'Count the vault after the day closes', cls: 'cash', owner: 'store_head', remindDays: 0, lateKey: 'vault_count_late_days', lateDefault: 1, gate: { key: 'vault_count_required_days', default: 1, phase: 'open' } },
   { key: 'licence', label: 'Licence renewal', cls: 'legal', owner: 'owner', remindDays: 30, lateDefault: 0 },
   { key: 'parked_bill', label: 'Finish or discard a parked bill', cls: 'customer', owner: 'person', remindDays: 0, lateDefault: 1 },
 ];

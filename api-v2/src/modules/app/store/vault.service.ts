@@ -5,6 +5,8 @@ import { sep } from 'path';
 import { AuditService } from 'src/core/audit/audit.service';
 import { uploadedFilePath } from '../files/upload-path';
 import { isManagerRole, isOwnerRole } from 'src/core/roles';
+import { istDay } from '../todos/todo-rules';
+import { countReason, COUNT_WINDOW_DAYS, lastEndOfDayShift, owedVaultDays } from './vault-count-due';
 import { Denoms, firstShortfall, holdingsToDenoms, holdingsTotal, readRequest, reservedByPending, vaultHoldings } from './vault-math';
 
 type Caller = { id: number; role: string | null; businessid: number | null };
@@ -54,6 +56,29 @@ export class VaultService {
     if (!isManagerRole(c.role)) throw new ForbiddenException(`Only a Store Head or Business Head can ${what}.`);
   }
 
+  /**
+   * Who may count the vault: a Store Head or Business Head, or the person who closed the store's day (the last shift, closed as end of day) within the
+   * last couple of days, so the count can be done at the close without waiting for a manager.
+   */
+  private async mayCount(c: Caller, storeid: number, m: EntityManager = this.manager): Promise<boolean> {
+    if (isManagerRole(c.role)) return true;
+    const [r] = await m.query(
+      `select 1 as ok from store_shifts sh
+        where sh.store_id = $1 and sh.status = 'CLOSED' and sh.close_type = 'END_OF_DAY' and not sh.archive
+          and sh.shift_date >= (now() at time zone 'Asia/Kolkata')::date - ${COUNT_WINDOW_DAYS}
+          and (sh.closed_by = $2 or sh.closed_operator_id = $2 or sh.assigned_user_id = $2) limit 1`, [storeid, c.id]);
+    return !!r;
+  }
+
+  /** is a vault count owed for this store (after its day closed), and may this person do it */
+  async countDue(storeid: number, userid: number) {
+    const c = await this.caller(userid);
+    const s = await this.store(this.manager, storeid, c);
+    if (!s.enabled) return { enabled: false, due: false, day: null, maycount: false };
+    const [owed] = await owedVaultDays(this.manager, [storeid], istDay());
+    return { enabled: true, due: !!owed, day: owed?.day ?? null, maycount: owed ? await this.mayCount(c, storeid) : false };
+  }
+
   private needOwner(c: Caller, what: string) {
     if (!isOwnerRole(c.role)) throw new ForbiddenException(`Only a Business Head can ${what}.`);
   }
@@ -73,7 +98,7 @@ export class VaultService {
     const held = vaultHoldings(rows);
     const pending = await this.manager.query(this.movementSql(`m.store_id = $1 and m.status = 'PENDING'`, 'order by m.created_on'), [storeid]);
     const [lastCount] = await this.manager.query(
-      `select c.id::text as id, c.expected::float as expected, c.counted::float as counted, c.variance::float as variance, c.counted_on as countedon, u.full_name as countedby
+      `select c.id::text as id, c.expected::float as expected, c.counted::float as counted, c.variance::float as variance, c.counted_on as countedon, c.variance_reason as reason, u.full_name as countedby
          from store_vault_counts c left join app_user u on u.id = c.counted_by where c.store_id = $1 order by c.counted_on desc, c.id desc limit 1`, [storeid]);
     return {
       storeid, location: String(s.location).trim(), enabled: !!s.enabled,
@@ -368,7 +393,7 @@ export class VaultService {
   /** a count of the vault: the difference from the books is kept as it is, not folded into any shift */
   async count(storeid: number, body: any, userid: number) {
     const c = await this.caller(userid);
-    this.needManager(c, 'count the vault');
+    if (!(await this.mayCount(c, storeid))) throw new ForbiddenException('Only a Store Head, a Business Head or the person who closed the store\'s day can count the vault.');
     const raw = Array.isArray(body?.denominations) ? body.denominations : [];
     const r = raw.length ? readRequest(raw) : { denominations: [] as Denoms, amount: 0 };
     if (!r) throw new BadRequestException('Enter how many of each note and coin you counted.');
@@ -378,15 +403,18 @@ export class VaultService {
       const held = vaultHoldings(await this.rows(m, storeid));
       const expected = holdingsTotal(held);
       const variance = r.amount - expected;
+      // a count that differs from the books says why (a count that matches needs nothing), as a shift close does for the drawer
+      const why = countReason(variance, body?.reason);
+      if (why.problem) throw new BadRequestException({ statusCode: 400, message: why.problem, error: 'Bad Request', needsreason: true, variance: Math.round(variance * 100) / 100 });
       const [row] = await m.query(
-        `insert into store_vault_counts (store_id, expected, counted, variance, denominations, counted_by, notes) values ($1,$2,$3,$4,$5::jsonb,$6,$7) returning id::text as id`,
-        [storeid, expected, r.amount, variance, JSON.stringify(r.denominations), c.id, this.cleanText(body?.notes, 500)]);
+        `insert into store_vault_counts (store_id, expected, counted, variance, denominations, counted_by, notes, variance_reason, after_shift_id) values ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9) returning id::text as id`,
+        [storeid, expected, r.amount, variance, JSON.stringify(r.denominations), c.id, this.cleanText(body?.notes, 500), why.reason, await lastEndOfDayShift(m, storeid)]);
       const byFace = new Map<number, number>();
       for (const p of r.denominations) byFace.set(p.d, p.n);
       const faces = new Set<number>([...Array.from(held.keys()), ...Array.from(byFace.keys())]);
       const differences = Array.from(faces).map((d) => ({ d, books: held.get(d) || 0, counted: byFace.get(d) || 0 })).filter((x) => x.books !== x.counted).sort((a, b) => b.d - a.d);
-      await this.audit.record({ userId: c.id, action: 'vault.count', entityType: 'store_vault', entityId: storeid, summary: `${String(s.location).trim()}: vault counted ${money(r.amount)}, books ${money(expected)}, variance ${money(variance)}`, details: { count: row.id, differences } });
-      return { id: row.id, expected, counted: r.amount, variance, differences };
+      await this.audit.record({ userId: c.id, action: 'vault.count', entityType: 'store_vault', entityId: storeid, summary: `${String(s.location).trim()}: vault counted ${money(r.amount)}, books ${money(expected)}, variance ${money(variance)}`, details: { count: row.id, differences, reason: why.reason } });
+      return { id: row.id, expected, counted: r.amount, variance, differences, reason: why.reason };
     });
   }
 
