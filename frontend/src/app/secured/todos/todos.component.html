@@ -140,6 +140,7 @@
             <span class="badge bg-danger ms-1" *ngIf="i.priority === 'high'">High</span>
             <span class="badge ms-1" [ngClass]="stageClass(i)" *ngIf="stageLabel(i)" [attr.data-testid]="'todo-stage-' + i.id">{{stageLabel(i)}}</span>
             <span class="badge bg-light text-dark border ms-1" *ngIf="i.repeatrule" title="Repeating"><i class="bi bi-arrow-repeat"></i> {{repeatText(i.repeatrule)}}</span>
+            <a role="button" class="btn btn-outline-primary btn-sm py-0 ms-1" *ngIf="i.link && i.status === 'OPEN'" (click)="openLink(i.link)" [attr.data-testid]="'todo-link-' + i.id">Open</a>
             <span class="badge bg-info text-dark ms-1" *ngIf="i.needsproof" title="Needs a comment or a photo or file to be ticked" [attr.data-testid]="'todo-proof-' + i.id"><i class="bi bi-paperclip"></i> Needs proof</span>
           </div>
           <div class="small text-muted" *ngIf="i.notes">{{i.notes}}</div>

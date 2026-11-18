@@ -300,14 +300,14 @@ export const KINDS: AlertKind[] = [
   },
   {
     kind: 'outage_kit',
-    label: 'Outage kit not checked',
-    description: "A store that has traded in the last 60 days has not ticked off its outage kit (UPS, price list, bill book, light) as ready for this many days. The Outage kit page has the weekly checklist.",
+    label: 'Outage readiness not checked',
+    description: "A store that has traded in the last 60 days has not completed its Outage readiness checklist (UPS, price list, bill book, light) for this many days. The Checklists page has it.",
     params: [{ key: 'days', label: 'Warn when it has not been checked for', min: 1, max: 60, default: 7, unit: 'days' }],
     defaultSeverity: 'warning',
     async evaluate(ctx, p) {
       const rows = await ctx.manager.query(
         `select s.id as store_id, s.location,
-                (select to_char(max(l.checked_on at time zone 'Asia/Kolkata'), 'YYYY-MM-DD') from outage_readiness_log l where l.store_id = s.id and l.complete) as last
+                (select to_char(max(l.run_on at time zone 'Asia/Kolkata'), 'YYYY-MM-DD') from checklist_run l where l.store_id = s.id and l.template_key = 'outage_readiness' and l.complete) as last
            from stores s where s.business_id = $1 and s.active and not s.archive
             and exists (select 1 from sale x where x.store_id = s.id and x.created_on >= current_date - 60)`, [ctx.businessId]);
       const out: Finding[] = [];
@@ -316,7 +316,7 @@ export const KINDS: AlertKind[] = [
         if (days !== null && days < p.days) continue;
         out.push({
           key: `outage:${r.store_id}`, storeid: r.store_id, code: days === null ? 'outage_kit_never' : 'outage_kit_overdue',
-          params: { store: String(r.location).trim(), days: days ?? 0, date: r.last ?? '' }, link: '/secure/outage',
+          params: { store: String(r.location).trim(), days: days ?? 0, date: r.last ?? '' }, link: '/secure/checklists?key=outage_readiness',
         });
       }
       return out;
@@ -439,7 +439,7 @@ export const KINDS: AlertKind[] = [
         `select i.id, i.item_key, i.step, i.store_id, s.location, to_char(i.due_on, 'YYYY-MM-DD') as due_on
            from compliance_instance i left join stores s on s.id = i.store_id
           where i.business_id = $1 and i.state = 'OPEN' and not i.not_mine and (i.step = 'escalated' or (i.item_key = 'parked_bill' and i.step = 'late'))`, [ctx.businessId]);
-      const labels: Record<string, string> = { stock_count: 'The stock count', outage_check: 'The outage kit check', weekly_review: 'The weekly review', shift_close: 'Closing the shift', licence: 'The licence renewal', parked_bill: 'A parked bill' };
+      const labels: Record<string, string> = { stock_count: 'The stock count', outage_check: 'The outage readiness check', weekly_review: 'The weekly review', shift_close: 'Closing the shift', licence: 'The licence renewal', parked_bill: 'A parked bill' };
       return rows.map((r: any) => ({
         key: `compliance:${r.id}`, storeid: r.store_id, code: r.item_key === 'parked_bill' && r.step === 'late' ? 'compliance_parked' : 'compliance_escalated',
         params: { store: String(r.location ?? '').trim(), item: labels[r.item_key] || r.item_key, date: r.due_on, days: Math.max(0, daysBetween(r.due_on, ctx.today)) },
@@ -687,7 +687,7 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity; re
   { kind: 'shift_open_long', name: 'Shift left open', severity: 'warning' },
   { kind: 'approvals_pending', name: 'Stock adjustments waiting', severity: 'warning' },
   { kind: 'price_policy', name: 'Prices out of policy', severity: 'warning' },
-  { kind: 'outage_kit', name: 'Outage kit not checked', severity: 'warning' },
+  { kind: 'outage_kit', name: 'Outage readiness not checked', severity: 'warning' },
   { kind: 'stock_count_overdue', name: 'Stock count overdue', severity: 'warning' },
   { kind: 'negative_stock', name: 'Negative stock', severity: 'warning' },
   { kind: 'expired_stock', name: 'Expired stock on the shelf', severity: 'warning' },

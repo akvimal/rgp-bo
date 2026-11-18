@@ -173,10 +173,10 @@ export const PAGES: PageGuide[] = [
     watch: ['Sign-off is blocked while any difference is still waiting.', 'Late bills written by hand must be entered before an audit is settled.'], keywords: 'audit count variance certificate plan sign off',
   },
   {
-    id: 'nav-outage', group: 'stock', title: 'Outage kit', route: '/secure/outage',
-    purpose: 'Being ready to bill by hand when the system is down.',
-    tasks: ['Tick each item of the kit once you have seen it yourself.', 'Print the price list and keep it at the counter.', 'Log each outage with the first and last hand-written bill number.'],
-    who: 'Store heads.', watch: ['The kit counts as ready only when every item is ticked.'], keywords: 'power cut manual bill price list',
+    id: 'nav-checklists', group: 'stock', title: 'Checklists', route: '/secure/checklists',
+    purpose: 'The lists a store ticks off, and the weekly and monthly tasks the system puts in its to-do list.',
+    tasks: ['Fill in a list (outage readiness, opening, closing, monthly housekeeping) once you have seen each item yourself.', 'Print the price list and the outage procedure from the Outage readiness list.', 'Change the lists of the store, and switch recurring tasks on, off or to another day (people who run the store).'],
+    who: 'Everyone who bills fills them in; store heads change them.', watch: ['A list counts as done only when every item is ticked.', 'Tasks the system can see for itself tick themselves.'], keywords: 'power cut outage manual bill price list opening closing housekeeping recurring weekly monthly',
   },
   {
     id: 'nav-schedule-register', group: 'stock', title: 'Drug register', route: '/secure/schedule-register',
@@ -569,7 +569,7 @@ export const DAYS: DayPlan[] = [
     kind: 'storehead', label: 'Store Head',
     intro: 'You run the store: the stock, the people at the counter and the money at the end of the day.',
     daily: ['Look at the bell: approvals and anything late.', 'Check Attendance review: approve or correct yesterday\'s days and fill in a forgotten Out.', 'Settle stock adjustments waiting for approval (Stock > Adjustments).', 'Check the shifts that closed with a difference.', 'Receive deliveries and complete invoices (Purchase).', 'Check expiry (Stock > Expiry) and bank the cash when the alert says.'],
-    weekly: ['Take the weekly Knowledge check and look at the team\'s results (Knowledge check > Team).', 'Do the stock counts and audits that are due (Stock audits).', 'Do the weekly review.', 'Print the outage price list and check the kit.', 'Approve leave and rate staff (People).'],
+    weekly: ['Take the weekly Knowledge check and look at the team\'s results (Knowledge check > Team).', 'Do the stock counts and audits that are due (Stock audits).', 'Do the weekly review.', 'Print the price list and complete the Outage readiness checklist (they also arrive as to-dos).', 'Approve leave and rate staff (People).'],
     monthly: ['Check the Drug register is complete and print it.', 'Look at payables and vendor issues.', 'Close the month\'s KPI ratings.', 'Clear Attendance review (nothing Pending or Missing) so payroll can run.'],
   },
   {

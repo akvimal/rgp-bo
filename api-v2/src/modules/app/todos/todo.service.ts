@@ -89,6 +89,7 @@ export class TodoService {
       assignedby: r.assigned_by, assignedbyname: r.assigned_by_name || null, createdby: r.created_by,
       templateid: r.template_id, repeat: r.repeat || null, repeatrule: r.template_id ? { repeat: r.repeat, days: r.repeat_days, day: r.repeat_day, every: r.repeat_every, at: r.at_time } : null,
       completedby: r.completed_by, completedbyname: r.completed_by_name || null, completedon: r.completed_on, donenote: r.done_note,
+      systemkey: r.system_key || null, link: r.link || null,
       needsproof: !!r.needs_proof, donefiles: Array.isArray(r.done_files) ? r.done_files : [],
       canmanage: manage, cantick: open && (mine || (r.pool && atMyStore) || manage),
     };
@@ -307,6 +308,18 @@ export class TodoService {
     return { id: Number(r.id) };
   }
 
+  /**
+   * Close the open to-dos the system made for a task, when the system sees for itself that the work was done (a checklist completed, the price
+   * list printed, the weekly review signed). `storeIds` limits it to those stores; null closes it for every store of the business.
+   */
+  async completeSystemTask(businessId: number, storeIds: number[] | null, systemKey: string, userId: number, note: string): Promise<number> {
+    const rows = await this.manager.query(
+      `update todo_item set status = 'DONE', completed_by = $3, completed_on = now(), done_note = $4
+        where business_id = $1 and system_key = $2 and status = 'OPEN' and not archive and ($5::int[] is null or store_id = any($5::int[])) returning id`,
+      [businessId, systemKey, userId, note.slice(0, 300), storeIds]);
+    return rows.length;
+  }
+
   // ---------------------------------------------------------------- repeats
   async repeats(user: any) {
     const me = await this.me(user);
@@ -319,7 +332,7 @@ export class TodoService {
         order by t.id desc`, [me.business, me.owner, me.id, me.storeIds, people.map((p: any) => p.id)]);
     return { items: rows.map((t: any) => ({
       id: t.id, title: t.title, repeat: t.repeat, days: t.repeat_days, day: t.repeat_day, every: t.repeat_every, at: t.at_time, nextdue: t.next_txt, endson: t.ends_txt,
-      pool: t.pool, store: t.store_name ? String(t.store_name).trim() : null, assignee: t.assignee_name || null, missed: t.missed,
+      pool: t.pool, store: t.store_name ? String(t.store_name).trim() : null, assignee: t.assignee_name || null, missed: t.missed, system: !!t.system_key,
     })) };
   }
 
@@ -327,6 +340,7 @@ export class TodoService {
     const me = await this.me(user);
     const [t] = await this.manager.query(`select * from todo_template where id = $1 and business_id = $2 and active and not archive`, [Number(id), me.business]);
     if (!t) throw new NotFoundException('That repeat is not here any more.');
+    if (t.system_key) throw new BadRequestException('This is a task the system asks every store to do. Switch it off, or move it to another day, in Checklists > Recurring tasks.');
     const mayStop = me.owner || t.created_by === me.id || t.assigned_by === me.id || (me.head && me.canAssign && t.store_id !== null && me.storeIds.includes(t.store_id));
     if (!mayStop) throw new ForbiddenException('Only the person who set this repeat, or a manager, stops it.');
     await this.manager.query(`update todo_template set active = false, next_due_on = null where id = $1`, [t.id]);
@@ -364,10 +378,10 @@ export class TodoService {
           // an occurrence whose day went by while nothing was open (the system was off) is counted, not made late
           if (lock.skip_if_open && next < today) { missed++; next = nextAfter(rule, next); continue; }
           await tx.query(
-            `insert into todo_item (business_id, store_id, template_id, title, notes, priority, assignee_user_id, pool, assigned_by, due_on, soon_days, escalate_days, created_by, needs_proof)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+            `insert into todo_item (business_id, store_id, template_id, title, notes, priority, assignee_user_id, pool, assigned_by, due_on, soon_days, escalate_days, created_by, needs_proof, system_key, link)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
             [lock.business_id, lock.store_id, lock.id, lock.title, lock.notes, lock.priority, lock.assignee_user_id, lock.pool, lock.assigned_by, dueInstant(next, lock.at_time),
-              lock.soon_days, lock.escalate_days, lock.created_by, lock.needs_proof]);
+              lock.soon_days, lock.escalate_days, lock.created_by, lock.needs_proof, lock.system_key, lock.link]);
           // a repeat that follows completion waits for the tick; a calendar repeat goes on to its next day
           next = lock.repeat === 'EVERY_N_DAYS_AFTER_DONE' ? null : nextAfter(rule, next);
         }

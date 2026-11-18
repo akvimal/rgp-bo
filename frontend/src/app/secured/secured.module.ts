@@ -113,9 +113,10 @@ const routes: Routes = [
       loadChildren: () => import('./shift/shift.module').then(m => m.ShiftModule)
     },
     {
-      path: 'outage', canActivate:[AuthGuard],
-      loadChildren: () => import('./outage/outage.module').then(m => m.OutageModule)
+      path: 'checklists', canActivate:[AuthGuard],
+      loadChildren: () => import('./checklists/checklists.module').then(m => m.ChecklistsModule)
     },
+    { path: 'outage', redirectTo: 'checklists', pathMatch: 'full' },
     {
       path: 'compliance', canActivate:[AuthGuard],
       loadChildren: () => import('./compliance/compliance.module').then(m => m.ComplianceModule)

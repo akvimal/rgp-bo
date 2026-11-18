@@ -14,6 +14,7 @@ import {
   addDays, billDiscountPct, groupReturns, isMonday, isOver, isValidDay, lastFullWeek, marked, pctOff, readEdit, summarise, weekRange,
 } from './review-rules';
 import { glanceOf } from './review-glance';
+import { TodoService } from '../todos/todo.service';
 
 const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
 
@@ -24,7 +25,7 @@ const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOSt
 @Injectable()
 export class ReviewService {
   private readonly log = new Logger('WeeklyReview');
-  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService, private readonly todos: TodoService) {}
 
   /** the stores this reader may review: every store of the business for an owner, their own stores for a Store Head */
   private async scope(user: any) {
@@ -386,6 +387,7 @@ export class ReviewService {
       userId: user.id, action: 'review.signed', entityType: 'review', entityId: rows[0].id,
       summary: `Weekly review signed: ${store.location}, week of ${start}`, details: { week: start, store: store.location, ...snapshot },
     });
+    await this.todos.completeSystemTask(businessId, [storeid], 'weekly_review', user.id, `Week of ${start} signed`);
     return { id: rows[0].id };
   }
 }

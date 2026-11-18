@@ -70,7 +70,7 @@ test.describe('Purchasing access and menu @p0', () => {
       });
       return out;
     });
-    expect(groups.sell).toEqual(['nav-sales', 'nav-customers', 'nav-inquiries', 'nav-outage']);
+    expect(groups.sell).toEqual(['nav-sales', 'nav-customers', 'nav-inquiries', 'nav-checklists']);
     expect(groups.stock).toEqual(['nav-store', 'nav-products', 'nav-stock-audits', 'nav-schedule-register', 'nav-review']);
     expect(groups.learn).toEqual(['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge']);                       // the guides sit at the very bottom, below Admin
     expect(groups.buy).toEqual(['nav-purchases', 'nav-vendor-issues', 'nav-expenses', 'nav-gst-filing', 'nav-finance']);

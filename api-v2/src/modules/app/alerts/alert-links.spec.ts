@@ -13,7 +13,7 @@ const PAGES: RegExp[] = [
   /^\/secure\/settings\/(store|users\/edit\/\d+)$/,
   /^\/secure\/gst-filing$/,
   /^\/secure\/products\/(pricing-policy|pack-check)$/,
-  /^\/secure\/(outage|stock-audits|review|compliance|todos|feedback)$/,
+  /^\/secure\/(checklists|stock-audits|review|compliance|todos|feedback)$/,
   /^\/secure\/quality\/audit$/,
   /^\/secure\/kpi\/(mine|rate)$/,
 ];

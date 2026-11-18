@@ -1155,15 +1155,19 @@
       ]
     },
     {
-      "key": "outage",
-      "label": "Outage kit",
-      "description": "The weekly readiness record, the printed price list and the outage log, for when the system is down. Open to everyone who bills as well.",
+      "key": "checklists",
+      "label": "Checklists",
+      "description": "The store's checklists (outage readiness, opening, closing, housekeeping), the printed price list and outage procedure, and the weekly and monthly tasks the system puts in the to-do list. Open to everyone who bills as well.",
       "group": "Inventory",
-      "path": "/secure/outage",
+      "path": "/secure/checklists",
       "actions": [
         {
           "key": "view",
-          "label": "Open the outage kit"
+          "label": "Open the page and fill in the checklists"
+        },
+        {
+          "key": "edit",
+          "label": "Change the store's checklists, and switch recurring tasks on, off or to another day"
         }
       ]
     },

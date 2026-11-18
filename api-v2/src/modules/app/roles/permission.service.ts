@@ -143,13 +143,13 @@ export class PermissionService {
     return this.privilegedRoles.has(role.name) || this.normalizePermissions(role).some((p) => p.resource === 'review');
   }
 
-  /** The outage kit (weekly readiness, the printed price list, the outage log): the people who run the shop, and everyone who bills. */
+  /** The printed price list and outage procedure: the people who run the shop, everyone who bills, and anyone with Products or Checklists. */
   async canUseOutageKit(roleid: number | string): Promise<boolean> {
     const role = await this.findRole(roleid);
     if (!role) {
       return false;
     }
-    return this.privilegedRoles.has(role.name) || this.normalizePermissions(role).some((p) => p.resource === 'outage');
+    return this.privilegedRoles.has(role.name) || this.normalizePermissions(role).some((p) => ['outage', 'checklists', 'products'].includes(p.resource as string));
   }
 
   /**

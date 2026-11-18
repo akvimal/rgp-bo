@@ -1,5 +1,5 @@
 import { Component, OnInit } from "@angular/core";
-import { ActivatedRoute } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { FileUploadService } from "../documents/file-upload.service";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
@@ -46,7 +46,10 @@ export class TodosComponent implements OnInit {
   viewPath = '';
   viewName = '';
 
-  constructor(private service: TodoService, private confirm: ConfirmService, private operator: OperatorContextService, private route: ActivatedRoute, private files: FileUploadService) {}
+  constructor(private service: TodoService, private confirm: ConfirmService, private operator: OperatorContextService, private route: ActivatedRoute, private files: FileUploadService, private router: Router) {}
+
+  /** a task the system made carries the page where the work is done */
+  openLink(link: string) { this.router.navigateByUrl(link); }
 
   ngOnInit() {
     this.service.options().subscribe({

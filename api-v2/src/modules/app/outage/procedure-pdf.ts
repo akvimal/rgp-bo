@@ -1,6 +1,6 @@
 import { join } from 'path';
 import PDFDocument = require('pdfkit');
-import { procedureFor } from './outage-kit';
+import { procedureFor } from '../checklists/checklist-rules';
 import { stamp } from './price-list-pdf';
 
 const FONT_DIR = join(__dirname, '..', '..', '..', 'assets', 'fonts');

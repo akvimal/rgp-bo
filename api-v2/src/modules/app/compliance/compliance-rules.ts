@@ -30,7 +30,7 @@ export interface ItemDef {
 
 export const ITEMS: ItemDef[] = [
   { key: 'stock_count', label: 'Stock count', cls: 'operating', owner: 'store_head', remindDays: 7, lateKey: 'stock_count_late_days', lateDefault: 3, gate: { key: 'stock_count_required_days', default: 6, phase: 'close' } },
-  { key: 'outage_check', label: 'Outage kit weekly check', cls: 'operating', owner: 'store_head', remindDays: 2, lateKey: 'outage_late_days', lateDefault: 2 },
+  { key: 'outage_check', label: 'Outage readiness weekly check', cls: 'operating', owner: 'store_head', remindDays: 2, lateKey: 'outage_late_days', lateDefault: 2 },
   { key: 'weekly_review', label: 'Weekly review sign-off', cls: 'operating', owner: 'store_head', remindDays: 0, lateKey: 'review_late_days', lateDefault: 2 },
   { key: 'shift_close', label: 'Close the shift and count the cash', cls: 'cash', owner: 'person', remindDays: 0, lateDefault: 0, gate: { key: 'shift_close_required_days', default: 1, phase: 'open' } },
   { key: 'licence', label: 'Licence renewal', cls: 'legal', owner: 'owner', remindDays: 30, lateDefault: 0 },

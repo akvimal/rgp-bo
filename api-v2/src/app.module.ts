@@ -7,6 +7,7 @@ import { UserModule } from './modules/app/users/user.module';
 import { VendorModule } from './modules/app/vendors/vendor.module';
 import { ProductModule } from './modules/app/products/product.module';
 import { OutageModule } from './modules/app/outage/outage.module';
+import { ChecklistsModule } from './modules/app/checklists/checklists.module';
 import { ReviewModule } from './modules/app/review/review.module';
 import { TodoModule } from './modules/app/todos/todo.module';
 import { CalendarModule } from './modules/app/calendar/calendar.module';
@@ -75,6 +76,7 @@ import { DbTimingService } from './core/performance/db-timing.service';
     UserModule,
     ProductModule,
     OutageModule,
+    ChecklistsModule,
     ReviewModule,
     TodoModule,
     CalendarModule,

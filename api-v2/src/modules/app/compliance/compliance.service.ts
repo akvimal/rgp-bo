@@ -59,7 +59,7 @@ export class ComplianceService {
     const lastCount = new Map<number, string>((await m.query(
       `select store_id, to_char(max(completed_on at time zone '${TZ}'), 'YYYY-MM-DD') as last from stock_count where status = 'COMPLETED' and store_id = any($1::int[]) group by 1`, [ids])).map((r: any) => [+r.store_id, r.last]));
     const lastOutage = new Map<number, string>((await m.query(
-      `select store_id, to_char(max(checked_on at time zone '${TZ}'), 'YYYY-MM-DD') as last from outage_readiness_log where store_id = any($1::int[]) group by 1`, [ids])).map((r: any) => [+r.store_id, r.last]));
+      `select store_id, to_char(max(run_on at time zone '${TZ}'), 'YYYY-MM-DD') as last from checklist_run where template_key = 'outage_readiness' and complete and store_id = any($1::int[]) group by 1`, [ids])).map((r: any) => [+r.store_id, r.last]));
     const week = lastFullWeek(today);
     const reviewed = new Set<number>((await m.query(`select store_id from weekly_review where week_start = $1::date and store_id = any($2::int[])`, [week, ids])).map((r: any) => +r.store_id));
 

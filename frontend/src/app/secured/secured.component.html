@@ -174,10 +174,10 @@
             <span>Price changes</span>
           </a>
         </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'outage.view'">
-          <a class="nav-link collapsed" routerLink="outage" data-testid="nav-outage" title="Outage kit" aria-label="Outage kit">
-            <i class="bi bi-lightning-charge"></i>
-            <span>Outage kit</span>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'checklists.view'">
+          <a class="nav-link collapsed" routerLink="checklists" data-testid="nav-checklists" title="Checklists" aria-label="Checklists">
+            <i class="bi bi-list-check"></i>
+            <span>Checklists</span>
           </a>
         </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *ngIf="has('refills.view') && !has('grievances.view')">

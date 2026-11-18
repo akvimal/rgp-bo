@@ -15,6 +15,7 @@
             </div>
         </div>
         <div class="page-toolbar-actions">
+            <button type="button" class="btn btn-outline-secondary me-2" [disabled]="priceListBusy" (click)="printPriceList()" title="The counter price list: in-stock products with the price including GST, per pack and per unit" data-testid="prod-price-list">{{priceListBusy ? 'Making the list...' : 'Print price list'}}</button>
             <button *isAuth="'products.add'" type="button" class="btn btn-outline-secondary me-2" (click)="openForms()" title="Fill the dosage form of products from their names" data-testid="prod-forms-open">Dosage forms</button>
             <a *isAuth="'products.add'" class="btn btn-primary" role="button" [routerLink]="['../new']" data-testid="prod-add">Add New</a>
         </div>

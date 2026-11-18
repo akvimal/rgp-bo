@@ -1,6 +1,7 @@
 import { Component } from "@angular/core";
 import { ProductsService } from "../../products.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
+import { ChecklistsService } from "../../../checklists/checklists.service";
 
 @Component({
     templateUrl: 'product-list.component.html'
@@ -35,7 +36,19 @@ export class ProductListComponent {
 
     constructor(
         private service:ProductsService,
-        private confirm:ConfirmService){}
+        private confirm:ConfirmService,
+        private checklists:ChecklistsService){}
+
+    priceListBusy = false;
+
+    /** the counter price list (PDF), opened to print; the print also closes the week's "print a price list" to-do */
+    printPriceList(){
+        this.priceListBusy = true;
+        this.checklists.priceList('pdf').subscribe({
+            next: (b: Blob) => { this.priceListBusy = false; const url = URL.createObjectURL(b); window.open(url, '_blank'); setTimeout(() => URL.revokeObjectURL(url), 60000); },
+            error: () => { this.priceListBusy = false; }
+        });
+    }
 
     ngOnInit(){
         this.fetchList()
