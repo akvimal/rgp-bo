@@ -22,6 +22,9 @@ const asNumber = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : 0);
  * completed without the patient and the prescriber, and completing it writes one numbered register line for each scheduled drug supplied, in the
  * bill's own transaction. A bill changed afterwards supersedes its lines; nothing is deleted.
  */
+/** the prescriber columns of a download are left out unless the request asks for them (?prescriber=true) */
+const withRx = (q: any) => String(q?.prescriber ?? '') === 'true';
+
 @Injectable()
 export class DrugRegisterService {
   constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService) {}
@@ -524,7 +527,7 @@ export class DrugRegisterService {
   async pdf(user: any, q: any) {
     const { rows, sc, from, to, schedule } = await this.rows(user, { ...q, limit: 5000 });
     const buffer = await buildRegisterPdf(rows, { business: String(sc.business?.name ?? 'Pharmacy').trim(), address: sc.business?.address ? String(sc.business.address).trim() : undefined, gstin: sc.business?.gstin ?? undefined,
-      title: this.title(schedule), from, to, generatedAt: new Date() });
+      title: this.title(schedule), from, to, generatedAt: new Date() }, withRx(q));
     await this.audit.record({ userId: user.id, action: 'drug_register.printed', entityType: 'schedule_register', entityId: null, summary: `Drug register printed (${schedule || 'H, H1, X'}, ${from} to ${to}, ${rows.length} lines)`, details: { schedule, from, to, lines: rows.length } });
     return { buffer, filename: `drug-register-${schedule || 'all'}-${from}-to-${to}.pdf`, contentType: 'application/pdf' };
   }
@@ -537,8 +540,8 @@ export class DrugRegisterService {
       { header: 'Register no', key: 'label', width: 12 }, { header: 'Date and time', key: 'entry_on', width: 17 }, { header: 'Bill', key: 'bill_no', width: 8 }, { header: 'Schedule', key: 'schedule', width: 9 },
       { header: 'Drug', key: 'drug_name', width: 36 }, { header: 'Batch', key: 'batch', width: 14 }, { header: 'Expiry', key: 'exp_date', width: 11 }, { header: 'Units', key: 'qty', width: 7 },
       { header: 'Patient', key: 'patient_name', width: 24 }, { header: 'Patient address', key: 'patient_address', width: 36 }, { header: 'Age', key: 'patient_age', width: 6 },
-      { header: 'Prescriber', key: 'prescriber_name', width: 24 }, { header: 'Registration no', key: 'prescriber_reg_no', width: 16 }, { header: 'Prescriber address', key: 'prescriber_address', width: 32 },
-      { header: 'Prescription date', key: 'rx_date', width: 12 }, { header: 'Prescription', key: 'rx_text', width: 30 }, { header: 'Supplied by', key: 'supplied_by', width: 18 }, { header: 'Store', key: 'store', width: 16 }, { header: 'Superseded', key: 'sup', width: 10 },
+      ...(withRx(q) ? [{ header: 'Prescriber', key: 'prescriber_name', width: 24 }, { header: 'Registration no', key: 'prescriber_reg_no', width: 16 }, { header: 'Prescriber address', key: 'prescriber_address', width: 32 }] : []),
+            { header: 'Prescription date', key: 'rx_date', width: 12 }, { header: 'Prescription', key: 'rx_text', width: 30 }, { header: 'Supplied by', key: 'supplied_by', width: 18 }, { header: 'Store', key: 'store', width: 16 }, { header: 'Superseded', key: 'sup', width: 10 },
     ];
     ws.getRow(1).font = { bold: true };
     rows.forEach((r: any) => ws.addRow({ ...r, sup: r.superseded ? 'yes' : '', rx_text: [r.rx_label, r.rx_note].filter(Boolean).join(': ') }));

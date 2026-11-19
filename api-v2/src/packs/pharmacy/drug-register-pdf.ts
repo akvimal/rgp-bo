@@ -19,7 +19,7 @@ const COLS = [
  * The register as it is printed and signed: one line for each scheduled drug supplied, in the register's own numbering, with the patient and the
  * prescriber, ready for an inspector. Every page says what it covers and when it was printed.
  */
-export function buildRegisterPdf(rows: any[], h: RegisterHead): Promise<Buffer> {
+export function buildRegisterPdf(rows: any[], h: RegisterHead, withPrescriber = false): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margins: { top: TOP, left: L, right: L, bottom: 20 }, bufferPages: true, info: { Title: h.title, Author: h.business, Subject: 'Register of scheduled drugs' } });
     const chunks: Buffer[] = [];
@@ -29,6 +29,8 @@ export function buildRegisterPdf(rows: any[], h: RegisterHead): Promise<Buffer> 
     doc.registerFont('R', join(FONT_DIR, 'NotoSans-Regular.ttf'));
     doc.registerFont('B', join(FONT_DIR, 'NotoSans-Bold.ttf'));
 
+    // the prescriber column is left out unless asked for; its width goes to the patient and drug columns
+    const cols = withPrescriber ? COLS : COLS.filter((_, i) => i !== 4).map((c, i) => (i === 3 ? { ...c, w: c.w + 90 } : i === 4 ? { ...c, w: c.w + 80 } : c));
     const heading = () => {
       doc.font('B').fontSize(13).fillColor('#111827').text(h.title, L, TOP, { width: W });
       doc.font('R').fontSize(9).fillColor('#374151').text(`${h.business}${h.gstin ? '  ·  GSTIN ' + h.gstin : ''}${h.address ? '  ·  ' + h.address : ''}`, L, doc.y, { width: W });
@@ -38,7 +40,7 @@ export function buildRegisterPdf(rows: any[], h: RegisterHead): Promise<Buffer> 
       doc.rect(L, y - 2, W, 15).fill('#e5e7eb');
       let x = L;
       doc.font('B').fontSize(7.5).fillColor('#111827');
-      for (const c of COLS) { doc.text(c.label, x + 2, y + 1, { width: c.w - 4, lineBreak: false, ellipsis: true }); x += c.w; }
+      for (const c of cols) { doc.text(c.label, x + 2, y + 1, { width: c.w - 4, lineBreak: false, ellipsis: true }); x += c.w; }
     };
     const cell = (text: string, x: number, y: number, w: number, bold = false, muted = false, lines = 1) => {
       doc.font(bold ? 'B' : 'R').fontSize(7.5).fillColor(muted ? '#6b7280' : '#111827').text(text, x + 2, y, { width: w - 4, height: 9.5 * lines, lineBreak: lines > 1, ellipsis: true });
@@ -53,16 +55,18 @@ export function buildRegisterPdf(rows: any[], h: RegisterHead): Promise<Buffer> 
       if (i % 2) doc.rect(L, y - 2, W, ROW_H).fill('#f9fafb');
       if (r.superseded) doc.rect(L, y - 2, W, ROW_H).fill('#fef2f2');
       let x = L;
-      const put = (w: number, fn: () => void) => { fn(); x += w; };
-      put(COLS[0].w, () => cell(r.label, x, y, COLS[0].w, true));
-      put(COLS[1].w, () => { const [d, t] = String(r.entry_on).split(' '); cell(day(d), x, y, COLS[1].w); cell(t || '', x, y + 10, COLS[1].w, false, true); });
-      put(COLS[2].w, () => cell(String(r.bill_no ?? ''), x, y, COLS[2].w));
-      put(COLS[3].w, () => { cell(`${r.patient_name}${r.patient_age ? ', ' + r.patient_age : ''}`, x, y, COLS[3].w, true); cell(r.patient_address || '', x, y + 10, COLS[3].w, false, true, 2); });
-      put(COLS[4].w, () => { cell(`${r.prescriber_name}${r.prescriber_reg_no ? ' (Reg. ' + r.prescriber_reg_no + ')' : ''}`, x, y, COLS[4].w, true); cell(r.prescriber_address || '', x, y + 10, COLS[4].w, false, true, 2); });
-      put(COLS[5].w, () => cell(`${r.drug_name} [${r.schedule}]`, x, y, COLS[5].w, false, false, 2));
-      put(COLS[6].w, () => { cell(r.batch || '', x, y, COLS[6].w); cell(r.exp_date ? day(r.exp_date).slice(3) : '', x, y + 10, COLS[6].w, false, true); });
-      put(COLS[7].w, () => cell(String(r.qty), x, y, COLS[7].w, true));
-      put(COLS[8].w, () => cell(r.supplied_by || '', x, y, COLS[8].w, false, false, 2));
+      // each cell takes the next column in turn, so leaving the prescriber out needs no other change
+      let ci = 0;
+      const put = (fn: (w: number) => void) => { const w = cols[ci++].w; fn(w); x += w; };
+      put((w) => cell(r.label, x, y, w, true));
+      put((w) => { const [d, t] = String(r.entry_on).split(' '); cell(day(d), x, y, w); cell(t || '', x, y + 10, w, false, true); });
+      put((w) => cell(String(r.bill_no ?? ''), x, y, w));
+      put((w) => { cell(`${r.patient_name}${r.patient_age ? ', ' + r.patient_age : ''}`, x, y, w, true); cell(r.patient_address || '', x, y + 10, w, false, true, 2); });
+      if (withPrescriber) put((w) => { cell(`${r.prescriber_name}${r.prescriber_reg_no ? ' (Reg. ' + r.prescriber_reg_no + ')' : ''}`, x, y, w, true); cell(r.prescriber_address || '', x, y + 10, w, false, true, 2); });
+      put((w) => cell(`${r.drug_name} [${r.schedule}]`, x, y, w, false, false, 2));
+      put((w) => { cell(r.batch || '', x, y, w); cell(r.exp_date ? day(r.exp_date).slice(3) : '', x, y + 10, w, false, true); });
+      put((w) => cell(String(r.qty), x, y, w, true));
+      put((w) => cell(r.supplied_by || '', x, y, w, false, false, 2));
       y += ROW_H;
     });
     if (!rows.length) doc.font('R').fontSize(10).fillColor('#6b7280').text('No scheduled drug was supplied in this period.', L, y + 6, { width: W });

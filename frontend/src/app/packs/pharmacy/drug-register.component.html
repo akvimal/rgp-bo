@@ -48,6 +48,7 @@
     <select class="form-select form-select-sm" [(ngModel)]="f.storeid" (change)="load()"><option [ngValue]="null">All stores</option><option *ngFor="let s of data.stores" [ngValue]="s.id">{{s.location}}</option></select></div>
   <div><label class="form-label mb-0 small">Search</label><input class="form-control form-control-sm" [(ngModel)]="f.q" (keyup.enter)="load()" placeholder="patient, doctor, drug, batch, bill" data-testid="dr-search"></div>
   <div class="form-check mb-1"><input class="form-check-input" type="checkbox" id="dr-sup" [(ngModel)]="f.superseded" (change)="load()"><label class="form-check-label small" for="dr-sup">Include lines of bills that were changed</label></div>
+  <div class="form-check mb-1"><input class="form-check-input" type="checkbox" id="dr-rx" [(ngModel)]="f.prescriber" data-testid="dr-rx"><label class="form-check-label small" for="dr-rx">Include prescriber in the PDF and Excel</label></div>
   <button type="button" class="btn btn-sm btn-primary" (click)="print()" data-testid="dr-print">Print the register (PDF)</button>
   <button type="button" class="btn btn-sm btn-outline-secondary" (click)="download()" data-testid="dr-xlsx">Download as Excel</button>
 </div>

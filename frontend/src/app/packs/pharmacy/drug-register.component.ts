@@ -17,7 +17,7 @@ export class DrugRegisterComponent implements OnInit {
     data: any = null;
     error = '';
     loading = false;
-    f: any = { schedule: '', from: '', to: '', storeid: null, q: '', superseded: false };
+    f: any = { schedule: '', from: '', to: '', storeid: null, q: '', superseded: false, prescriber: false };
     /** how the scheduled supplies of the period were covered */
     report: any = null;
     /** the sales with no register line, one entry for each bill */
@@ -50,7 +50,7 @@ export class DrugRegisterComponent implements OnInit {
         return (Array.isArray(m) ? m.join(' ') : m) || fallback;
     }
 
-    private query() { return { ...this.f, superseded: this.f.superseded ? 'true' : '' }; }
+    private query() { return { ...this.f, superseded: this.f.superseded ? 'true' : '', prescriber: this.f.prescriber ? 'true' : '' }; }
 
     load() {
         this.error = ''; this.loading = true;
