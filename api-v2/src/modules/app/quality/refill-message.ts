@@ -12,10 +12,11 @@ export function refillLang(messageLanguage: string | null | undefined): MessageL
  * The reminder for a refill row, in every language: the shop's own "due back" wording (the one the contact list uses), filled in for this
  * customer. A customer who asked not to be contacted, or who has no usable number, gets no message.
  */
-export function refillMessages(savedWording: unknown, store: string, row: { name: string | null; doNotContact?: boolean | null }): Record<MessageLang, string> | null {
+export function refillMessages(savedWording: unknown, store: string, row: { name: string | null; doNotContact?: boolean | null; medicines?: string[] }): Record<MessageLang, string> | null {
   if (row.doNotContact) return null;
   const t: Templates = mergeTemplates(savedWording);
-  const v = { name: greetingName(row.name), store: store || 'our shop' };
+  // {medicine} in the shop's wording becomes the medicines that are due (up to two), else "your regular medicines"
+  const v = { name: greetingName(row.name), store: store || 'our shop', medicine: (row.medicines || []).slice(0, 2).join(' and ') || undefined };
   const out = {} as Record<MessageLang, string>;
   for (const l of FOLLOWUP_LANGS) out[l] = fillTemplate(t.due_back[l], v);
   return out;

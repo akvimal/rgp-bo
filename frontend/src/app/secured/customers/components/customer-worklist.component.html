@@ -20,7 +20,7 @@
 <div class="card mb-3" *ngIf="wordingOpen && wording" data-testid="wl-wording">
   <div class="card-body">
     <h5 class="card-title mb-1">Message wording</h5>
-    <div class="small text-muted mb-2">What staff send from this list. <code>{{ '{' }}name{{ '}' }}</code> becomes the customer's name, <code>{{ '{' }}store{{ '}' }}</code> your shop's name ({{tpl.store}}), and <code>{{ '{' }}amount{{ '}' }}</code> what is owed. Keep each message short and kind, and never mention a medicine.</div>
+    <div class="small text-muted mb-2">What staff send from this list. <code>{{ '{' }}name{{ '}' }}</code> becomes the customer's name, <code>{{ '{' }}medicine{{ '}' }}</code> the medicine that is due (Refills only; otherwise "your regular medicines"), <code>{{ '{' }}store{{ '}' }}</code> your shop's name ({{tpl.store}}), and <code>{{ '{' }}amount{{ '}' }}</code> what is owed. Keep each message short and kind, and never mention a medicine.</div>
     <div class="row g-3">
       <div class="col-lg-6" *ngFor="let a of tpl.audiences">
         <div class="fw-semibold small">{{a.label}}</div>

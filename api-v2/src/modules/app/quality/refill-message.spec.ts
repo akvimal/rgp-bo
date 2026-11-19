@@ -25,4 +25,10 @@ describe('the refill reminder', () => {
     expect(refillLang(null)).toBe('en');
     expect(refillLang('xx')).toBe('en');
   });
+
+  it('puts the medicines that are due where the wording has {medicine}, and a plain phrase when there are none', () => {
+    const saved = { due_back: { en: 'Hi {name}, {medicine} at {store} is due.', ta: 'வணக்கம் {name}, {medicine}.' } };
+    expect(refillMessages(saved, 'RGP', { name: 'Anu', medicines: ['Metformin 500', 'Telma 40', 'Third'] })!.en).toBe('Hi Anu Sir/Madam, Metformin 500 and Telma 40 at RGP is due.');
+    expect(refillMessages(saved, 'RGP', { name: 'Anu' })!.en).toBe('Hi Anu Sir/Madam, your regular medicines at RGP is due.');
+  });
 });

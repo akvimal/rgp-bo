@@ -6,7 +6,8 @@ import { GrievanceScope } from './grievance.service';
 import { FOLLOWUP_KEY } from '../customers/customer-followup-rules';
 import { refillLang, refillMessages } from './refill-message';
 import { loadTurnaround } from '../customers/customer-turnaround.service';
-import { summarise } from '../customers/customer-turnaround-rules';
+import { dayIndexOfText, dayTextOfIndex, summarise } from '../customers/customer-turnaround-rules';
+import { bucketOf, earliestDue, MedicineDue, parseSupplyDays, runOut, SHORT_DATED_DAYS, stockState } from './refill-supply-rules';
 
 export const REFILL_OUTCOMES = ['WILL_BUY', 'NO_ANSWER', 'CALLBACK', 'BOUGHT_ELSEWHERE', 'NOT_NEEDED', 'MESSAGED'];
 // how long a follow-up hides the customer from the due list
@@ -49,9 +50,9 @@ export class RefillService {
        sn as (select distinct on (customer_id) customer_id, snoozed_until
                 from customer_contact_log where snoozed_until is not null order by customer_id, created_on desc, id desc),
        fu as (select lastc.*, sn.snoozed_until from lastc left join sn on sn.customer_id = lastc.customer_id)
-       select c.id as customer_id, c.name, c.mobile, c.message_language, c.do_not_contact, per.visits, per.last_d as last_bought,
+       select c.id as customer_id, c.name, c.mobile, c.message_language, c.do_not_contact, per.visits, per.last_d::text as last_bought, current_date::text as today_d,
               round(per.med)::int as usual_gap,
-              (per.last_d + round(per.med)::int) as expected_on,
+              (per.last_d + round(per.med)::int)::text as expected_on,
               (current_date - (per.last_d + round(per.med)::int)) as days_over,
               case when current_date - (per.last_d + round(per.med)::int) > 45 then 'LAPSED'
                    when current_date - (per.last_d + round(per.med)::int) > 0 then 'OVERDUE'
@@ -75,6 +76,7 @@ export class RefillService {
         order by value.avg_val desc`,
       [sc.storeIds, q.storeid ?? null],
     );
+    await this.refineByMedicine(rows);
     const visible = rows.filter((r: any) => q.showsnoozed || !r.snoozed);
     const counts = { UPCOMING: 0, OVERDUE: 0, LAPSED: 0, snoozed: rows.length - visible.length };
     visible.forEach((r: any) => { counts[r.bucket as 'UPCOMING' | 'OVERDUE' | 'LAPSED']++; });
@@ -90,9 +92,69 @@ export class RefillService {
     const store = String(biz?.name || 'our shop').trim();
     const rowsOut = shown.map((r: any) => {
       const { message_language, do_not_contact, ...rest } = r;
-      return { ...rest, language: refillLang(message_language), messages: refillMessages(saved, store, { name: r.name, doNotContact: do_not_contact }) };
+      return { ...rest, language: refillLang(message_language), messages: refillMessages(saved, store, { name: r.name, doNotContact: do_not_contact, medicines: (r.medicines || []).map((m: any) => String(m.title).replace(/\s*\[[^\]]*\]\s*$/, '')) }) };
     });
     return { counts, rows: rowsOut };
+  }
+
+  /**
+   * The list above works from the days between visits. This narrows it to the medicine: each chronic medicine a customer buys gets its own run-out date
+   * (from their own pattern and the units bought, or the product's "days one unit lasts"), the customer is due when the earliest runs out, and the row names
+   * the medicines due and whether there is stock to sell them. A customer none of whose medicines has an estimate keeps the visit-gap date. Edits `rows`
+   * in place; a customer whose medicines last longer than the visit gap suggested drops out of the list.
+   */
+  private async refineByMedicine(rows: any[]) {
+    if (!rows.length) return;
+    const today = dayIndexOfText(rows[0].today_d);
+    const ids = rows.map((r) => r.customer_id);
+    const lines = await this.manager.query(
+      `select s.customer_id, si.product_id, p.title, p.more_props->>'supplyDays' as supply_days, s.bill_date::date::text as d, sum(si.qty)::int as qty
+         from sale s join sale_item si on si.sale_id = s.id join product p on p.id = si.product_id
+        where s.status = 'COMPLETE' and p.more_props->>'chronic' = 'true' and s.customer_id = any($1::int[]) and s.bill_date >= current_date - 730
+        group by s.customer_id, si.product_id, p.title, p.more_props->>'supplyDays', s.bill_date::date`, [ids]);
+    const per = new Map<string, { customer: number; product: number; title: string; days: number | null; purchases: { day: number; qty: number }[] }>();
+    for (const l of lines) {
+      const key = `${l.customer_id}:${l.product_id}`;
+      let e = per.get(key);
+      if (!e) { e = { customer: +l.customer_id, product: +l.product_id, title: l.title, days: parseSupplyDays(l.supply_days), purchases: [] }; per.set(key, e); }
+      e.purchases.push({ day: dayIndexOfText(l.d), qty: Number(l.qty) });
+    }
+    const meds = new Map<number, MedicineDue[]>();
+    for (const e of per.values()) {
+      const r = runOut(e.purchases, e.days);
+      if (!r) continue;
+      const m: MedicineDue = { product_id: e.product, title: e.title, last_day: r.lastDay, qty: r.lastQty, expected_day: r.expectedDay, days_per_unit: r.daysPerUnit, supply_days: r.supplyDays, basis: r.basis };
+      const a = meds.get(e.customer);
+      if (a) a.push(m); else meds.set(e.customer, [m]);
+    }
+    // stock of the medicines that are due, from the batches on hand (not past a short-dated margin)
+    const dueProducts = new Set<number>();
+    const picked = new Map<number, ReturnType<typeof earliestDue>>();
+    for (const r of rows) {
+      const d = earliestDue(meds.get(r.customer_id) || []);
+      picked.set(r.customer_id, d);
+      if (d && d.expectedDay <= today + 7) d.due.forEach((m) => dueProducts.add(m.product_id));
+    }
+    const stock = new Map<number, string>();
+    if (dueProducts.size) {
+      const st = await this.manager.query(
+        `select product_id, coalesce(sum(available), 0)::int as total, coalesce(sum(available) filter (where product_expdate > current_date + $2::int), 0)::int as beyond
+           from inventory_view where product_id = any($1::int[]) and active group by product_id`, [[...dueProducts], SHORT_DATED_DAYS]);
+      for (const s of st) stock.set(+s.product_id, stockState(Number(s.total), Number(s.beyond)));
+      for (const id of dueProducts) if (!stock.has(id)) stock.set(id, 'none');
+    }
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const r = rows[i];
+      const d = picked.get(r.customer_id);
+      r.basis = 'visits'; r.medicines = [];
+      if (!d) continue;                                                // no estimate for any medicine: the visit-gap date stands
+      if (d.expectedDay > today + 7) { rows.splice(i, 1); continue; }  // their medicines last well past the visit gap
+      r.basis = d.due[0].basis;
+      r.expected_on = dayTextOfIndex(d.expectedDay);
+      r.days_over = today - d.expectedDay;
+      r.bucket = bucketOf(r.days_over);
+      r.medicines = d.due.map((m) => ({ title: m.title, expected_on: dayTextOfIndex(m.expected_day), basis: m.basis, supply_days: m.supply_days, qty: m.qty, stock: stock.get(m.product_id) || 'ok' }));
+    }
   }
 
   /**

@@ -46,6 +46,10 @@ export const PHARMACY_PRODUCT_PROPS: any[] = [
         "type": "CHECK"
       },
       {
+        "id": "supplyDays",
+        "label": "Days one unit lasts at the usual dose (refill reminder; e.g. 1 for a tablet taken once a day)"
+      },
+      {
         "id": "generic",
         "label": "Generic",
         "type": "CHECK"

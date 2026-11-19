@@ -30,7 +30,16 @@
           <ng-container *ngFor="let r of data?.rows">
             <tr data-testid="rf-row">
               <td>{{r.name}}<div class="small"><a [href]="'tel:' + r.mobile">{{r.mobile}}</a> · <a *ngIf="!r.messages" [href]="waLink(r.mobile)" target="_blank" rel="noopener">WhatsApp</a><a *ngIf="r.messages" href="javascript:void(0)" data-testid="rf-message" (click)="openMessage(r)">Message</a></div></td>
-              <td class="small" style="max-width:260px">{{r.titles}}</td>
+              <td class="small" style="max-width:300px">
+                <ng-container *ngIf="r.medicines?.length; else plainTitles">
+                  <div *ngFor="let m of r.medicines" data-testid="rf-medicine">{{m.title}}
+                    <span class="text-muted">· runs out {{m.expected_on | date:'dd MMM'}} ({{m.basis === 'own' ? 'their own pattern' : 'product default'}})</span>
+                    <span class="badge bg-danger ms-1" *ngIf="m.stock === 'none'" data-testid="rf-nostock" title="None on the shelf: order it before calling">Not in stock</span>
+                    <span class="badge bg-warning text-dark ms-1" *ngIf="m.stock === 'short'" data-testid="rf-shortdated" title="Only stock that expires within 60 days">Short-dated only</span>
+                  </div>
+                </ng-container>
+                <ng-template #plainTitles>{{r.titles}}</ng-template>
+              </td>
               <td class="text-nowrap">{{r.last_bought | date:'dd MMM yyyy'}}</td>
               <td>{{r.usual_gap}} days</td>
               <td><span class="badge" [ngClass]="bucketClass(r.bucket)">{{r.bucket === 'UPCOMING' ? 'Due in ' + (-r.days_over) + 'd' : r.days_over + 'd late'}}</span></td>

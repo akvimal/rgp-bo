@@ -1,6 +1,6 @@
 /**
  * The wording of the messages staff send to customers from the contact list. One message for each reason to get in touch and each language; the shop can
- * change any of them (and the assistant can write a first version). A message may hold {name}, {store} and {amount}, which are filled in when it is used.
+ * change any of them (and the assistant can write a first version). A message may hold {name}, {store}, {amount} and {medicine}, which are filled in when it is used.
  * Pure: no framework and no database.
  */
 export const FOLLOWUP_AUDIENCES = ['due_back', 'at_risk', 'new_second_visit', 'dues'] as const;
@@ -35,9 +35,9 @@ export const DEFAULT_TEMPLATES: Templates = {
   },
 };
 
-const ALLOWED = ['name', 'store', 'amount'];
+const ALLOWED = ['name', 'store', 'amount', 'medicine'];
 
-/** one message as typed or drafted: trimmed, limited, only the three placeholders kept (any other {word} is dropped), and it must greet by {name} */
+/** one message as typed or drafted: trimmed, limited, only the four placeholders ({name}, {store}, {amount}, {medicine}) kept (any other {word} is dropped), and it must greet by {name} */
 export function cleanTemplate(text: unknown): string | null {
   let t = String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, 500);
   t = t.replace(/\{([^{}]*)\}/g, (m, w) => (ALLOWED.includes(String(w).trim().toLowerCase()) ? `{${String(w).trim().toLowerCase()}}` : ''));
@@ -57,9 +57,9 @@ export function mergeTemplates(saved: any): Templates {
 }
 
 /** a message for a person: {name} is how the shop greets them, {amount} what they owe */
-export function fillTemplate(text: string, v: { name: string; store: string; amount?: number | null }): string {
+export function fillTemplate(text: string, v: { name: string; store: string; amount?: number | null; medicine?: string }): string {
   const amount = v.amount === null || v.amount === undefined ? '' : `Rs ${Math.round(v.amount).toLocaleString('en-IN')}`;
-  return text.replace(/\{name\}/g, v.name).replace(/\{store\}/g, v.store).replace(/\{amount\}/g, amount).replace(/\s+/g, ' ').trim();
+  return text.replace(/\{name\}/g, v.name).replace(/\{store\}/g, v.store).replace(/\{amount\}/g, amount).replace(/\{medicine\}/g, v.medicine || 'your regular medicines').replace(/\s+/g, ' ').trim();
 }
 
 /** what the assistant returned, cleaned: the wording for every audience and language it gave, and the defaults for the rest */
