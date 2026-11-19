@@ -25,11 +25,9 @@ export class PropsFormComponent{
     constructor(private propsService:PropsService){}
 
     ngOnInit(){
-      this.propsService.config$.subscribe(d => {
-        const entObj = d.find((i:any) => i['entity'] === this.entity)
-        const entConfigs = entObj && entObj['config'];
-        this.categories = entConfigs;
-      });
+      // the categories of a product or a document come from the business's configuration (packs), kept by PropsService
+      const source$ = this.entity === 'document' ? this.propsService.documentProps$ : this.propsService.productProps$;
+      source$.subscribe((d:any) => this.categories = Array.isArray(d) ? d : []);
     }
 
     /** a phone number takes digits only, ten at most */
