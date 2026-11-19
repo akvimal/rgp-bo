@@ -12,6 +12,23 @@ export const STATUS_LABEL: Record<FeedbackStatus, string> = {
   NEW: 'Sent', IN_PROGRESS: 'Looking into it', WAITING: 'Waiting for your reply', ANSWERED: 'Resolved', PLANNED: 'Planned',
   DECLINED: 'Not planned', DUPLICATE: 'Already reported', CLOSED: 'Closed',
 };
+/**
+ * The four states everyone sees (the eight statuses stay underneath, as the detail): Open (sent, being looked into, planned), Waiting (for the reporter's reply),
+ * Done (answered, not planned, already reported: it closes by itself soon) and Closed.
+ */
+export const STATES = ['open', 'waiting', 'done', 'closed'] as const;
+export type FeedbackState = (typeof STATES)[number];
+export const STATE_OF: Record<FeedbackStatus, FeedbackState> = {
+  NEW: 'open', IN_PROGRESS: 'open', PLANNED: 'open', WAITING: 'waiting', ANSWERED: 'done', DECLINED: 'done', DUPLICATE: 'done', CLOSED: 'closed',
+};
+/** the statuses of each state, for the inbox and list queries */
+export const STATUSES_OF: Record<FeedbackState, FeedbackStatus[]> = {
+  open: ['NEW', 'IN_PROGRESS', 'PLANNED'], waiting: ['WAITING'], done: ['ANSWERED', 'DECLINED', 'DUPLICATE'], closed: ['CLOSED'],
+};
+/** the word for a state: the reporter is the one a waiting report waits on, the people who answer see who they wait for */
+export const stateLabel = (s: FeedbackStatus, forReporter: boolean): string =>
+  ({ open: 'Open', waiting: forReporter ? 'Waiting on you' : 'Waiting on the reporter', done: 'Done', closed: 'Closed' } as Record<FeedbackState, string>)[STATE_OF[s]];
+
 /** what a manager may set (a report starts as NEW by itself) */
 export const STAFF_STATUSES: FeedbackStatus[] = ['IN_PROGRESS', 'WAITING', 'ANSWERED', 'PLANNED', 'DECLINED', 'DUPLICATE', 'CLOSED'];
 /** these end the matter for now: the date and the person are kept */
@@ -142,7 +159,12 @@ export function statusAfterStaffReply(s: FeedbackStatus, wait: boolean): Feedbac
   return s === 'NEW' ? 'IN_PROGRESS' : s;
 }
 
-export const canReporterClose = (s: FeedbackStatus): boolean => s === 'ANSWERED' || s === 'PLANNED';
+/** the reporter may close their own report at any point: confirm it is solved once answered, or withdraw it while it is still open or waiting */
+export const canReporterClose = (s: FeedbackStatus): boolean => s !== 'CLOSED';
+/** the words in the thread for a close by the reporter */
+export const reporterCloseNote = (s: FeedbackStatus): string =>
+  s === 'ANSWERED' ? 'Status: Closed (the reporter says it is solved)' : STATE_OF[s] === 'done' || s === 'PLANNED' ? 'Status: Closed by the reporter' : 'Status: Closed (withdrawn by the reporter)';
+
 export const canReporterReopen = (s: FeedbackStatus): boolean => s === 'ANSWERED' || s === 'CLOSED' || s === 'DECLINED' || s === 'DUPLICATE';
 
 /** a manager's status change: the problem, if any, as a sentence */
@@ -167,4 +189,26 @@ export function resolveProblem(b: { code?: any; note?: any; duplicate_of?: any }
 /** the two flags the alerts read after a change: who owes the next word, and whether the reporter has something unread */
 export function flagsAfter(by: 'reporter' | 'staff'): { awaiting_staff: boolean; reporter_unread: boolean } {
   return by === 'reporter' ? { awaiting_staff: true, reporter_unread: false } : { awaiting_staff: false, reporter_unread: true };
+}
+
+/**
+ * The plain sentence under the status: what happens next and who has to act. `days` is the time left before it closes by itself (null when it will not),
+ * `canReopen` whether the reporter may still reopen a closed report.
+ */
+export function nextStep(status: FeedbackStatus, forReporter: boolean, who: string, days: number | null, canReopen: boolean, outcome?: string | null): string {
+  const inDays = days === null ? '' : ` It closes by itself in ${days} day${days === 1 ? '' : 's'} unless ${forReporter ? 'you write' : 'they write'}.`;
+  switch (STATE_OF[status]) {
+    case 'open':
+      return status === 'PLANNED'
+        ? (forReporter ? 'This is planned. We will tell you here when it is done.' : 'Planned. Resolve it when it is done.')
+        : (forReporter ? 'We are looking into it. You will see the answer here, and get an alert.' : 'Needs an answer: reply, or resolve it.');
+    case 'waiting':
+      return forReporter ? `Waiting for your reply.${inDays}` : `Waiting for ${who}.${inDays}`;
+    case 'done':
+      return forReporter
+        ? `${outcome ? outcome + '. ' : ''}If that settles it press "This solved it"; if not, say what is still wrong.${inDays}`
+        : `${outcome ? outcome + '. ' : ''}The reporter has been told.${inDays}`;
+    default:
+      return canReopen ? 'Closed. The reporter can still reopen it.' : 'Closed. A new follow-up can be raised if something is still wrong.';
+  }
 }

@@ -1,4 +1,4 @@
-import { canReporterClose, canReporterReopen, cleanMessage, cleanReport, flagsAfter, statusAfterReporterReply, statusAfterStaffReply, statusProblem, resolveProblem, ticketFromText, ticketNo, autoCloseReason, closeNote, daysUntilClose, idleDaysBetween, needsReminder, reopenAllowed } from './feedback-rules';
+import { canReporterClose, canReporterReopen, cleanMessage, cleanReport, flagsAfter, statusAfterReporterReply, statusAfterStaffReply, statusProblem, resolveProblem, ticketFromText, ticketNo, autoCloseReason, closeNote, daysUntilClose, idleDaysBetween, needsReminder, reopenAllowed, STATE_OF, STATUSES_OF, STATUSES, stateLabel, nextStep, reporterCloseNote } from './feedback-rules';
 
 describe('feedback rules', () => {
   const problem = { kind: 'problem', title: 'Bill total is wrong', module_id: 'nav-sales', module_title: 'Sales and billing', feature: 'Print a bill', details: { what: 'The total is 10 less', expected: 'The sum of the lines' }, impact: 'blocks', context: { route: '/secure/sales/pos/new?token=abc#x', version: '2026.11', browser: 'Chrome' } };
@@ -61,7 +61,9 @@ describe('feedback rules', () => {
   it('only a settled report can be closed or reopened by the reporter', () => {
     expect(canReporterClose('ANSWERED')).toBe(true);
     expect(canReporterClose('PLANNED')).toBe(true);
-    expect(canReporterClose('NEW')).toBe(false);
+    expect(canReporterClose('NEW')).toBe(true);        // withdrawn while open
+    expect(canReporterClose('WAITING')).toBe(true);
+    expect(canReporterClose('CLOSED')).toBe(false);
     expect(canReporterReopen('CLOSED')).toBe(true);
     expect(canReporterReopen('DECLINED')).toBe(true);
     expect(canReporterReopen('IN_PROGRESS')).toBe(false);
@@ -136,5 +138,30 @@ describe('feedback rules', () => {
   it('says who owes the next word', () => {
     expect(flagsAfter('reporter')).toEqual({ awaiting_staff: true, reporter_unread: false });
     expect(flagsAfter('staff')).toEqual({ awaiting_staff: false, reporter_unread: true });
+  });
+});
+
+describe('the four states', () => {
+  it('every status belongs to exactly one state, and the lists agree', () => {
+    for (const st of STATUSES) expect(STATUSES_OF[STATE_OF[st]]).toContain(st);
+    expect(Object.values(STATUSES_OF).flat().sort()).toEqual([...STATUSES].sort());
+  });
+  it('names the states for the reporter and for the people who answer', () => {
+    expect(stateLabel('WAITING', true)).toBe('Waiting on you');
+    expect(stateLabel('WAITING', false)).toBe('Waiting on the reporter');
+    expect(stateLabel('IN_PROGRESS', true)).toBe('Open');
+    expect(stateLabel('DECLINED', false)).toBe('Done');
+    expect(stateLabel('CLOSED', true)).toBe('Closed');
+  });
+  it('says what happens next', () => {
+    expect(nextStep('WAITING', true, 'Anu', 3, true)).toContain('Waiting for your reply');
+    expect(nextStep('WAITING', false, 'Anu', 1, true)).toBe('Waiting for Anu. It closes by itself in 1 day unless they write.');
+    expect(nextStep('ANSWERED', true, 'Anu', 7, true, 'Fixed')).toContain('This solved it');
+    expect(nextStep('CLOSED', true, 'Anu', null, false)).toContain('follow-up');
+  });
+  it('words a close by the reporter by where the report stood', () => {
+    expect(reporterCloseNote('ANSWERED')).toContain('solved');
+    expect(reporterCloseNote('IN_PROGRESS')).toContain('withdrawn');
+    expect(reporterCloseNote('DECLINED')).toBe('Status: Closed by the reporter');
   });
 });

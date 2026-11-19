@@ -5,14 +5,13 @@ import { PAGES } from "../../guide/app-guide-content";
 import { FeedbackDialogService, FeedbackService } from "./feedback.service";
 
 const STATUS_TONE: any = { NEW: 'secondary', IN_PROGRESS: 'primary', WAITING: 'warning', ANSWERED: 'success', PLANNED: 'info', DECLINED: 'dark', DUPLICATE: 'dark', CLOSED: 'secondary' };
-const STAFF_STATUS_CHOICES = [
+/** the four states everyone sees; the detailed status stays as a smaller line under it */
+const STATE_TONE: any = { open: 'primary', waiting: 'warning', done: 'success', closed: 'secondary' };
+/** what a manager can move a report to besides resolving it (the endings are chosen in Resolve) */
+const MORE_CHOICES = [
   { key: 'IN_PROGRESS', label: 'Looking into it' },
-  { key: 'WAITING', label: 'Waiting for the reporter' },
-  { key: 'ANSWERED', label: 'Resolved' },
+  { key: 'WAITING', label: 'Waiting on the reporter' },
   { key: 'PLANNED', label: 'Planned' },
-  { key: 'DECLINED', label: 'Not planned' },
-  { key: 'DUPLICATE', label: 'Already reported' },
-  { key: 'CLOSED', label: 'Closed' },
 ];
 
 /** how a report ends: what the manager picks in Resolve (the API maps each to a status) */
@@ -38,7 +37,7 @@ export class FeedbackComponent implements OnInit {
   options: any = { manage: false, staff: [] };
   mine: any = { items: [], unread: 0 };
   inbox: any = { items: [], counts: { awaiting: 0, open: 0 } };
-  view = 'awaiting';
+  view = 'open';
   kind = '';
   module = '';
   search = '';
@@ -54,13 +53,14 @@ export class FeedbackComponent implements OnInit {
   uploading = false;
   reopening = false;
   reopenMessage = '';
-  setting = { status: 'IN_PROGRESS', resolution: '', duplicate_of: null as number | null };
-  statusChoices = STAFF_STATUS_CHOICES;
+  moreChoices = MORE_CHOICES;
+  /** My reports: Open (open and waiting), Done (done and closed), or All */
+  mineView: 'open' | 'done' | 'all' = 'open';
   resolutionChoices = RESOLUTION_CHOICES;
   resolving = false;
   followingUp = false;
   followUpMessage = '';
-  resolveForm = { code: 'answered', note: '', duplicate_of: null as number | null };
+  resolveForm = { code: 'answered', note: '', duplicate_of: null as number | null, close: true };
   viewOpen = false;
   viewPath = '';
   viewName = '';
@@ -82,6 +82,16 @@ export class FeedbackComponent implements OnInit {
   }
 
   tone(s: string) { return STATUS_TONE[s] || 'secondary'; }
+  stateTone(state: string) { return STATE_TONE[state] || 'secondary'; }
+
+  /** my reports under the chosen chip */
+  get mineShown(): any[] {
+    const items = this.mine.items || [];
+    if (this.mineView === 'all') return items;
+    return items.filter((r: any) => (this.mineView === 'open') === (r.state === 'open' || r.state === 'waiting'));
+  }
+  count(view: 'open' | 'done'): number { return (this.mine.items || []).filter((r: any) => (view === 'open') === (r.state === 'open' || r.state === 'waiting')).length; }
+  get waitingOnMe(): number { return (this.mine.items || []).filter((r: any) => r.state === 'waiting').length; }
   newReport() { this.dialog.open('/secure/feedback'); }
   setTab(t: 'mine' | 'inbox') { this.tab = t; this.open = null; this.message = this.error = ''; if (t === 'mine') this.loadMine(); else this.loadInbox(); }
 
@@ -105,8 +115,7 @@ export class FeedbackComponent implements OnInit {
         this.reopening = false; this.reopenMessage = '';
         this.resolving = false;
         this.followingUp = false; this.followUpMessage = '';
-        this.resolveForm = { code: r.kind === 'problem' || r.kind === 'data' ? 'fixed' : 'answered', note: '', duplicate_of: null };
-        this.setting = { status: r.status === 'NEW' ? 'IN_PROGRESS' : (r.status === 'CLOSED' ? 'IN_PROGRESS' : r.status), resolution: '', duplicate_of: null };
+        this.resolveForm = { code: r.kind === 'problem' || r.kind === 'data' ? 'fixed' : 'answered', note: '', duplicate_of: null, close: true };
         this.uploadKey = `r${Date.now()}`;
         this.loadMine(); // opening it is reading it, so the unread count falls
       },
@@ -130,16 +139,19 @@ export class FeedbackComponent implements OnInit {
     this.busy = true;
     this.service.reopen(this.open.id, this.reopenMessage).subscribe({ next: () => this.after('Reopened. We will look again.'), error: (e) => this.fail(e) });
   }
-  saveStatus() {
+  /** the "More" list: move the report to looking into it, waiting on the reporter, or planned (also how a closed report is picked up again) */
+  moveTo(status: string) {
+    if (!status) return;
     this.busy = true; this.error = '';
-    this.service.setStatus(this.open.id, { status: this.setting.status, resolution: this.setting.resolution, duplicate_of: this.setting.duplicate_of || undefined })
-      .subscribe({ next: () => this.after('Status saved.'), error: (e) => this.fail(e) });
+    this.service.setStatus(this.open.id, { status }).subscribe({ next: () => this.after('Updated.'), error: (e) => this.fail(e) });
   }
+  /** the reporter takes it back before it is answered */
+  withdraw() { this.busy = true; this.service.close(this.open.id).subscribe({ next: () => this.after('Withdrawn. It is closed.'), error: (e) => this.fail(e) }); }
   /** resolve in one step: how it ended and the words the reporter reads */
   doResolve() {
     this.busy = true; this.error = '';
-    this.service.resolve(this.open.id, { code: this.resolveForm.code, note: this.resolveForm.note, duplicate_of: this.resolveForm.duplicate_of || undefined })
-      .subscribe({ next: () => this.after('Resolved.'), error: (e) => this.fail(e) });
+    this.service.resolve(this.open.id, { code: this.resolveForm.code, note: this.resolveForm.note, duplicate_of: this.resolveForm.duplicate_of || undefined, close: this.resolveForm.close })
+      .subscribe({ next: () => this.after(this.resolveForm.close ? 'Resolved and closed.' : 'Resolved.'), error: (e) => this.fail(e) });
   }
   /** a report that has ended is closed by a manager once it is done with */
   closeTicket() {
@@ -167,8 +179,4 @@ export class FeedbackComponent implements OnInit {
     }));
   }
   viewFile(f: { path: string; name: string }) { this.viewPath = f.path; this.viewName = f.name; this.viewOpen = true; }
-
-  /** what a status needs the manager to write */
-  get needsText() { return this.setting.status === 'ANSWERED' || this.setting.status === 'DECLINED'; }
-  get needsDuplicate() { return this.setting.status === 'DUPLICATE'; }
 }

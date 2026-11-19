@@ -10,7 +10,7 @@ import { uploadedFilePath } from 'src/modules/app/files/upload-path';
 import {
   canReporterClose, canReporterReopen, cleanMessage, cleanReport, FeedbackStatus, FINISHED, flagsAfter, KIND_LABEL, MAX_FILES, MAX_PER_DAY, Resolution, RESOLUTION_LABEL, resolveProblem, STATUS_LABEL,
   ticketFromText, ticketNo, autoCloseReason, closeNote, daysUntilClose, idleDaysBetween, LIFECYCLE, reopenAllowed,
-  statusAfterReporterReply, statusAfterStaffReply, statusProblem,
+  statusAfterReporterReply, statusAfterStaffReply, statusProblem, FeedbackState, STATE_OF, STATUSES_OF, stateLabel, nextStep, reporterCloseNote,
 } from './feedback-rules';
 
 interface Me { id: number; roleId: number; business: number | null; manage: boolean; name: string }
@@ -110,19 +110,18 @@ export class FeedbackService {
     const rows = await this.manager.query(
       `select f.id, f.kind, f.title, f.module_title, f.feature, f.status, f.resolution_code, f.impact, f.reporter_unread, f.last_activity_on, f.created_on, f.resolved_on
          from app_feedback f where not f.archive and (f.reporter_user_id = $1 or f.created_by = $1) order by f.last_activity_on desc limit 200`, [me.id]);
-    return { items: rows.map((r: any) => ({ ...r, status_label: STATUS_LABEL[r.status as FeedbackStatus], kind_label: KIND_LABEL[r.kind as keyof typeof KIND_LABEL] })), unread: rows.filter((r: any) => r.reporter_unread).length };
+    return { items: rows.map((r: any) => ({ ...r, status_label: STATUS_LABEL[r.status as FeedbackStatus], state: STATE_OF[r.status as FeedbackStatus], state_label: stateLabel(r.status, true), kind_label: KIND_LABEL[r.kind as keyof typeof KIND_LABEL] })), unread: rows.filter((r: any) => r.reporter_unread).length };
   }
 
   /** the managers' inbox: awaiting (they owe a reply), open, done, or all; narrowed by kind, module and a word */
   async inbox(user: any, q: { view?: string; kind?: string; module?: string; q?: string }) {
     const me = await this.me(user);
     if (!me.manage || !me.business) throw new ForbiddenException('The inbox is for the people who answer reports.');
-    const view = ['awaiting', 'open', 'done', 'all'].includes(String(q.view)) ? String(q.view) : 'awaiting';
+    const view = ['awaiting', 'open', 'waiting', 'done', 'closed', 'all'].includes(String(q.view)) ? String(q.view) : 'open';
     const where: string[] = ['f.business_id = $1', 'not f.archive'];
     const args: any[] = [me.business];
     if (view === 'awaiting') where.push(`f.awaiting_staff and f.status <> 'CLOSED'`);
-    if (view === 'open') where.push(`f.status not in ('ANSWERED','DECLINED','DUPLICATE','CLOSED')`);
-    if (view === 'done') where.push(`f.status in ('ANSWERED','DECLINED','DUPLICATE','CLOSED')`);
+    else if (view !== 'all') where.push(`f.status in (${STATUSES_OF[view as FeedbackState].map((x) => `'${x}'`).join(',')})`);
     if (q.kind) { args.push(String(q.kind)); where.push(`f.kind = $${args.length}`); }
     if (q.module) { args.push(String(q.module).slice(0, 60)); where.push(`f.module_id = $${args.length}`); }
     const byNumber = ticketFromText(q.q);
@@ -135,9 +134,12 @@ export class FeedbackService {
         where ${where.join(' and ')}
         order by f.awaiting_staff desc, (f.impact = 'blocks') desc, f.last_activity_on desc limit 300`, args);
     const [counts] = await this.manager.query(
-      `select count(*) filter (where awaiting_staff and status <> 'CLOSED')::int as awaiting, count(*) filter (where status not in ('ANSWERED','DECLINED','DUPLICATE','CLOSED'))::int as open
+      `select count(*) filter (where awaiting_staff and status <> 'CLOSED')::int as awaiting,
+              count(*) filter (where status in ('NEW','IN_PROGRESS','PLANNED'))::int as open,
+              count(*) filter (where status = 'WAITING')::int as waiting,
+              count(*) filter (where status in ('ANSWERED','DECLINED','DUPLICATE'))::int as done
          from app_feedback where business_id = $1 and not archive`, [me.business]);
-    return { items: rows.map((r: any) => ({ ...r, status_label: STATUS_LABEL[r.status as FeedbackStatus], kind_label: KIND_LABEL[r.kind as keyof typeof KIND_LABEL] })), counts };
+    return { items: rows.map((r: any) => ({ ...r, status_label: STATUS_LABEL[r.status as FeedbackStatus], state: STATE_OF[r.status as FeedbackStatus], state_label: stateLabel(r.status, false), kind_label: KIND_LABEL[r.kind as keyof typeof KIND_LABEL] })), counts };
   }
 
   // ---------------------------------------------------------------- one report
@@ -149,16 +151,18 @@ export class FeedbackService {
       `select n.id, n.kind, n.body, n.files, n.created_on, u.full_name as author,
               (n.created_by is distinct from $2 and n.created_by is distinct from $3) as by_staff
          from app_feedback_note n join app_user u on u.id = n.created_by
-        where n.feedback_id = $1 ${me.manage && !reporter ? '' : `and n.kind <> 'INTERNAL'`} order by n.created_on, n.id`, [r.id, r.reporter_user_id, r.created_by]);
+        where n.feedback_id = $1 ${me.manage ? '' : `and n.kind <> 'INTERNAL'`} order by n.created_on, n.id`, [r.id, r.reporter_user_id, r.created_by]);
     // opening it is reading it
     if (reporter && r.reporter_unread) await this.manager.query(`update app_feedback set reporter_unread = false where id = $1`, [r.id]);
     return {
       id: r.id, kind: r.kind, kind_label: KIND_LABEL[r.kind as keyof typeof KIND_LABEL], title: r.title, module_id: r.module_id, module_title: r.module_title, feature: r.feature,
       ticket: ticketNo(r.id), closed_on: r.closed_on, follow_up_of: r.follow_up_of, follow_up_ticket: r.follow_up_of ? ticketNo(r.follow_up_of) : null,
-      follow_ups: (await this.manager.query(`select id, title, status from app_feedback where follow_up_of = $1 and not archive ${me.manage && !reporter ? '' : 'and (reporter_user_id = $2 or created_by = $2)'} order by id`, me.manage && !reporter ? [r.id] : [r.id, me.id]))
+      follow_ups: (await this.manager.query(`select id, title, status from app_feedback where follow_up_of = $1 and not archive ${me.manage ? '' : 'and (reporter_user_id = $2 or created_by = $2)'} order by id`, me.manage ? [r.id] : [r.id, me.id]))
         .map((x: any) => ({ id: x.id, ticket: ticketNo(x.id), title: x.title, status: x.status })),
       closes_in_days: daysUntilClose(r.status, idleDaysBetween(r.last_activity_on)), reopen_window_days: LIFECYCLE.reopenWindowDays,
-      details: r.details, impact: r.impact, files: r.files || [], status: r.status, status_label: STATUS_LABEL[r.status as FeedbackStatus], resolution: r.resolution,
+      details: r.details, impact: r.impact, files: r.files || [], status: r.status, status_label: STATUS_LABEL[r.status as FeedbackStatus], state: STATE_OF[r.status as FeedbackStatus], state_label: stateLabel(r.status, reporter && !me.manage),
+      next_step: nextStep(r.status, reporter && !me.manage, r.reporter_name, daysUntilClose(r.status, idleDaysBetween(r.last_activity_on)), reopenAllowed(r.status, r.closed_on), r.resolution_code ? RESOLUTION_LABEL[r.resolution_code as Resolution] : null),
+      resolution: r.resolution,
       resolution_code: r.resolution_code, resolution_label: r.resolution_code ? RESOLUTION_LABEL[r.resolution_code as Resolution] : null,
       resolved_on: r.resolved_on, duplicate_of: r.duplicate_of, created_on: r.created_on, last_activity_on: r.last_activity_on,
       reporter_name: r.reporter_name, assignee_name: r.assignee_name, assignee_user_id: r.assignee_user_id, awaiting_staff: r.awaiting_staff,
@@ -171,10 +175,13 @@ export class FeedbackService {
         reopen: reporter && canReporterReopen(r.status) && reopenAllowed(r.status, r.closed_on),
         // closed too long ago to reopen: a new report that links back
         followup: reporter && r.status === 'CLOSED' && !reopenAllowed(r.status, r.closed_on),
-        manage: me.manage && !reporter,
+        // the people who answer can always act, even on a report they sent themselves
+        manage: me.manage,
         // resolve while it is being worked on; close once it has ended
-        resolve: me.manage && !reporter && !FINISHED.includes(r.status),
-        closeTicket: me.manage && !reporter && FINISHED.includes(r.status) && r.status !== 'CLOSED',
+        resolve: me.manage && !FINISHED.includes(r.status),
+        closeTicket: me.manage && FINISHED.includes(r.status) && r.status !== 'CLOSED',
+        // the reporter: withdraw while it is open or waiting, confirm once answered
+        withdraw: reporter && ['NEW', 'IN_PROGRESS', 'WAITING', 'PLANNED'].includes(r.status),
       },
     };
   }
@@ -190,7 +197,7 @@ export class FeedbackService {
       const r = await this.load(me, id, em);
       const reporter = this.isReporter(r, me);
       const status = r.status as FeedbackStatus;
-      if (!reporter && body?.internal) {
+      if (me.manage && body?.internal) {
         await em.query(`insert into app_feedback_note (feedback_id, kind, body, files, created_by) values ($1,'INTERNAL',$2,$3::jsonb,$4)`, [r.id, message, files.length ? JSON.stringify(files) : null, me.id]);
         return { id: r.id };
       }
@@ -227,13 +234,13 @@ export class FeedbackService {
     if (!me.manage) throw new ForbiddenException('Only the people who answer reports can resolve them.');
     const r = resolveProblem(body);
     if ('problem' in r) throw new BadRequestException(r.problem);
-    return this.applyStatus(me, id, r.status, r.note, body?.duplicate_of, r.code);
+    // "resolve and close": it ends as closed, with how it ended kept; the reporter is still told and may reopen within the window
+    return this.applyStatus(me, id, body?.close ? 'CLOSED' : r.status, r.note, body?.duplicate_of, r.code, true);
   }
 
-  private async applyStatus(me: Me, id: number, status: FeedbackStatus, resolution: string | null, duplicateOf: any, code: Resolution | null) {
+  private async applyStatus(me: Me, id: number, status: FeedbackStatus, resolution: string | null, duplicateOf: any, code: Resolution | null, notify = status !== 'CLOSED') {
     return this.manager.transaction(async (em) => {
       const r = await this.load(me, id, em);
-      if (this.isReporter(r, me)) throw new ForbiddenException('Someone else answers your own report.');
       let dup: number | null = null;
       if (status === 'DUPLICATE') {
         dup = Number(duplicateOf);
@@ -247,10 +254,10 @@ export class FeedbackService {
                 resolved_by = case when $5 then $6::int else null end, resolution_code = case when $5 then coalesce($7, resolution_code) else null end,
                 closed_on = case when $9 then now() else null end,
                 awaiting_staff = false, reporter_unread = $8, last_activity_on = now() where id = $1`,
-        [r.id, status, resolution, dup, finished, me.id, code, status !== 'CLOSED', status === 'CLOSED']);
+        [r.id, status, resolution, dup, finished, me.id, code, notify, status === 'CLOSED']);
       const how = code ? RESOLUTION_LABEL[code] : null;
       await em.query(`insert into app_feedback_note (feedback_id, kind, body, created_by) values ($1,'STATUS',$2,$3)`,
-        [r.id, `${how && status === 'ANSWERED' ? 'Resolved: ' + how : 'Status: ' + STATUS_LABEL[status]}${dup ? ` (same as ${ticketNo(dup)})` : ''}`, me.id]);
+        [r.id, `${how && status === 'ANSWERED' ? 'Resolved: ' + how : how && status === 'CLOSED' ? 'Closed: ' + how : 'Status: ' + STATUS_LABEL[status]}${dup ? ` (same as ${ticketNo(dup)})` : ''}`, me.id]);
       if (resolution) await em.query(`insert into app_feedback_note (feedback_id, kind, body, created_by) values ($1,'REPLY',$2,$3)`, [r.id, resolution, me.id]);
       await this.audit.record({ userId: me.id, action: 'feedback.status', entityType: 'app_feedback', entityId: r.id, summary: `${ticketNo(r.id)} set to ${STATUS_LABEL[status]}${how ? ` (${how})` : ''}`, details: { status, resolution: code } });
       return { id: r.id };
@@ -275,9 +282,9 @@ export class FeedbackService {
     const me = await this.me(user);
     const r = await this.load(me, id);
     if (!this.isReporter(r, me)) throw new ForbiddenException('Only the person who sent it can close it.');
-    if (!canReporterClose(r.status)) throw new BadRequestException('It can be closed once it has been answered.');
+    if (!canReporterClose(r.status)) throw new BadRequestException('It is already closed.');
     await this.manager.query(`update app_feedback set status = 'CLOSED', closed_on = now(), awaiting_staff = false, reporter_unread = false, resolved_on = coalesce(resolved_on, now()), last_activity_on = now() where id = $1`, [r.id]);
-    await this.manager.query(`insert into app_feedback_note (feedback_id, kind, body, created_by) values ($1,'STATUS','Status: Closed (the reporter says it is solved)',$2)`, [r.id, me.id]);
+    await this.manager.query(`insert into app_feedback_note (feedback_id, kind, body, created_by) values ($1,'STATUS',$2,$3)`, [r.id, reporterCloseNote(r.status), me.id]);
     return { id: r.id };
   }
 

@@ -99,6 +99,7 @@ test.describe('Help and feedback lifecycle @p1', () => {
     await page.getByTestId('fb-resolve-open').click();
     await expect(page.getByTestId('fb-resolve-save')).toBeDisabled();                           // words first
     await page.getByTestId('fb-resolve-code').selectOption('fixed');
+    await page.getByTestId('fb-resolve-close').uncheck();                                       // leave it Done until it is closed by hand
     await page.getByTestId('fb-resolve-note').fill('Fixed, thank you.');
     await page.getByTestId('fb-resolve-save').click();
     await expect(page.getByTestId('fb-resolution')).toHaveText('Fixed');
@@ -210,10 +211,11 @@ test.describe('Help and feedback lifecycle @p1', () => {
     await page.getByTestId('fb-tab-inbox').click();
     await page.getByTestId('fb-view-all').click();
     await page.getByTestId(`fb-inbox-${waiting}`).click();
-    await expect(page.getByTestId('fb-closes-in')).toContainText('closes by itself in 5 days');
+    await expect(page.getByTestId('fb-next')).toContainText('closes by itself in 5 days');
 
     // the reporter, a report closed 20 days ago: no reopen, a follow-up instead
     const mine = await app.open(COUNTER, '/secure/feedback');
+    await mine.page.getByTestId('fb-mine-view-all').click();                                      // My reports opens on the open ones
     await mine.page.getByTestId(`fb-mine-${closed}`).click();
     await expect(mine.page.getByTestId('fb-followup-offer')).toBeVisible();
     await expect(mine.page.getByTestId('fb-reopen-open')).toHaveCount(0);
@@ -221,5 +223,44 @@ test.describe('Help and feedback lifecycle @p1', () => {
     await mine.page.getByTestId('fb-followup-msg').fill('It broke again.');
     await mine.page.getByTestId('fb-followup-send').click();
     await expect(mine.page.getByTestId('fb-follows')).toContainText(`FB-${closed}`);
+  });
+
+  test('RFB-9 four states: a manager acts on a report they sent, resolves and closes in one step, and the reporter can withdraw @happy', async ({ api }) => {
+    // the states come with every row
+    const a = await send(api, `QA states ${Date.now()}`);
+    expect((await api.request('GET', `/feedback/${a}`, undefined, MGR)).body).toMatchObject({ state: 'open', state_label: 'Open' });
+    await api.request('POST', `/feedback/${a}/reply`, { message: 'Which bill?', wait: true }, MGR);
+    expect((await api.request('GET', `/feedback/${a}`, undefined, COUNTER)).body).toMatchObject({ state: 'waiting', state_label: 'Waiting on you' });
+    expect((await api.request('GET', `/feedback/${a}`, undefined, MGR)).body).toMatchObject({ state: 'waiting', state_label: 'Waiting on the reporter' });
+    const waiting = await api.request('GET', '/feedback/inbox?view=waiting', undefined, MGR);
+    expect(waiting.body.items.map((i: any) => i.id)).toContain(a);
+    expect(waiting.body.counts.waiting).toBeGreaterThan(0);
+
+    // the reporter withdraws while it is still open or waiting
+    const w = (await api.request('POST', `/feedback/${a}/close`, {}, COUNTER));
+    expect(w.status, JSON.stringify(w.body)).toBeLessThan(300);
+    const closed = (await api.request('GET', `/feedback/${a}`, undefined, COUNTER)).body;
+    expect(closed).toMatchObject({ state: 'closed', status: 'CLOSED' });
+    expect(closed.notes.map((n: any) => n.body).join('|')).toContain('withdrawn');
+    expect((await api.request('POST', `/feedback/${a}/close`, {}, COUNTER)).status).toBe(400);            // already closed
+
+    // resolve and close in one step: closed, how it ended kept, the reporter told
+    const b = await send(api, `QA one step ${Date.now()}`);
+    const r = await api.request('POST', `/feedback/${b}/resolve`, { code: 'fixed', note: 'Fixed in the last update.', close: true }, MGR);
+    expect(r.status, JSON.stringify(r.body)).toBeLessThan(300);
+    const one = (await api.request('GET', `/feedback/${b}`, undefined, COUNTER)).body;
+    expect(one).toMatchObject({ state: 'closed', status: 'CLOSED', resolution_code: 'fixed' });
+    expect(one.can.reopen).toBe(true);
+    const unread = (await api.request('GET', '/feedback/mine', undefined, COUNTER)).body.items.find((i: any) => i.id === b);
+    expect(unread).toBeTruthy();
+
+    // a manager can resolve, move and close a report they sent themselves
+    const own = await api.request('POST', '/feedback', { kind: 'problem', title: `QA own ${Date.now()}`, module_id: 'nav-sales', module_title: 'Sales and billing', details: { what: 'QA own report' }, impact: 'minor' }, MGR);
+    expect(own.status, JSON.stringify(own.body)).toBeLessThan(300);
+    const mine = (await api.request('GET', `/feedback/${own.body.id}`, undefined, MGR)).body;
+    expect(mine.can).toMatchObject({ manage: true, resolve: true });
+    expect((await api.request('POST', `/feedback/${own.body.id}/status`, { status: 'PLANNED' }, MGR)).status).toBeLessThan(300);
+    expect((await api.request('POST', `/feedback/${own.body.id}/resolve`, { code: 'answered', note: 'Done.', close: true }, MGR)).status).toBeLessThan(300);
+    expect((await api.request('GET', `/feedback/${own.body.id}`, undefined, MGR)).body).toMatchObject({ state: 'closed' });
   });
 });
