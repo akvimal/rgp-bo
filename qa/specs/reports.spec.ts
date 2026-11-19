@@ -116,8 +116,7 @@ test.describe('Reports @p2', () => {
   test('the Reports screen loads @happy', async ({ app }) => {
     const { page } = await app.open(MGR, '/secure/reports');
     await expectShell(page);
-    await expect(page.getByTestId('rh-sales')).toBeVisible();      // the hub lists the sales report
-    await page.getByTestId('rh-sales').click();
-    await page.waitForURL(/\/secure\/reports\/sales/);
+    await expect(page.getByTestId('rh-sale-list')).toBeVisible();      // the hub lists the sales list, the one place for bills
+    await expect(page.getByTestId('rp-tab-sales')).toHaveCount(0);     // the separate sales report is gone
   });
 });

@@ -1219,18 +1219,18 @@
     {
       "key": "reports",
       "label": "Reports",
-      "description": "The Reports pages: the sales report, Ask the shop and the weekly summary. Each action opens one family of reports.",
+      "description": "The Reports pages: Ask the shop and the weekly summary (the hub of all reports is open to everyone, each card following the role). Each action opens one family of reports.",
       "group": "Home",
       "path": [
         "/secure/reports"
       ],
       "actions": [
-        { "key": "sales", "label": "Sales report, and Ask the shop's sales, payment, expense and top-product reports" },
+        { "key": "sales", "label": "Ask the shop's sales, payment, expense and top-product reports" },
         { "key": "purchases", "label": "Ask the shop's purchases by vendor" },
         { "key": "stock", "label": "Ask the shop's expiring, expiry-risk and dead-stock reports" },
         { "key": "ask", "label": "Ask the shop tab (each report in it also needs its own action above)" },
         { "key": "margin", "label": "Profit and thin-margin reports, customer dues, and the weekly summary (what the owner reads)" },
-        { "key": "export", "label": "Save the sales report as a file" }
+        { "key": "export", "label": "Save an Ask the shop report as a file" }
       ]
     }
   ]

@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { User } from 'src/core/decorator/user.decorator';
 import { InsightsService } from './insights.service';
+import { ReportHubService } from './report-hub.service';
 
 /**
  * Insights for the people who run the shop: ask a question, the buying brief and stock that will not sell in time, the weekly owner summary and staff
@@ -13,7 +14,11 @@ import { InsightsService } from './insights.service';
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 export class InsightsController {
-  constructor(private readonly service: InsightsService) {}
+  constructor(private readonly service: InsightsService, private readonly hub: ReportHubService) {}
+
+  // ---- the figures on the Reports hub cards: open to everyone signed in, each figure only for the pages the role may open
+  @Get('hub-summary')
+  hubSummary(@Query() q: any, @User() user: any) { return this.hub.summary(user, q?.period); }
 
   // ---- ask the shop
   @Get('ask/reports')

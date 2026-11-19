@@ -7,22 +7,19 @@ import { AuthGuard } from "src/app/@core/auth/auth.guard";
 import { ReportsAccessGuard } from "./reports-access.guard";
 import { SharedModule } from "src/app/shared/shared.module";
 import { DocumentsModule } from "../documents/documents.module";
-import { ReportsComponent } from "./components/reports.component";
 import { ReportsTabsComponent } from "./components/reports-tabs.component";
 import { AskShopComponent } from "./components/ask-shop.component";
 import { WeeklySummaryComponent } from "./components/weekly-summary.component";
 import { ReportsHubComponent } from "./components/reports-hub.component";
 
 const routes: Routes = [
-  { path: '', component: ReportsHubComponent, canActivate:[AuthGuard, ReportsAccessGuard], data: { needs: 'reports' }},
-  { path: 'sales', component: ReportsComponent, canActivate:[AuthGuard, ReportsAccessGuard], data: { needs: 'reports.sales' }},
+  { path: '', component: ReportsHubComponent, canActivate:[AuthGuard, ReportsAccessGuard], data: { needs: 'hub' }},
   { path: 'ask', component: AskShopComponent, canActivate:[AuthGuard, ReportsAccessGuard], data: { needs: 'reports.ask' }},
   { path: 'weekly', component: WeeklySummaryComponent, canActivate:[AuthGuard, ReportsAccessGuard], data: { needs: 'reports.margin' }}
 ];
 
 @NgModule({
     declarations: [
-      ReportsComponent,
       ReportsTabsComponent,
       AskShopComponent,
       WeeklySummaryComponent,

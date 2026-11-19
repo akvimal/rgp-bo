@@ -1,3 +1,5 @@
+import { visibleHub } from './reports/reports-hub';
+
 /**
  * The grouped menu (DASHBOARD_AND_MENU_DESIGN 7.2): eight groups by the job the person is doing, a group with nothing the role may open is absent,
  * Setup (the settings submenu) follows below. Entries keep the test ids of the long-standing menu. Pure of Angular so it can be unit tested.
@@ -41,7 +43,8 @@ function allMenuGroups(a: MenuAccess): MenuGroup[] {
       item('nav-todos', 'To-dos', 'todos', 'bi-check2-circle', ['todos.view']),
       item('nav-checklists', 'Checklists', 'checklists', 'bi-list-check', ['checklists.view']),
       item('nav-calendar', 'Calendar', 'calendar', 'bi-calendar3', ['calendar.view']),
-      item('nav-reports', 'Reports', 'reports', 'bi-graph-up', ['reports']),
+      // the hub lists every report the role may open, so the entry shows when at least one card would
+      item('nav-reports', 'Reports', 'reports', 'bi-graph-up', () => visibleHub({ has: (...k) => a.has(...k) }).length > 0),
     ] },
     { key: 'sell', label: 'Sell', items: [
       item('nav-sales', 'Sales and billing', 'sales', 'bi-cash-coin', ['sales']),
@@ -117,7 +120,7 @@ export function isCounterRole(roleName: string | null | undefined): boolean {
 
 /** Few headings, the selling work first. The Dashboard stands alone at the top (its group has no heading). */
 const COUNTER_LAYOUT: { key: string; label: string; ids: string[] }[] = [
-  { key: 'home', label: '', ids: ['nav-dashboard', 'nav-todos', 'nav-checklists', 'nav-calendar'] },
+  { key: 'home', label: '', ids: ['nav-dashboard', 'nav-todos', 'nav-checklists', 'nav-calendar', 'nav-reports'] },
   { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-my-work', 'nav-commitments', 'nav-refills', 'nav-grievances', 'nav-inquiries', 'nav-whatsapp'] },
   { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-pricing', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
   { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance', 'nav-discrepancies', 'nav-shifts', 'nav-cash-book', 'nav-vault'] },

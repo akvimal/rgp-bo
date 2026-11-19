@@ -91,21 +91,19 @@ test.describe('Reports actions @p1', () => {
     expect(await saleReport(api, HEAD, 'search')).toBe(200);
   });
 
-  test('RPA-6 the Reports screen shows only the tabs the role holds, and opens on the first one @happy', async ({ app, api }) => {
+  test('RPA-6 the Reports screen shows only the tabs and cards the role holds, and a page it may not open sends it to the first it may @happy', async ({ app, api }) => {
     const email = await loginWith(api, ['ask', 'sales']);
     const asker = await loginWith(api, ['ask', 'purchases']);
     const a = await app.open(email, '/secure/reports');
     await expectShell(a.page);
     await expect(a.page.getByTestId('rp-tab-all')).toBeVisible();
-    await expect(a.page.getByTestId('rh-sales')).toBeVisible();
+    await expect(a.page.getByTestId('rh-ask')).toBeVisible();
     await expect(a.page.getByTestId('rh-weekly')).toHaveCount(0);        // a card follows the action, as the tab does
-    await expect(a.page.getByTestId('rp-tab-sales')).toBeVisible();
     await expect(a.page.getByTestId('rp-tab-ask')).toBeVisible();
     await expect(a.page.getByTestId('rp-tab-weekly')).toHaveCount(0);
-    // a role without the sales action is sent from the first page to Ask the shop
-    const b = await app.open(asker, '/secure/reports/sales');
+    // a role without the Ask the shop action still opens the hub, but not that page
+    const b = await app.open(asker, '/secure/reports/weekly');
     await b.page.waitForURL(/\/secure\/reports\/ask/);
-    await expect(b.page.getByTestId('rp-tab-sales')).toHaveCount(0);
     await expect(b.page.getByTestId('rp-tab-ask')).toBeVisible();
   });
 });

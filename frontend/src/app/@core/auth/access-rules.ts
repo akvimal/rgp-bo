@@ -52,6 +52,8 @@ const PAGE_RULES: Array<{ path: string; exact?: boolean; allow: (c: PageContext)
   { path: '/secure/app-guide', exact: true, allow: () => true },
   // the help pages are for everyone signed in
   { path: '/secure/help', allow: () => true },
+  // the Reports hub: every signed in login opens it; each card follows the role (the Ask the shop and Weekly summary pages are told apart by action)
+  { path: '/secure/reports', exact: true, allow: () => true },
   // the weekly knowledge check is each person's own
   { path: '/secure/knowledge', exact: true, allow: () => true },
   // My follow-ups (the refill and call-back work): for whoever can read customers or work the refills; no role carries this path

@@ -14,6 +14,9 @@ export class InsightsService {
   run(body: { report: string; period?: string; limit?: number; days?: number }) { return this.http.post<any>(`${this.api}/ask/run`, body); }
   ask(question: string) { return this.http.post<any>(`${this.api}/ask`, { question }); }
 
+  // ---- the figures on the Reports hub cards
+  hubSummary(period?: string) { return this.http.get<any>(`${this.api}/hub-summary`, { params: period ? { period } : {} }); }
+
   // ---- buying
   expiryRisk(days = 180) { return this.http.get<any>(`${this.api}/expiry-risk`, { params: { days: String(days) } }); }
   buyingBrief(reorder: any[], refresh = false) { return this.http.post<any>(`${this.api}/buying-brief`, { reorder, refresh }); }

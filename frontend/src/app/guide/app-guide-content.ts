@@ -98,9 +98,9 @@ export const PAGES: PageGuide[] = [
   },
   {
     id: 'nav-reports', group: 'home', title: 'Reports', route: '/secure/reports',
-    purpose: 'All the reports in one place, grouped by the question they answer (sales, customers and refills, stock, purchasing, money and tax, oversight), plus the sales report for a period, a box where you ask the shop a question in plain words, and a weekly summary of how the shop did.',
-    tasks: ['All reports: the first tab is a list of cards, one for each report or register your role may open. Type in the box to find one, then press its card.', 'Sales report: choose the dates and the store, and run the report; download it to Excel for your accountant.', 'Ask the shop: type a question such as top 10 products last month, or press a report button (sales by staff, profit by product, who owes money, stock that will not sell in time and more).', 'Weekly summary: last week in a few lines, what went well, what to watch and what to do first. It is made every Monday morning and can be sent to your Telegram.'],
-    who: 'Managers and the owner.', keywords: 'excel download sales report',
+    purpose: 'All the reports in one place, grouped by the question they answer (sales, customers and refills, stock, purchasing, money and tax, oversight), plus a box where you ask the shop a question in plain words, and a weekly summary of how the shop did.',
+    tasks: ['All reports: the first tab is a list of cards, one for each report or register your role may open. Each card shows its figures for the period you choose at the top (today, this week, this month and so on) with up or down against the period before, and pressing the card opens the page behind it. Type in the box to find a card.', 'Ask the shop: type a question such as top 10 products last month, or press a report button (sales by staff, profit by product, who owes money, stock that will not sell in time and more).', 'Weekly summary: last week in a few lines, what went well, what to watch and what to do first. It is made every Monday morning and can be sent to your Telegram.'],
+    who: 'Everyone; each person sees the reports their role may open. Ask the shop and the weekly summary are for managers and the owner.', keywords: 'excel download sales list report',
   },
 
   // ---- sell

@@ -17,8 +17,8 @@ const num = (v: any) => (v === null || v === undefined ? 0 : Number(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // the cost of one unit of a purchased batch: the invoice rate after the vendor discount and the free quantity, per unit of the pack (the way the dashboard counts margin)
-const UNIT_COST = `(pii.ptr_value * (1 - coalesce(pii.disc_pcnt, 0) / 100.0) * pii.qty / nullif(pii.qty + coalesce(pii.free_qty, 0), 0) / nullif(p.pack, 0))`;
-const SALE_OK = `s.status = 'COMPLETE' and s.active and not s.archive`;
+export const UNIT_COST = `(pii.ptr_value * (1 - coalesce(pii.disc_pcnt, 0) / 100.0) * pii.qty / nullif(pii.qty + coalesce(pii.free_qty, 0), 0) / nullif(p.pack, 0))`;
+export const SALE_OK = `s.status = 'COMPLETE' and s.active and not s.archive`;
 
 /** The facts the insight features are built from. Read only; every figure is a total or a list, and everything is scoped to the stores the login may see. */
 @Injectable()
