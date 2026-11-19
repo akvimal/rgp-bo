@@ -13,7 +13,7 @@ export class ReportsAccessGuard implements CanActivate {
   canActivate(route: ActivatedRouteSnapshot): boolean | UrlTree {
     const need = route.data["needs"] as string;
     if (this.auth.isActionAuthorized(need)) return true;
-    const order: Array<[string, string]> = [["reports.sales", "/secure/reports"], ["reports.ask", "/secure/reports/ask"], ["reports.margin", "/secure/reports/weekly"]];
+    const order: Array<[string, string]> = [["reports.sales", "/secure/reports/sales"], ["reports.ask", "/secure/reports/ask"], ["reports.margin", "/secure/reports/weekly"]];
     const next = order.find((o) => this.auth.isActionAuthorized(o[0]));
     return this.router.parseUrl(next ? next[1] : "/secure/dashboard");
   }

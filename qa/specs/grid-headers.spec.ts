@@ -18,7 +18,7 @@ const PAGES = [
   '/secure/store/stock/products',
   '/secure/store/stock/expiry',
   '/secure/store/stock/adjust',
-  '/secure/reports',
+  '/secure/reports/sales',
 ];
 
 test.describe('Grid headings @p1', () => {

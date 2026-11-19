@@ -98,8 +98,8 @@ export const PAGES: PageGuide[] = [
   },
   {
     id: 'nav-reports', group: 'home', title: 'Reports', route: '/secure/reports',
-    purpose: 'Sales reports for a period, a box where you ask the shop a question in plain words, and a weekly summary of how the shop did.',
-    tasks: ['Sales report: choose the dates and the store, and run the report; download it to Excel for your accountant.', 'Ask the shop: type a question such as top 10 products last month, or press a report button (sales by staff, profit by product, who owes money, stock that will not sell in time and more).', 'Weekly summary: last week in a few lines, what went well, what to watch and what to do first. It is made every Monday morning and can be sent to your Telegram.'],
+    purpose: 'All the reports in one place, grouped by the question they answer (sales, customers and refills, stock, purchasing, money and tax, oversight), plus the sales report for a period, a box where you ask the shop a question in plain words, and a weekly summary of how the shop did.',
+    tasks: ['All reports: the first tab is a list of cards, one for each report or register your role may open. Type in the box to find one, then press its card.', 'Sales report: choose the dates and the store, and run the report; download it to Excel for your accountant.', 'Ask the shop: type a question such as top 10 products last month, or press a report button (sales by staff, profit by product, who owes money, stock that will not sell in time and more).', 'Weekly summary: last week in a few lines, what went well, what to watch and what to do first. It is made every Monday morning and can be sent to your Telegram.'],
     who: 'Managers and the owner.', keywords: 'excel download sales report',
   },
 

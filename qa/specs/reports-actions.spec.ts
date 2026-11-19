@@ -96,11 +96,14 @@ test.describe('Reports actions @p1', () => {
     const asker = await loginWith(api, ['ask', 'purchases']);
     const a = await app.open(email, '/secure/reports');
     await expectShell(a.page);
+    await expect(a.page.getByTestId('rp-tab-all')).toBeVisible();
+    await expect(a.page.getByTestId('rh-sales')).toBeVisible();
+    await expect(a.page.getByTestId('rh-weekly')).toHaveCount(0);        // a card follows the action, as the tab does
     await expect(a.page.getByTestId('rp-tab-sales')).toBeVisible();
     await expect(a.page.getByTestId('rp-tab-ask')).toBeVisible();
     await expect(a.page.getByTestId('rp-tab-weekly')).toHaveCount(0);
     // a role without the sales action is sent from the first page to Ask the shop
-    const b = await app.open(asker, '/secure/reports');
+    const b = await app.open(asker, '/secure/reports/sales');
     await b.page.waitForURL(/\/secure\/reports\/ask/);
     await expect(b.page.getByTestId('rp-tab-sales')).toHaveCount(0);
     await expect(b.page.getByTestId('rp-tab-ask')).toBeVisible();

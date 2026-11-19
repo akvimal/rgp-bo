@@ -116,5 +116,8 @@ test.describe('Reports @p2', () => {
   test('the Reports screen loads @happy', async ({ app }) => {
     const { page } = await app.open(MGR, '/secure/reports');
     await expectShell(page);
+    await expect(page.getByTestId('rh-sales')).toBeVisible();      // the hub lists the sales report
+    await page.getByTestId('rh-sales').click();
+    await page.waitForURL(/\/secure\/reports\/sales/);
   });
 });

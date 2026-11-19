@@ -11,9 +11,11 @@ import { ReportsComponent } from "./components/reports.component";
 import { ReportsTabsComponent } from "./components/reports-tabs.component";
 import { AskShopComponent } from "./components/ask-shop.component";
 import { WeeklySummaryComponent } from "./components/weekly-summary.component";
+import { ReportsHubComponent } from "./components/reports-hub.component";
 
 const routes: Routes = [
-  { path: '', component: ReportsComponent, canActivate:[AuthGuard, ReportsAccessGuard], data: { needs: 'reports.sales' }},
+  { path: '', component: ReportsHubComponent, canActivate:[AuthGuard, ReportsAccessGuard], data: { needs: 'reports' }},
+  { path: 'sales', component: ReportsComponent, canActivate:[AuthGuard, ReportsAccessGuard], data: { needs: 'reports.sales' }},
   { path: 'ask', component: AskShopComponent, canActivate:[AuthGuard, ReportsAccessGuard], data: { needs: 'reports.ask' }},
   { path: 'weekly', component: WeeklySummaryComponent, canActivate:[AuthGuard, ReportsAccessGuard], data: { needs: 'reports.margin' }}
 ];
@@ -23,7 +25,8 @@ const routes: Routes = [
       ReportsComponent,
       ReportsTabsComponent,
       AskShopComponent,
-      WeeklySummaryComponent
+      WeeklySummaryComponent,
+      ReportsHubComponent
     ],
     imports: [
         RouterModule.forChild(routes),
