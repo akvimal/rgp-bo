@@ -1,6 +1,6 @@
 # Refill and follow-up: one contact log, a turnaround measure, and a "My work" dashboard for sales staff
 
-Status: **planned 2026-11-19; step 1 (one contact log) built 2026-11-19, uncommitted; steps 2 to 5 not built.** Asked for: a sales-staff dashboard with refill reminders, follow-ups and turnaround. Clarified: **turnaround = the contacted customer bought again and went back to the normal course.** Follow-up review also asked for gaps in the refill system, which has grown into a small CRM.
+Status: **planned 2026-11-19; steps 1 (one contact log) and 2 (turnaround measure) built 2026-11-19; steps 3 to 5 not built.** Asked for: a sales-staff dashboard with refill reminders, follow-ups and turnaround. Clarified: **turnaround = the contacted customer bought again and went back to the normal course.** Follow-up review also asked for gaps in the refill system, which has grown into a small CRM.
 
 ## 1. What exists today (read from the code)
 
@@ -56,7 +56,10 @@ Original plan:
 - The refill screen and the worklist both write to the one log; each shows the other's last contact ("called by Anu 2 days ago") so nobody repeats a call. The snooze rule becomes a function of the log, not a second table.
 - Tests: migration re-run and rollback on a scratch copy; both screens write the same row shape; the 7-day and consent rules unchanged.
 
-### Step 2 - Turnaround measure
+### Step 2 - Turnaround measure - BUILT 2026-11-19
+As built: pure rules in `customer-turnaround-rules.ts` (14 tests), the service `customer-turnaround.service.ts` (`loadTurnaround`, shared with the Refills page), and `GET /customer-relations/turnaround?from&to&userid` (default last 30 days, up to 400). Decisions taken with the plan's defaults, since the open questions were not answered: windows 7 days (refill reminder, judged by a bill with a chronic medicine) and 14 days (any other reason, any bill), set in `app_setting` as `turnaround_refill_days` and `turnaround_lapsed_days` (1 to 60 and 1 to 90) and changed through the existing relationship settings call (`PUT /customer-relations/settings`, `turnaroundRefillDays`, `turnaroundLapsedDays`; needs `relationships.setup`); days are Indian days; a bill goes to the latest counted contact before it, in whose window it falls, and an earlier contact it also fell in is "superseded" and left out of the rate. Not counted: no answer, wrong number, asked to stop, and the dues and review-invite audiences. The rate is of those decided (came back or lapsed), waiting ones are shown with days left. A refill contact with a due date also reports how many days after the due date the bill came. Who sees what: Business Head, Owner-operator and Store Head see everyone's contacts (and one person with `userid`, plus a per-person table); anyone else sees only their own, whatever is asked. (The Store Head sees the whole business's contacts: the contact log has no store.) The Refills page's "contacted and bought" now comes from the same measure (`results()`), with `lapsed`, `waiting` and `median_days` added. Fixed on the way: the settings `put` helper never inserted a setting that had no row yet.
+Not done: the baseline of customers who were not contacted (needs a cohort of customers who were due in the period, rebuilt from visits before it; step 3 or later), a screen for it (step 3 holds the scorecard and the window settings), the shared Counter login's acting operator on the contact log, and a Playwright spec.
+Original plan:
 - Pure `turnaround-rules.ts` (tested): window per audience, matching a contact to the next bill, credit to the latest contact, the baseline group, the exclusions above.
 - API: `GET /customers/turnaround?from&to&user` returning per-person and per-store counts, median days, value, lapsed, and baseline. Replaces `refills.results()`.
 - Setting: window days per audience (`app_setting`, default 7 and 14).

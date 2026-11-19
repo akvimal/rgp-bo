@@ -94,7 +94,14 @@ export class CustomersService {
         return this.http.get<any>(`${this.relurl}/settings`);
     }
 
-    saveRelSettings(body:{activeDays?:number, contactCapDays?:number}){
+    /** of the customers contacted in a period, who bought again within the window: a person sees their own, a manager everyone's (?userid for one person) */
+    turnaround(q:{from?:string, to?:string, userid?:number} = {}){
+        const params:any = {};
+        Object.keys(q).forEach(k => { const v = (q as any)[k]; if (v !== undefined && v !== null && v !== '') params[k] = String(v); });
+        return this.http.get<any>(`${this.relurl}/turnaround`, { params });
+    }
+
+    saveRelSettings(body:{activeDays?:number, contactCapDays?:number, turnaroundRefillDays?:number, turnaroundLapsedDays?:number}){
         return this.http.put<any>(`${this.relurl}/settings`, body);
     }
 

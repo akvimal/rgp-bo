@@ -5,6 +5,8 @@ import { GrievanceScope } from './grievance.service';
 
 import { FOLLOWUP_KEY } from '../customers/customer-followup-rules';
 import { refillLang, refillMessages } from './refill-message';
+import { loadTurnaround } from '../customers/customer-turnaround.service';
+import { summarise } from '../customers/customer-turnaround-rules';
 
 export const REFILL_OUTCOMES = ['WILL_BUY', 'NO_ANSWER', 'CALLBACK', 'BOUGHT_ELSEWHERE', 'NOT_NEEDED', 'MESSAGED'];
 // how long a follow-up hides the customer from the due list
@@ -93,20 +95,24 @@ export class RefillService {
     return { counts, rows: rowsOut };
   }
 
-  /** How follow-ups are working: contacts in the last 30 days and how many then bought. */
+  /**
+   * How follow-ups are working: refill contacts of the last 30 days and how many then bought a chronic medicine within the window. The same measure as the
+   * turnaround report (customer-turnaround-rules.ts); `lapsed` and `waiting` say what became of the rest.
+   */
   async results(sc: GrievanceScope) {
-    const [r] = await this.manager.query(
-      `with f as (
-         select distinct on (customer_id) customer_id, created_on
-           from customer_contact_log where created_on >= now() - interval '30 days' and outcome <> 'NO_ANSWER' and (source = 'refill' or audience = 'due_back')
-          order by customer_id, created_on desc)
-       select count(*)::int as contacted,
-              count(*) filter (where exists (
-                select 1 from sale s join sale_item si on si.sale_id = s.id join product p on p.id = si.product_id
-                 where s.customer_id = f.customer_id and s.status = 'COMPLETE' and s.bill_date > f.created_on
-                   and p.more_props->>'chronic' = 'true'))::int as bought_after
-         from f`);
-    return r;
+    const day = (d: Date) => new Date(d.getTime() + 330 * 60000).toISOString().slice(0, 10);
+    const now = new Date();
+    const windows = { refillDays: await this.refillWindow(), lapsedDays: 14 };
+    const { results } = await loadTurnaround(this.manager, day(new Date(now.getTime() - 29 * 86400000)), day(now), null, windows);
+    const refills = results.filter((r) => r.kind === 'refill');
+    const s = summarise(refills);
+    return { contacted: s.contacts, bought_after: s.cameBack, lapsed: s.lapsed, waiting: s.waiting, median_days: s.medianDays, window_days: windows.refillDays };
+  }
+
+  private async refillWindow(): Promise<number> {
+    const [r] = await this.manager.query(`select setting_value from app_setting where setting_key = 'turnaround_refill_days' and active and not archive limit 1`);
+    const n = Math.round(Number(r?.setting_value));
+    return Number.isFinite(n) && n >= 1 && n <= 60 ? n : 7;
   }
 
   /** a contact from the Refills page goes into the one contact log (a sent reminder is a WhatsApp message sent, the rest are calls) */

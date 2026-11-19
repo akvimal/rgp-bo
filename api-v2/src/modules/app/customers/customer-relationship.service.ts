@@ -39,10 +39,12 @@ export class CustomerRelationshipService {
     return {
       activeDays: await this.number('customer_active_days', DEFAULT_ACTIVE_DAYS, 30, 1825),
       contactCapDays: await this.number('customer_contact_cap_days', DEFAULT_CAP_DAYS, 0, 90),
+      turnaroundRefillDays: await this.number('turnaround_refill_days', 7, 1, 60),
+      turnaroundLapsedDays: await this.number('turnaround_lapsed_days', 14, 1, 90),
     };
   }
 
-  async saveSettings(body: { activeDays?: any; contactCapDays?: any }, user: any) {
+  async saveSettings(body: { activeDays?: any; contactCapDays?: any; turnaroundRefillDays?: any; turnaroundLapsedDays?: any }, user: any) {
     if (!(await mayCustomers(this.manager, user, 'relationships.setup'))) throw new ForbiddenException('Changing these settings is not open to your role.');
     const put = async (key: string, raw: any, min: number, max: number, label: string, description: string) => {
       if (raw === undefined) return;
@@ -50,7 +52,9 @@ export class CustomerRelationshipService {
       if (!Number.isInteger(n) || n < min || n > max) throw new BadRequestException(`${label} must be a whole number from ${min} to ${max}.`);
       const upd = await this.manager.query(
         `update app_setting set setting_value = $1, updated_on = now(), updated_by = $2 where setting_key = $3 returning id`, [String(n), user.id, key]);
-      if (!upd.length) {
+      // an UPDATE ... RETURNING answers [rows, count]: look at the rows, so a setting with no row yet is inserted
+      const changed = Array.isArray(upd[0]) ? upd[0].length : upd.length;
+      if (!changed) {
         await this.manager.query(
           `insert into app_setting (category, setting_key, setting_value, description, active, archive, created_by, updated_by) values ('customers', $1, $2, $3, true, false, $4, $4)`,
           [key, String(n), description, user.id]);
@@ -58,6 +62,8 @@ export class CustomerRelationshipService {
     };
     await put('customer_active_days', body?.activeDays, 30, 1825, 'The active period (days)', 'A customer with no visit in this many days is shown as inactive');
     await put('customer_contact_cap_days', body?.contactCapDays, 0, 90, 'The contact gap (days)', 'Do not contact the same customer again within this many days');
+    await put('turnaround_refill_days', body?.turnaroundRefillDays, 1, 60, 'The refill return window (days)', 'A refill reminder turns around when the customer buys a chronic medicine within this many days');
+    await put('turnaround_lapsed_days', body?.turnaroundLapsedDays, 1, 90, 'The return window (days)', 'Any other contact turns around when the customer buys again within this many days');
     return this.settings();
   }
 

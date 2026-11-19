@@ -1,11 +1,12 @@
 import { CustomerActionGuard, NeedsCustomers } from './customer-action.guard';
-import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { User } from 'src/core/decorator/user.decorator';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { CustomerRelationshipService } from './customer-relationship.service';
 import { CustomerPrivacyService } from './customer-privacy.service';
 import { CustomerFollowupService } from './customer-followup.service';
+import { CustomerTurnaroundService } from './customer-turnaround.service';
 import { buildAudienceCsv } from './customer-export';
 
 /** Segments, audiences, the daily contact list and the contact log. A separate path from /customers so ":id" never swallows these. */
@@ -14,7 +15,7 @@ import { buildAudienceCsv } from './customer-export';
 @ApiBearerAuth()
 @UseGuards(AuthGuard, CustomerActionGuard)
 export class CustomerRelationshipController {
-  constructor(private readonly relations: CustomerRelationshipService, private readonly privacy: CustomerPrivacyService, private readonly followup: CustomerFollowupService) {}
+  constructor(private readonly relations: CustomerRelationshipService, private readonly privacy: CustomerPrivacyService, private readonly followup: CustomerFollowupService, private readonly turnaround: CustomerTurnaroundService) {}
 
   /** the audience download carries whole numbers: only those who may read all contact details (the audiences screen itself masks them) */
   private async needAll(user: any) {
@@ -37,6 +38,11 @@ export class CustomerRelationshipController {
   @NeedsCustomers('followup.wording')
   @Post('followup-templates/draft')
   draftTemplates(@User() user: any) { return this.followup.draft(user); }
+
+  /** of the customers contacted in a period, who bought again within the window; a person sees their own, a manager everyone's (?userid= for one person) */
+  @NeedsCustomers('worklist.use')
+  @Get('turnaround')
+  turnaroundReport(@Query() q: any, @User() user: any) { return this.turnaround.report(user, q); }
 
   @NeedsCustomers('worklist.use')
   @Get('summary')
