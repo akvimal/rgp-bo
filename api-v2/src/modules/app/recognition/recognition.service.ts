@@ -71,8 +71,8 @@ export class RecognitionService {
           and ($2::int[] is null or coalesce(sh.closed_operator_id, sh.closed_by) = any($2::int[]))
         order by sh.closed_on desc`, [businessId, onlyArr]);
     const refills = await m.query(
-      `select created_by as person, (created_on at time zone '${TZ}')::date::text as d from refill_followup
-        where created_on >= now() - interval '40 days' and ($1::int[] is null or created_by = any($1::int[])) group by 1, 2`, [onlyArr]);
+      `select created_by as person, (created_on at time zone '${TZ}')::date::text as d from customer_contact_log
+        where source = 'refill' and created_on >= now() - interval '40 days' and ($1::int[] is null or created_by = any($1::int[])) group by 1, 2`, [onlyArr]);
     const lates = await m.query(
       `select i.person_id as person, to_char(max(e.created_on at time zone '${TZ}'), 'YYYY-MM-DD') as last
          from compliance_event e join compliance_instance i on i.id = e.instance_id

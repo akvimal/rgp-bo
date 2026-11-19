@@ -41,8 +41,12 @@ export class RefillService {
        ),
        last_visit as (select distinct on (customer_id) customer_id, store_id, titles from visits order by customer_id, d desc),
        value as (select customer_id, avg(val) as avg_val from visits group by customer_id),
-       fu as (select distinct on (customer_id) customer_id, outcome, note, snoozed_until, created_on, created_by
-                from refill_followup order by customer_id, created_on desc)
+       -- the last contact from either screen (the one contact log), and the last snooze, which only a refill contact sets
+       lastc as (select distinct on (customer_id) customer_id, outcome, note, created_on, created_by, channel, source
+                   from customer_contact_log order by customer_id, created_on desc, id desc),
+       sn as (select distinct on (customer_id) customer_id, snoozed_until
+                from customer_contact_log where snoozed_until is not null order by customer_id, created_on desc, id desc),
+       fu as (select lastc.*, sn.snoozed_until from lastc left join sn on sn.customer_id = lastc.customer_id)
        select c.id as customer_id, c.name, c.mobile, c.message_language, c.do_not_contact, per.visits, per.last_d as last_bought,
               round(per.med)::int as usual_gap,
               (per.last_d + round(per.med)::int) as expected_on,
@@ -52,7 +56,7 @@ export class RefillService {
                    else 'UPCOMING' end as bucket,
               round(value.avg_val::numeric) as typical_value,
               lv.titles, lv.store_id, st.location as store,
-              fu.outcome as last_outcome, fu.note as last_note, fu.created_on as last_contact, fu.snoozed_until,
+              fu.outcome as last_outcome, fu.note as last_note, fu.created_on as last_contact, fu.channel as last_channel, fu.source as last_source, fu.snoozed_until,
               (fu.snoozed_until > current_date) as snoozed, u.full_name as last_contact_by
          from per
          join customer c on c.id = per.customer_id
@@ -94,7 +98,7 @@ export class RefillService {
     const [r] = await this.manager.query(
       `with f as (
          select distinct on (customer_id) customer_id, created_on
-           from refill_followup where created_on >= now() - interval '30 days' and outcome <> 'NO_ANSWER'
+           from customer_contact_log where created_on >= now() - interval '30 days' and outcome <> 'NO_ANSWER' and (source = 'refill' or audience = 'due_back')
           order by customer_id, created_on desc)
        select count(*)::int as contacted,
               count(*) filter (where exists (
@@ -105,7 +109,8 @@ export class RefillService {
     return r;
   }
 
-  async record(sc: GrievanceScope, customerId: number, outcome: string, note?: string) {
+  /** a contact from the Refills page goes into the one contact log (a sent reminder is a WhatsApp message sent, the rest are calls) */
+  async record(sc: GrievanceScope, customerId: number, outcome: string, note?: string, dueOn?: string) {
     if (!REFILL_OUTCOMES.includes(outcome)) throw new BadRequestException('Unknown outcome.');
     const [c] = await this.manager.query(`select id from customer where id = $1`, [customerId]);
     if (!c) throw new NotFoundException('Customer not found.');
@@ -113,10 +118,11 @@ export class RefillService {
       const [mine] = await this.manager.query(`select 1 as ok from sale where customer_id = $1 and store_id = any($2::int[]) limit 1`, [customerId, sc.storeIds]);
       if (!mine) throw new NotFoundException('Customer not found.');
     }
+    const sent = outcome === 'MESSAGED';
     const [row] = await this.manager.query(
-      `insert into refill_followup (customer_id, outcome, note, snoozed_until, created_by)
-       values ($1, $2, $3, current_date + $4::int, $5) returning id, snoozed_until`,
-      [customerId, outcome, note?.trim() || null, SNOOZE_DAYS[outcome], sc.userId]);
+      `insert into customer_contact_log (customer_id, channel, audience, outcome, note, created_by, source, due_on, snoozed_until)
+       values ($1, $2, 'due_back', $3, $4, $5, 'refill', $6::date, current_date + $7::int) returning id, snoozed_until`,
+      [customerId, sent ? 'WHATSAPP' : 'CALL', sent ? 'SENT' : outcome, note?.trim() || null, sc.userId, dueOn || null, SNOOZE_DAYS[outcome]]);
     return row;
   }
 }

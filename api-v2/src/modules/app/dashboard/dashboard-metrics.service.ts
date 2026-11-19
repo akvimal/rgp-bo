@@ -231,7 +231,7 @@ export class DashboardMetricsService {
         `select (select count(*) from purchase_order where approval_status = 'Pending' and active and not archive and approval_requested_at < now() - ($2 || ' days')::interval)::int as po,
                 (select count(*) from product_qtychange where status = 'PENDING' and active and not archive and created_on < now() - ($2 || ' days')::interval
                     and ($1::int[] is null or store_id = any($1::int[])))::int as adj`, [stores, String(waitDays)]) : skip([{}]),
-      on('refills') ? this.manager.query(`select count(*)::int as n from refill_followup where created_on >= now() - interval '7 days'`) : skip([{}]),
+      on('refills') ? this.manager.query(`select count(*)::int as n from customer_contact_log where source = 'refill' and created_on >= now() - interval '7 days'`) : skip([{}]),
     ]);
 
     const today = new Date().toISOString().slice(0, 10);

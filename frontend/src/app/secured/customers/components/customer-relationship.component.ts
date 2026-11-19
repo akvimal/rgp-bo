@@ -4,6 +4,7 @@ import { CustomersService } from "../customers.service";
 const OUTCOME_LABELS: Record<string, string> = {
     REACHED: 'Spoke to them', SENT: 'Message sent', NO_ANSWER: 'No answer', CALLBACK: 'Call back later',
     NOT_INTERESTED: 'Not interested', WRONG_NUMBER: 'Wrong number', ASKED_TO_STOP: 'Asked us to stop',
+    WILL_BUY: 'Will buy', BOUGHT_ELSEWHERE: 'Bought elsewhere', NOT_NEEDED: 'No longer needed',
 };
 
 /** On the customer screen: where this customer stands (segment, tier, why) and every call or message made to them. */

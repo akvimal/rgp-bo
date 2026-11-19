@@ -1,0 +1,95 @@
+# Refill and follow-up: one contact log, a turnaround measure, and a "My work" dashboard for sales staff
+
+Status: **planned 2026-11-19; step 1 (one contact log) built 2026-11-19, uncommitted; steps 2 to 5 not built.** Asked for: a sales-staff dashboard with refill reminders, follow-ups and turnaround. Clarified: **turnaround = the contacted customer bought again and went back to the normal course.** Follow-up review also asked for gaps in the refill system, which has grown into a small CRM.
+
+## 1. What exists today (read from the code)
+
+| Piece | Where | What it does |
+|---|---|---|
+| Refill list | `api-v2/src/modules/app/quality/refill.service.ts` | Customers with 3 or more visits that included a chronic medicine (`product.more_props->>'chronic'`) and a real mobile. Usual gap = median days between those visits (gaps under 7 days ignored). Due = last visit + usual gap. Buckets UPCOMING, OVERDUE, LAPSED. Message from the shop's "due back" wording. |
+| Refill follow-up | table `refill_followup` (migration 042) | Outcome WILL_BUY, NO_ANSWER, CALLBACK, BOUGHT_ELSEWHERE, NOT_NEEDED; hides the customer for a few days (`snoozed_until`). |
+| Refill results | `refill.service.ts` `results()` | Of customers contacted in the last 30 days (their latest contact only, NO_ANSWER excluded), how many bought any chronic medicine at any time after. |
+| Contact worklist | `customers/customer-followup.service.ts`, table `customer_contact_log` (migration 123) | Audiences due_back, at_risk, new_second_visit, dues. Channel CALL, WHATSAPP, SMS, VISIT, OTHER. Outcome SENT, REACHED, NO_ANSWER, CALLBACK, NOT_INTERESTED, WRONG_NUMBER, ASKED_TO_STOP. Consent and daily contact cap respected. |
+| Staff dashboard | `frontend/src/app/secured/dashboard-views/staff-view.component.ts` | Goal ring, to-do items, parked bills, store day. No customer names. |
+| Related, built | customer orders (advance-paid special orders), inquiries, to-dos, alerts engine, households (designed, not built), customers without a mobile (name + location) |
+
+## 2. Gaps found
+
+1. **Two follow-up logs.** `refill_followup` and `customer_contact_log` record the same kind of act with different outcomes and never see each other. A customer can be called from both screens, and neither shows the other's contact.
+2. **Turnaround is measured loosely.** `results()` has no window, uses only the latest contact, counts any chronic purchase, ignores who made the contact, and has no baseline for customers who would have come back anyway.
+3. **Refill timing is a guess.** Visit gaps only; the quantity dispensed is never used, and the logic is per customer, not per medicine. Someone on three chronic medicines is "due" when any one is, and the message cannot say which.
+4. **Customers with no real mobile are invisible** to the refill list, and nowhere shown as "cannot be reached".
+5. **No retry or escalation rule.** There are outcomes and a snooze, but nothing like "no answer on day 3, then a message, then flag for a manager".
+6. **No reason recorded when a customer does not return** (price, moved, bought elsewhere, stopped the medicine). Only BOUGHT_ELSEWHERE exists, and only on the refill screen.
+7. **No view of the person's own work.** A sales person has to open two screens to find who to call and cannot see how their calls ended.
+
+## 3. Turnaround, defined
+
+A contact **turns around** when the customer has a completed bill within a window after the contact.
+
+- **Window:** a shop setting. Defaults: 7 days for a due-back refill, 14 days for a not-seen-for-a-while customer. For refills it is judged from the **due date** as well as the contact date, so "bought 8 days late, a day after the call" is shown as a late refill that the call helped, not a clean win. (Open question 1: a fixed window or the customer's own usual gap.)
+- **What counts as buying again:** for a refill audience, a bill with a chronic medicine (later, the specific medicine); for the other audiences, any bill.
+- **Result per contact:** *Came back* (days, bill value), *Waiting* (days left in the window), or *Lapsed* (window passed).
+- **Credit:** a bill is credited to the person who made the **latest** counted contact in its window, so two people never both claim it. The shared Counter login credits the acting operator, the same pattern as to-dos.
+- **Baseline:** next to the contacted return rate, show the return rate of comparable customers (same audience, same due-date range) who were **not** contacted in the period. The gap between the two is the lift. Without it the percentage flatters the follow-up.
+- **Excluded from the rate:** WRONG_NUMBER, ASKED_TO_STOP, and customers who have not consented to messages (as `contactable()` already decides).
+
+## 4. The dashboard, "My work", for Sales Staff and Counter
+
+In the order a person works. No cost, no margin, no other person's sales, and no customer details beyond what the counter already sees.
+
+1. **Call today.** Refills due and overdue, not seen for a while, second visits and dues, as one list. Each row: name, the usual medicines, days overdue, one-tap call or WhatsApp with the shop's wording. Ends in an outcome (Reached, No answer, Callback, Not interested, Bought elsewhere, Wrong number, Asked to stop) and an optional reason.
+2. **Waiting to come back.** Everyone I contacted who has not bought yet, with days left in the window. A second nudge is suggested on day 3 or 4; at the end of the window the row moves to Lapsed.
+3. **Turnaround scorecard** (this week against last week): contacts made, came back (number and percent), median days to return, sales value recovered, lapsed, and the baseline lift. Staff see their own numbers; managers see the team.
+4. **Promised to customers.** Special orders that have arrived and the customer has not been told, orders whose hold is ending, and inquiries assigned to me that are overdue. All read from existing tables.
+5. **Cannot reach.** Regular customers with no usable contact route, with a way to add a mobile or location.
+6. Existing tiles (goal ring, to-dos, parked bills) stay below.
+
+Tone: no ranking of colleagues; targets shown as colour, not league tables.
+
+## 5. Plan, in order
+
+### Step 1 - One contact log (foundation) - BUILT 2026-11-19
+As built: migration `230_one_contact_log.sql` (+ rollback) adds `source`, `due_on`, `snoozed_until`, `reason`, `refill_followup_id` to `customer_contact_log`, allows the outcomes WILL_BUY, BOUGHT_ELSEWHERE and NOT_NEEDED, and copies `refill_followup` in (a sent reminder becomes a WhatsApp SENT, the rest are calls). Tried on a copy of `rgp_qa`: applies, re-runs safely, rolls back (a contact made after the copy goes back into `refill_followup`) and re-applies. The Refills page now writes to the log (`refill.service.ts record`, with the day the refill was due) and reads its last contact and snooze from it, so it shows a contact made from the contact list ("contact list" is noted on the row), and the worklist's contact gap sees refill contacts. Customer merge moves the log, and the other readers (customer screen count, dashboard metric, recognition, weekly review, household count script) read the log's refill rows. `refill_followup` stays, unused, for one release. Not done: a Playwright check of the Refills page, and dropping `refill_followup`. A contact from the contact list does not hide a customer from the Refills list by itself (only a refill contact snoozes); it only shows who called last.
+Original plan:
+- Migration 230: extend `customer_contact_log` with `reason` (text), `due_on` (date, the refill due date when it was a refill contact), `source` ('worklist' or 'refill'), and add outcomes BOUGHT_ELSEWHERE, WILL_BUY, NOT_NEEDED to its check constraint. Copy `refill_followup` rows into it (`channel` 'CALL', `source` 'refill'). Keep `refill_followup` read-only for one release, then drop it.
+- The refill screen and the worklist both write to the one log; each shows the other's last contact ("called by Anu 2 days ago") so nobody repeats a call. The snooze rule becomes a function of the log, not a second table.
+- Tests: migration re-run and rollback on a scratch copy; both screens write the same row shape; the 7-day and consent rules unchanged.
+
+### Step 2 - Turnaround measure
+- Pure `turnaround-rules.ts` (tested): window per audience, matching a contact to the next bill, credit to the latest contact, the baseline group, the exclusions above.
+- API: `GET /customers/turnaround?from&to&user` returning per-person and per-store counts, median days, value, lapsed, and baseline. Replaces `refills.results()`.
+- Setting: window days per audience (`app_setting`, default 7 and 14).
+
+### Step 3 - "My work" dashboard
+- New widget set in the Staff and Counter views: Call today, Waiting to come back, Turnaround scorecard, Promised to customers, Cannot reach. Widget frame and refresh pattern from the dashboard kit already used.
+- Manager variant of the scorecard (team and store), behind the existing manager dashboard permission.
+- QA spec for a contacted customer who buys within the window, one who does not (lapsed), and one who was never contacted (baseline).
+
+### Step 4 - Refill accuracy (needs a decision)
+- Days of supply per product (quantity and usual dose, override per product), refills per medicine, the message naming the medicine, and a prompt to offer a longer supply.
+- Availability check: a due medicine that is out of stock or short-dated goes to the purchase suggestions before the call.
+- Needs a decision on where dose data comes from (typed once per product, taken from the prescription, or learned from repeat purchases).
+
+### Step 5 - Retry and escalation
+- A rule per audience (for example: no answer on day 3, then WhatsApp, then flag to the manager on day 7), run by the alerts engine. Reminder to the person first; automatic sending only if the shop switches it on and consent allows.
+
+### Later
+- Household-level call (one call for the family's refills), which depends on the household work.
+- Customer replies (STOP, next week, changed shop) updating the log.
+- A weekly manager review of lapsed customers using the recorded reasons.
+
+## 6. Open questions
+
+1. A fixed window (7 and 14 days) or each customer's own usual gap?
+2. Should staff see only their own scorecard, or the store's as well?
+3. Is the second nudge automatic (WhatsApp) or a reminder for the person to send?
+4. Where should dose data for step 4 come from?
+5. Should the refill screen stay as its own page once it shares the log, or become a tab of the worklist?
+
+## 7. Risks
+
+- **Merging the logs touches live data.** Run the copy on a scratch copy of the production database first (see the prod migration notes), keep `refill_followup` readable for a release, and keep the rollback.
+- **Attribution disputes.** One rule (latest counted contact), stated on the screen. Never shown as a ranking.
+- **Messaging limits.** Daily contact cap and consent stay as they are; the dashboard never bypasses them.
+- **Small numbers.** A store with few contacts will swing the percentage; show counts beside every percentage, and hide the baseline lift when either group is under about 20 customers.

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, ParseIntPipe, Param, Post, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { User } from 'src/core/decorator/user.decorator';
 import { GrievanceService } from './grievance.service';
@@ -9,6 +9,8 @@ import { REFILL_OUTCOMES, RefillService } from './refill.service';
 class FollowupDto {
   @IsIn(REFILL_OUTCOMES) outcome: string;
   @IsOptional() @IsString() @MaxLength(500) note?: string;
+  /** the day the refill was due (the list's expected_on), so a later bill can be judged against it */
+  @IsOptional() @IsDateString() due_on?: string;
 }
 
 // Business Head (all stores), Store Head and the counter staff (own stores). The counter calls and logs contacts but
@@ -34,6 +36,6 @@ export class RefillController {
 
   @Post(':customerId/followup')
   async followup(@Param('customerId', ParseIntPipe) customerId: number, @Body() dto: FollowupDto, @User() user: any) {
-    return this.service.record(await this.scopes.refillScopeFor(user), customerId, dto.outcome, dto.note);
+    return this.service.record(await this.scopes.refillScopeFor(user), customerId, dto.outcome, dto.note, dto.due_on);
   }
 }

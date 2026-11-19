@@ -67,6 +67,12 @@ export class RefillsComponent implements OnInit, OnDestroy {
     );
   }
 
+  /** the day this customer's refill was due, kept with the contact so a later bill can be judged against it */
+  private dueOf(customerId: number): string | undefined {
+    const r = (this.data?.rows || []).find((x: any) => x.customer_id === customerId);
+    return r?.expected_on ? String(r.expected_on).slice(0, 10) : undefined;
+  }
+
   openForm(customerId: number) {
     this.msgOpen = null;
     this.open = this.open === customerId ? null : customerId;
@@ -75,7 +81,7 @@ export class RefillsComponent implements OnInit, OnDestroy {
 
   save(customerId: number) {
     this.saving = true; this.formError = "";
-    this.http.post(`${environment.apiHost}/refills/${customerId}/followup`, { outcome: this.outcome, note: this.note || undefined }).subscribe(
+    this.http.post(`${environment.apiHost}/refills/${customerId}/followup`, { outcome: this.outcome, note: this.note || undefined, due_on: this.dueOf(customerId) }).subscribe(
       () => { this.saving = false; this.open = null; this.load(); },
       err => { this.saving = false; const m = err?.error?.message; this.formError = Array.isArray(m) ? m.join(" ") : (m || "Could not save."); }
     );
@@ -109,14 +115,18 @@ export class RefillsComponent implements OnInit, OnDestroy {
     if (!text) { this.msgError = "The message is empty."; return; }
     window.open(this.waLink(r.mobile, text), "_blank", "noopener");
     this.msgBusy = true; this.msgError = "";
-    this.http.post(`${environment.apiHost}/refills/${r.customer_id}/followup`, { outcome: "MESSAGED" }).subscribe(
+    this.http.post(`${environment.apiHost}/refills/${r.customer_id}/followup`, { outcome: "MESSAGED", due_on: r.expected_on ? String(r.expected_on).slice(0, 10) : undefined }).subscribe(
       () => { this.msgBusy = false; this.msgOpen = null; this.load(); },
       err => { this.msgBusy = false; const m = err?.error?.message; this.msgError = "WhatsApp was opened, but it could not be noted here. " + (Array.isArray(m) ? m.join(" ") : (m || "")); }
     );
   }
 
   waLink(mobile: string, text?: string) { return `https://wa.me/91${mobile}${text ? "?text=" + encodeURIComponent(text) : ""}`; }
-  label(value: string) { return value === "MESSAGED" ? "Message sent" : (this.outcomes.find(o => o.value === value)?.label || value); }
+  /** the last contact, from either screen: the outcomes of the one contact log */
+  label(value: string) {
+    const other: Record<string, string> = { MESSAGED: "Message sent", SENT: "Message sent", REACHED: "Spoke to them", NOT_INTERESTED: "Not interested", WRONG_NUMBER: "Wrong number", ASKED_TO_STOP: "Asked us to stop" };
+    return other[value] || this.outcomes.find(o => o.value === value)?.label || value;
+  }
   bucketClass(b: string) { return b === "OVERDUE" ? "bg-danger" : b === "UPCOMING" ? "bg-info text-dark" : "bg-secondary"; }
   get conversion(): string {
     const r = this.data?.results;

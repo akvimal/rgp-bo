@@ -104,7 +104,7 @@ with n as (
   select mobile, count(*) as members from customer
    where active and not archive and mobile is not null and mobile <> '0000000000' group by mobile having count(*) > 1)
 select count(*) as followups_on_shared_numbers
-  from refill_followup r join customer c on c.id = r.customer_id join n on n.mobile = c.mobile
+  from customer_contact_log r join customer c on c.id = r.customer_id join n on n.mobile = c.mobile
  where c.active and not c.archive;
 
 \if :{?detail}

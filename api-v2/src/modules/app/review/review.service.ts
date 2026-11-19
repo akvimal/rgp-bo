@@ -303,8 +303,8 @@ export class ReviewService {
       const usual = summariseCohort(usualRows, usualFrom, usualTo);
       const prevSum = summariseCohort(prev, prevFrom, prevTo);
       const followups = (await this.manager.query(
-        `select customer_id, to_char((created_on at time zone 'Asia/Kolkata')::date, 'YYYY-MM-DD') as d, outcome from refill_followup
-          where (created_on at time zone 'Asia/Kolkata')::date >= $1::date - 7`, [usualFrom]))
+        `select customer_id, to_char((created_on at time zone 'Asia/Kolkata')::date, 'YYYY-MM-DD') as d, outcome from customer_contact_log
+          where source = 'refill' and (created_on at time zone 'Asia/Kolkata')::date >= $1::date - 7`, [usualFrom]))
         .map((r: any) => ({ customerId: +r.customer_id, day: r.d, outcome: r.outcome }));
       return {
         prev: { ...prevSum, ...compareCohort(prevSum, usual) },

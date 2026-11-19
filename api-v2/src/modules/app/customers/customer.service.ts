@@ -145,7 +145,7 @@ export class CustomerService {
                     (select count(*) from customer_documents where customer_id = $1)::int as documents,
                     (select count(*) from customer_transaction where customer_id = $1)::int as transactions,
                     (select count(*) from grievance where customer_id = $1)::int as grievances,
-                    (select count(*) from refill_followup where customer_id = $1)::int as refills`, [id]);
+                    (select count(*) from customer_contact_log where customer_id = $1 and source = 'refill')::int as refills`, [id]);
         const history = Number(n.bills) + Number(n.documents) + Number(n.transactions) + Number(n.grievances) + Number(n.refills);
         const who = { id: c.id, name: String(c.name || '').trim(), mobile: c.mobile };
         let result: 'deleted' | 'archived';
@@ -224,7 +224,7 @@ export class CustomerService {
             const stop = mergeProblem(keep.name, rows.filter((r: any) => r.id !== keepid).map((r: any) => r.name), body?.confirmsameperson === true);
             if (stop) throw new ConflictException(stop);
             const moved: Record<string, number> = {};
-            for (const t of ['sale', 'customer_documents', 'customer_transaction', 'grievance', 'refill_followup']) {
+            for (const t of ['sale', 'customer_documents', 'customer_transaction', 'grievance', 'refill_followup', 'customer_contact_log']) {
                 const r = await tx.query(`update ${t} set customer_id = $1 where customer_id = any($2::int[])`, [keepid, mergeids]);
                 moved[t] = Array.isArray(r) ? (r[1] ?? 0) : 0;
             }
