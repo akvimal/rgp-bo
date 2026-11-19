@@ -44,6 +44,11 @@ export class CustomerRelationshipController {
   @Get('turnaround')
   turnaroundReport(@Query() q: any, @User() user: any) { return this.turnaround.report(user, q); }
 
+  /** regular customers with no usable mobile number: the ones to ask for a number */
+  @NeedsCustomers('worklist.use')
+  @Get('cannot-reach')
+  cannotReach() { return this.relations.cannotReach(); }
+
   @NeedsCustomers('worklist.use')
   @Get('summary')
   summary() { return this.relations.summary(); }

@@ -13,6 +13,8 @@ import { ConfirmService } from "../shared/confirm.service";
 import { CustomersModule } from "./customers/customers.module";
 import { DashboardComponent } from "./dashboard.component";
 import { StaffViewComponent } from "./dashboard-views/staff-view.component";
+import { MyWorkComponent } from "./dashboard-views/my-work.component";
+import { TurnaroundCardComponent } from "./dashboard-views/turnaround-card.component";
 import { OwnerInsightsComponent } from "./dashboard-views/owner-insights.component";
 import { HealthFindingsComponent } from "./dashboard-views/health-findings.component";
 import { SalesPatternsComponent } from "./dashboard-views/sales-patterns.component";
@@ -201,6 +203,8 @@ import { FeedbackDialogComponent } from "./feedback/feedback-dialog.component";
       SecuredComponent,
       DashboardComponent,
       StaffViewComponent,
+      MyWorkComponent,
+      TurnaroundCardComponent,
       OwnerInsightsComponent,
       HealthFindingsComponent,
       SalesPatternsComponent,

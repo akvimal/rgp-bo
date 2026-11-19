@@ -1,6 +1,6 @@
 # Refill and follow-up: one contact log, a turnaround measure, and a "My work" dashboard for sales staff
 
-Status: **planned 2026-11-19; steps 1 (one contact log) and 2 (turnaround measure) built 2026-11-19; steps 3 to 5 not built.** Asked for: a sales-staff dashboard with refill reminders, follow-ups and turnaround. Clarified: **turnaround = the contacted customer bought again and went back to the normal course.** Follow-up review also asked for gaps in the refill system, which has grown into a small CRM.
+Status: **planned 2026-11-19; steps 1 (one contact log), 2 (turnaround measure) and 3 (dashboard) built 2026-11-19; steps 4 and 5 not built.** Asked for: a sales-staff dashboard with refill reminders, follow-ups and turnaround. Clarified: **turnaround = the contacted customer bought again and went back to the normal course.** Follow-up review also asked for gaps in the refill system, which has grown into a small CRM.
 
 ## 1. What exists today (read from the code)
 
@@ -64,7 +64,10 @@ Original plan:
 - API: `GET /customers/turnaround?from&to&user` returning per-person and per-store counts, median days, value, lapsed, and baseline. Replaces `refills.results()`.
 - Setting: window days per audience (`app_setting`, default 7 and 14).
 
-### Step 3 - "My work" dashboard
+### Step 3 - "My work" dashboard - BUILT 2026-11-19
+As built: `dashboard-views/my-work.component.ts` at the top of the Staff and Counter views (under the needs strip) and `turnaround-card.component.ts`, used there and in the owner and manager dashboard (Customers and service row; only the owner view may change the windows). Widgets: **Call today** (the contact worklist's count by reason and the first six names, linking to the contact list and Refills; no mobile numbers are shown), **Waiting to come back** (my contacts of the last 30 days still inside the window, days left, and those whose window just passed), **the scorecard** (last 7 days against the 7 before: contacts, came back with the count beside the percentage, usual days to return, sales value, waiting, did not come back; a note when fewer than 5 are decided; the team table and the two window inputs for managers), **Promised to customers** (orders that arrived and the customer is not told, holds ending within 2 days, my overdue inquiries) and **Regulars we cannot reach** (new `GET /customer-relations/cannot-reach`: three or more visits in a year and no usable mobile, most valuable first, with an Add number link). Each widget loads on its own and stays out when the role may not read it. The staff view's footer now says customer names appear only in the person's own follow-ups.
+Checked: tsc and `ng build`; on a scratch copy of `rgp_qa` with synthetic contacts the Sales Staff view in the browser showed all five widgets with the right numbers (28 to call, 1 waiting, 4 contacted and 3 came back in 7 days, 1 customer with no mobile). Not seen in a browser: the manager variant (the sign-in did not complete); its data is the API's team scope, checked in step 2. Not done: the baseline of uncontacted customers, a Playwright spec, inline outcome buttons on the dashboard (the work is still done on the contact list), phone-width and dark-theme checks.
+Original plan:
 - New widget set in the Staff and Counter views: Call today, Waiting to come back, Turnaround scorecard, Promised to customers, Cannot reach. Widget frame and refresh pattern from the dashboard kit already used.
 - Manager variant of the scorecard (team and store), behind the existing manager dashboard permission.
 - QA spec for a contacted customer who buys within the window, one who does not (lapsed), and one who was never contacted (baseline).

@@ -306,6 +306,22 @@ export class CustomerRelationshipService {
     return { ok: true };
   }
 
+  /**
+   * Regular customers (three or more visits in the last year) that no reminder can reach because there is no usable mobile number: the ones to ask for a
+   * number at the counter. The NIL walk-in is not a customer. Most valuable first.
+   */
+  async cannotReach() {
+    const rows = await this.manager.query(
+      `select c.id, c.name, c.locality, count(distinct s.bill_date::date)::int as visits, max(s.bill_date)::date::text as last_visit, coalesce(sum(s.total), 0)::float as spend12,
+              count(*) over ()::int as total
+         from customer c join sale s on s.customer_id = c.id and s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= current_date - 365
+        where c.active and not c.archive and coalesce(c.mobile, '') <> $1 and (c.mobile is null or c.mobile !~ '^[0-9]{10}$')
+        group by c.id, c.name, c.locality
+       having count(distinct s.bill_date::date) >= 3
+        order by sum(s.total) desc limit 20`, [NIL_MOBILE]);
+    return { total: rows[0]?.total ?? 0, rows: rows.map(({ total, ...r }: any) => r) };
+  }
+
   // ------------------------------------------------------------------------------------------------ the contact log
   async contacts(customerId: number) {
     return this.manager.query(

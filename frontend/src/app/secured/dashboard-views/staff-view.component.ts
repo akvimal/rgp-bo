@@ -12,6 +12,7 @@ import { MyRecognition, RecognitionService } from "../recognition/recognition.se
     selector: 'app-staff-view',
     template: `
     <app-needs-strip [items]="needs"></app-needs-strip>
+    <app-my-work [shared]="shared"></app-my-work>
 
     <section class="alert alert-success d-flex flex-wrap align-items-center gap-3" role="status" *ngIf="celebrating.length" data-testid="sv-celebration">
       <div class="flex-grow-1"><strong>{{celebrating[0].title}}</strong><div>{{celebrating[0].text}}</div></div>
@@ -143,7 +144,7 @@ import { MyRecognition, RecognitionService } from "../recognition/recognition.se
       </div>
     </div>
     <div class="alert alert-danger" *ngIf="error">{{error}}</div>
-    <div class="small text-muted">This page never shows cost, margin, purchases, other people's sales or customer lists.</div>`,
+    <div class="small text-muted">This page never shows cost, margin, purchases or other people's sales. Customer names appear only in your own follow-ups, never their numbers.</div>`,
     styles: [`
       .sv-ring { position: relative; width: 140px; height: 140px; border-radius: 50%; flex: 0 0 140px; }
       .sv-ring-in { position: absolute; inset: 13px; border-radius: 50%; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; }

@@ -101,6 +101,11 @@ export class CustomersService {
         return this.http.get<any>(`${this.relurl}/turnaround`, { params });
     }
 
+    /** regular customers with no usable mobile number: the ones to ask for a number */
+    cannotReach(){
+        return this.http.get<any>(`${this.relurl}/cannot-reach`);
+    }
+
     saveRelSettings(body:{activeDays?:number, contactCapDays?:number, turnaroundRefillDays?:number, turnaroundLapsedDays?:number}){
         return this.http.put<any>(`${this.relurl}/settings`, body);
     }
