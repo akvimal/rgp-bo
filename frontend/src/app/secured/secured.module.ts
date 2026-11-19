@@ -14,6 +14,7 @@ import { CustomersModule } from "./customers/customers.module";
 import { DashboardComponent } from "./dashboard.component";
 import { StaffViewComponent } from "./dashboard-views/staff-view.component";
 import { MyWorkComponent } from "./dashboard-views/my-work.component";
+import { FollowupsPageComponent } from "./dashboard-views/followups-page.component";
 import { TurnaroundCardComponent } from "./dashboard-views/turnaround-card.component";
 import { OwnerInsightsComponent } from "./dashboard-views/owner-insights.component";
 import { HealthFindingsComponent } from "./dashboard-views/health-findings.component";
@@ -128,6 +129,7 @@ const routes: Routes = [
       loadChildren: () => import('./pricing/pricing.module').then(m => m.PricingModule)
     },
     { path: 'price-changes', redirectTo: 'pricing/changes', pathMatch: 'full' },
+    { path: 'my-work', component: FollowupsPageComponent, canActivate:[AuthGuard] },
     {
       path: 'todos', canActivate:[AuthGuard],
       loadChildren: () => import('./todos/todos.module').then(m => m.TodosModule)
@@ -204,6 +206,7 @@ import { FeedbackDialogComponent } from "./feedback/feedback-dialog.component";
       DashboardComponent,
       StaffViewComponent,
       MyWorkComponent,
+      FollowupsPageComponent,
       TurnaroundCardComponent,
       OwnerInsightsComponent,
       HealthFindingsComponent,

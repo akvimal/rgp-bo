@@ -46,6 +46,7 @@ function allMenuGroups(a: MenuAccess): MenuGroup[] {
     { key: 'sell', label: 'Sell', items: [
       item('nav-sales', 'Sales and billing', 'sales', 'bi-cash-coin', ['sales']),
       item('nav-customers', 'Customers', 'customers/cust/list', 'bi-people', ['customers.read']),
+      item('nav-my-work', 'My follow-ups', 'my-work', 'bi-person-lines-fill', ['customers.read', 'refills.view']),
       item('nav-commitments', 'Customer orders', 'commitments', 'bi-bag-heart', ['customerorders.view', 'customerorders.manage']),
       item('nav-refills', 'Refills', 'quality/refills', 'bi-telephone-outbound', ['refills.view']),
       item('nav-grievances', 'Complaints', 'quality/grievances', 'bi-exclamation-octagon', ['grievances.view']),
@@ -117,7 +118,7 @@ export function isCounterRole(roleName: string | null | undefined): boolean {
 /** Few headings, the selling work first. The Dashboard stands alone at the top (its group has no heading). */
 const COUNTER_LAYOUT: { key: string; label: string; ids: string[] }[] = [
   { key: 'home', label: '', ids: ['nav-dashboard', 'nav-todos', 'nav-checklists', 'nav-calendar'] },
-  { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-commitments', 'nav-refills', 'nav-grievances', 'nav-inquiries', 'nav-whatsapp'] },
+  { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-my-work', 'nav-commitments', 'nav-refills', 'nav-grievances', 'nav-inquiries', 'nav-whatsapp'] },
   { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-pricing', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
   { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance', 'nav-discrepancies', 'nav-shifts', 'nav-cash-book', 'nav-vault'] },
   { key: 'people', label: 'People', ids: ['nav-hr', 'nav-leave-approvals', 'nav-attendance-punch', 'nav-attendance-review', 'nav-kpi-rate', 'nav-staff-credit', 'nav-staff-sales'] },

@@ -55,6 +55,13 @@ describe('the pages that are a rule, not a path some role carries', () => {
     ['/secure/notifications', '/secure/app-guide', '/secure/help', '/secure/help/anything', '/secure/knowledge'].forEach((u) => expect(pageRuleDecides(u, ctx())).toBeTrue());
   });
 
+  it('open My follow-ups for a role that reads customers or works the refills, and for no one else', () => {
+    expect(pageRuleDecides('/secure/my-work', ctx(['customers.read']))).toBeTrue();
+    expect(pageRuleDecides('/secure/my-work', ctx(['refills.view']))).toBeTrue();
+    expect(pageRuleDecides('/secure/my-work', ctx(['sales.add']))).toBeFalse();
+    expect(pageRuleDecides('/secure/my-work/x', ctx(['customers.read']))).toBeNull();
+  });
+
   it('match the page itself, not look-alikes or what is under an exact page', () => {
     expect(pageRuleDecides('/secure/notifications/x', ctx())).toBeNull();
     expect(pageRuleDecides('/secure/app-guide/x', ctx())).toBeNull();

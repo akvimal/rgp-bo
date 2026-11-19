@@ -54,6 +54,8 @@ const PAGE_RULES: Array<{ path: string; exact?: boolean; allow: (c: PageContext)
   { path: '/secure/help', allow: () => true },
   // the weekly knowledge check is each person's own
   { path: '/secure/knowledge', exact: true, allow: () => true },
+  // My follow-ups (the refill and call-back work): for whoever can read customers or work the refills; no role carries this path
+  { path: '/secure/my-work', exact: true, allow: (c) => c.has('customers.read') || c.has('refills.view') },
   // the financial dashboard (money by category, cost ratios, cash, stock value): the same people the menu shows it to; no role carries this path
   { path: '/secure/financials', exact: true, allow: (c) => c.has('finance.view') || c.has('expenses.approve') },
   // Shifts, Cash and Vault share the Stock & Cash resource with the stock pages; they open only for a role that runs or manages a cash drawer

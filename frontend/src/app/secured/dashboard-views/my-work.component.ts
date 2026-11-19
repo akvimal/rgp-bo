@@ -14,7 +14,6 @@ import { istDay } from "./turnaround-card.component";
     selector: 'app-my-work',
     template: `
     <section aria-label="My work" data-testid="mw">
-      <h2 class="h5 mb-2">{{shared ? 'Follow-ups for this counter' : 'My follow-ups'}}</h2>
       <div class="row g-3 mb-3">
         <div class="col-lg-6" *ngIf="call as c">
           <section class="card h-100" aria-label="Call today" data-testid="mw-call">
@@ -50,7 +49,7 @@ import { istDay } from "./turnaround-card.component";
       </div>
 
       <div class="row g-3 mb-3">
-        <div class="col-lg-6"><app-turnaround-card [shared]="shared"></app-turnaround-card></div>
+        <div class="col-lg-6"><app-turnaround-card [shared]="shared" [canSetWindows]="canSetWindows"></app-turnaround-card></div>
         <div class="col-lg-6">
           <div class="row g-3">
             <div class="col-12" *ngIf="promised as p">
@@ -90,6 +89,8 @@ import { istDay } from "./turnaround-card.component";
 export class MyWorkComponent implements OnInit {
     /** a shared counter login: the wording is the counter's */
     @Input() shared = false;
+    /** the owner may change the return windows on the scorecard */
+    @Input() canSetWindows = false;
     call: { total: number; counts: { label: string; n: number }[]; top: any[] } | null = null;
     back: { waiting: any[]; lapsed: any[] } | null = null;
     promised: { arrived: any[]; holdEnding: any[]; overdueInquiries: number; showOrders: boolean; showInquiries: boolean } | null = null;

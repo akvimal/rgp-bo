@@ -126,6 +126,12 @@ export const PAGES: PageGuide[] = [
     watch: ['An advance is counted in the shift it was taken in, so it tallies with that shift\'s drawer or terminal.', 'The customer must be on file: staff call them when the goods arrive.'], keywords: 'customer order advance special order commitment hold collect',
   },
   {
+    id: 'nav-my-work', group: 'sell', title: 'My follow-ups', route: '/secure/my-work',
+    purpose: 'The refill and call-back work in one place: who to contact today, who was contacted and has not come back, what was promised to customers, and the regulars no reminder can reach.',
+    tasks: ['See who to contact today and open the contact list.', 'See who you contacted and how long they have to come back.', 'Read your scorecard: how many contacted customers bought again.', 'Add a mobile number for a regular customer who has none.'],
+    who: 'Counter staff, and managers (who see the team).', keywords: 'follow up call back refill reminder turnaround scorecard contact',
+  },
+  {
     id: 'nav-refills', group: 'sell', title: 'Refills', route: '/secure/quality/refills',
     purpose: 'Regular customers whose chronic medicine is about to run out, so they can be called before they do.',
     tasks: ['See who is due, with what and when.', 'Call or message them and record what came of it.'],

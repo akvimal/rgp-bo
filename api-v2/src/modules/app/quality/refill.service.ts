@@ -70,7 +70,6 @@ export class RefillService {
          left join app_user u on u.id = fu.created_by
         where per.visits >= 3 and per.med is not null and per.med <= 150
           and current_date - per.last_d <= 365
-          and per.last_d + round(per.med)::int <= current_date + 7
           and ($1::int[] is null or lv.store_id = any($1::int[]))
           and ($2::int is null or lv.store_id = $2::int)
         order by value.avg_val desc`,
@@ -101,7 +100,9 @@ export class RefillService {
    * The list above works from the days between visits. This narrows it to the medicine: each chronic medicine a customer buys gets its own run-out date
    * (from their own pattern and the units bought, or the product's "days one unit lasts"), the customer is due when the earliest runs out, and the row names
    * the medicines due and whether there is stock to sell them. A customer none of whose medicines has an estimate keeps the visit-gap date. Edits `rows`
-   * in place; a customer whose medicines last longer than the visit gap suggested drops out of the list.
+   * in place. The query returns every customer who qualifies (three chronic visits and so on); the "due within a week" test is made here, on the medicine's
+   * date where there is one, else the visit-gap date. So a customer whose medicines last longer than the visit gap suggested drops out, and one whose
+   * visits look regular but whose one medicine is running out comes in.
    */
   private async refineByMedicine(rows: any[]) {
     if (!rows.length) return;
@@ -147,7 +148,10 @@ export class RefillService {
       const r = rows[i];
       const d = picked.get(r.customer_id);
       r.basis = 'visits'; r.medicines = [];
-      if (!d) continue;                                                // no estimate for any medicine: the visit-gap date stands
+      if (!d) {                                                         // no estimate for any medicine: the visit-gap date stands
+        if (dayIndexOfText(r.expected_on) > today + 7) rows.splice(i, 1);
+        continue;
+      }
       if (d.expectedDay > today + 7) { rows.splice(i, 1); continue; }  // their medicines last well past the visit gap
       r.basis = d.due[0].basis;
       r.expected_on = dayTextOfIndex(d.expectedDay);
