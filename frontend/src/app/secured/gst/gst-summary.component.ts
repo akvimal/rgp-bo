@@ -33,7 +33,14 @@ import { GstApiService } from "./gst-api.service";
         <div data-testid="gsm-report">
           <div class="d-flex justify-content-between align-items-center mb-1">
             <div class="fw-semibold">Sales and returns <span class="badge bg-secondary ms-1" *ngIf="rp.snapshot">as it stood when the month was closed</span></div>
-            <button class="btn btn-sm btn-outline-secondary" type="button" (click)="downloadReport()" data-testid="gsm-report-xlsx">Excel</button>
+            <span>
+              <button class="btn btn-sm btn-outline-secondary me-1" type="button" (click)="downloadGstr1()" [disabled]="!sum.registered" title="The GSTR-1 file for the GST Offline Tool: consumer sales and nil-rated" data-testid="gsm-gstr1-json">GSTR-1 JSON</button>
+              <button class="btn btn-sm btn-outline-secondary" type="button" (click)="downloadReport()" data-testid="gsm-report-xlsx">Excel</button>
+            </span>
+          </div>
+          <div class="alert alert-warning py-2 small" *ngIf="gstr1Notes.length" data-testid="gsm-gstr1-notes">
+            <div class="fw-semibold">The GSTR-1 file was made with consumer sales and nil-rated only. Not in it:</div>
+            <ul class="mb-0"><li *ngFor="let n of gstr1Notes">{{n}}</li></ul>
           </div>
 
           <table class="table table-sm mb-3" data-testid="gsm-supplies">
@@ -248,7 +255,7 @@ export class GstSummaryComponent implements OnInit {
   }
 
   open(month: string) {
-    this.month = month; this.sum = null; this.hsn = null; this.kinds = null; this.adj = null; this.itemsOpen = false; this.items = null; this.error = ''; this.acceptHsn = false; this.arn = ''; this.filedOn = ''; this.reason = '';
+    this.month = month; this.gstr1Notes = []; this.sum = null; this.hsn = null; this.kinds = null; this.adj = null; this.itemsOpen = false; this.items = null; this.error = ''; this.acceptHsn = false; this.arn = ''; this.filedOn = ''; this.reason = '';
     this.api.monthlySummary(month).subscribe((s: any) => this.sum = s, (e) => this.fail(e, 'Could not load the summary.'));
     this.api.hsnSummary(month).subscribe((h: any) => this.hsn = h, () => {});
     this.api.supplyKinds(month).subscribe((k: any) => this.kinds = k, () => {});
@@ -277,6 +284,19 @@ export class GstSummaryComponent implements OnInit {
       this.api.salesReport(this.month).subscribe((r: any) => { if (this.sum) this.sum.report = r; }, () => {});
       this.api.supplyKinds(this.month).subscribe((x: any) => this.kinds = x, () => {});
     }, (e) => this.fail(e, 'Could not save the kind.'));
+  }
+
+  gstr1Notes: string[] = [];
+
+  /** the GSTR-1 file for the GST Offline Tool; what it leaves out is shown beside the button */
+  downloadGstr1() {
+    this.error = this.message = ''; this.gstr1Notes = [];
+    this.api.gstr1Preview(this.month).subscribe((p: any) => {
+      this.gstr1Notes = p.notIncluded || [];
+      this.api.file('gstr1-json', this.month).subscribe((b: Blob) => {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `GSTR1_${p.gstin}_${this.month.slice(5, 7)}${this.month.slice(0, 4)}.json`; a.click(); URL.revokeObjectURL(a.href);
+      }, (e) => this.fail(e, 'Could not download the GSTR-1 file.'));
+    }, (e) => this.fail(e, 'Could not make the GSTR-1 file.'));
   }
 
   downloadReport() {

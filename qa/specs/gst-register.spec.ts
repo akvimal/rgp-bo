@@ -192,6 +192,50 @@ test.describe('GST register and summary @p1', () => {
     expect((await api.request('GET', `/gst/sales-items?month=${month}&rate=abc`, undefined, MGR)).status).toBe(400);
   });
 
+  test('GRG-11 the GSTR-1 file carries consumer sales and nil-rated in the offline tool layout, and says what it leaves out @happy', async ({ api }) => {
+    await unregister(api);
+    expect((await api.request('GET', `/gst/gstr1-json/preview?month=${month}`, undefined, MGR)).status).toBe(400);     // not registered: no return to make
+    expect((await register(api, live())).status).toBeLessThan(300);
+    try {
+      // sell at the rate the server says is current for the product (the seed's rates move), so the spec does not depend on the rate master
+      const sellAt = async (s: any, over: Record<string, any> = {}) => {
+        let rate = 5;
+        for (let i = 0; i < 2; i++) {
+          const b: any = bill(s, over);
+          const total = Math.round(100 * (1 + rate / 100) * 100) / 100;
+          Object.assign(b, { cashamt: total, total }); Object.assign(b.items[0], { taxpcnt: rate, total });
+          const r = await api.request('POST', '/sales', b, SALES);
+          if (r.status < 300) return rate;
+          const cur = r.body?.lines?.[0]?.current;
+          expect(r.body?.code, JSON.stringify(r.body)).toBe('GST_RATE_CHANGED');
+          rate = cur;
+        }
+        throw new Error('the rate kept changing');
+      };
+      const rate = await sellAt(POOL[0]);
+      await sellAt(POOL[1], { buyergstin: OTHER_STATE });
+      const p = (await api.request('GET', `/gst/gstr1-json/preview?month=${month}`, undefined, MGR)).body;
+      const row = p.b2cs.find((r: any) => r.rt === rate && r.sply_ty === 'INTRA');
+      expect(row, JSON.stringify(p.b2cs)).toMatchObject({ typ: 'OE', pos: '33' });
+      expect(row.txval).toBeGreaterThanOrEqual(100);
+      expect(row.camt).toBeCloseTo((row.txval * rate) / 200, 1);
+      expect(row.samt).toBeCloseTo(row.camt, 2);
+      expect(p.nil.map((n: any) => n.sply_ty)).toEqual(['INTRB2B', 'INTRAB2B', 'INTRB2C', 'INTRAB2C']);
+      expect(p.notIncluded.join(' ')).toMatch(/buyers with a GSTIN/);
+      const res = await get(`/gst/gstr1-json?month=${month}`);
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-disposition')).toContain(`GSTR1_${MINE}_${month.slice(5, 7)}${month.slice(0, 4)}.json`);
+      const file = await res.json();
+      expect(file).toMatchObject({ gstin: MINE, fp: `${month.slice(5, 7)}${month.slice(0, 4)}`, version: 'GST3.2.4' });
+      expect(file.b2cs).toEqual(p.b2cs);
+      expect(Array.isArray(file.hsn.hsn_b2c) && Array.isArray(file.doc_issue.doc_det)).toBe(true);
+      expect((await api.request('GET', '/gst/gstr1-json/preview?month=bad', undefined, MGR)).status).toBe(400);
+      expect((await api.request('GET', `/gst/gstr1-json/preview?month=${month}`, undefined, SALES)).status).toBeGreaterThanOrEqual(400);
+    } finally {
+      await unregister(api);
+    }
+  });
+
   test('GRG-9 the adjustments (write-offs, vendor returns, credits) are listed by rate, read-only @happy', async ({ api }) => {
     const a = (await api.request('GET', `/gst/adjustments?month=${month}`, undefined, MGR)).body;
     for (const k of ['write_offs', 'vendor_passes', 'vendor_returns', 'credits_applied']) {

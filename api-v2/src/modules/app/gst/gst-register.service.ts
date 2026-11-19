@@ -10,6 +10,7 @@ import { HsnLine, closeProblem, findGaps, groupHsn, hsnIssues, isMonth, monthBou
 import { halves, isInterState, splitBill } from './gst-tax';
 import { AdjRow, buildAdjustments } from './gst-adjustments';
 import { ItemLine, ItemRow, itemRows, itemTotals } from './gst-sales-items';
+import { JsonBill, JsonNil, JsonNote, buildGstr1Json } from './gst-gstr1-json';
 import { KIND_LABEL, ReportBill, ReportNote, SupplyKind, asKind, buildSalesReport, kindOf } from './gst-sales-report';
 
 const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
@@ -533,6 +534,28 @@ export class GstRegisterService {
     this.itemsSheet(wb, (await this.salesItems(user, month)).items);
     await this.audit.record({ userId: user.id, action: 'gst.sales_report_exported', entityType: 'gst_filing_month', entityId: null, summary: `Monthly sales report for ${rep.label} exported`, details: { month: rep.month } });
     return { buffer: Buffer.from(await wb.xlsx.writeBuffer()), filename: `monthly-sales-report-${rep.month}.xlsx`, contentType: XLSX };
+  }
+
+  /** the month's GSTR-1 file for the GST Offline Tool (consumer sales and nil-rated so far), and what it leaves out */
+  async gstr1(user: any, monthRaw: any) {
+    const month = this.month(monthRaw);
+    const reg = await this.register(user, month);
+    if (!reg.registered || !reg.gstin) throw new BadRequestException('The business is not registered for GST, so there is no GSTR-1 to make.');
+    const report = await this.salesReport(user, month, undefined, reg);
+    const bills: JsonBill[] = reg.invoices.filter((i: any) => i.kind === 'TAX').map((i: any) => ({
+      docNo: i.doc_no, buyerGstin: i.buyer_gstin, pos: i.place_of_supply, inter: !!i.inter_state, total: i.total, rates: i.rates,
+    }));
+    const notes: JsonNote[] = reg.credit_notes.map((c: any) => ({
+      noteNo: c.note_no, buyerGstin: c.buyer_gstin, pos: c.place_of_supply, inter: isInterState(c.place_of_supply, reg.state_code), rate: c.rate, taxable: c.taxable, cgst: c.cgst, sgst: c.sgst, igst: c.igst,
+    }));
+    const nil: JsonNil[] = (report.nil || []).map((n: any) => ({ kind: n.kind, buyer: n.buyer, place: n.place, net: n.net }));
+    return { month, label: reg.label, gstin: reg.gstin, ...buildGstr1Json({ gstin: reg.gstin, month, stateCode: reg.state_code || reg.gstin.slice(0, 2), bills, notes, nil }) };
+  }
+
+  async gstr1File(user: any, month: any) {
+    const g = await this.gstr1(user, month);
+    await this.audit.record({ userId: user.id, action: 'gst.gstr1_json_exported', entityType: 'gst_filing_month', entityId: null, summary: `GSTR-1 file (consumer sales, nil-rated) for ${g.label} exported`, details: { month: g.month, ...g.totals } });
+    return { buffer: Buffer.from(JSON.stringify(g.file, null, 2), 'utf8'), filename: `GSTR1_${g.gstin}_${g.file.fp}.json`, contentType: 'application/json' };
   }
 
   async salesXlsx(user: any, month: any) {
