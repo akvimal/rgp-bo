@@ -1,7 +1,7 @@
 /**
  * GST demo data for the local stack: registers the business for GST (as of today) and leaves a month's worth of tax invoices that exercise the GSTR-1
- * export (GST > Monthly summary > GSTR-1 JSON): consumer sales at 5, 12 and 18%, an inter-state consumer sale, B2B sales (in-state and inter-state),
- * 0% sales (nil-rated and exempt), and a credit note from a settled return.
+ * export (B2B, consumer sales and nil-rated) (GST > Monthly summary > GSTR-1 JSON): consumer sales at 5, 12 and 18%, an inter-state consumer sale, B2B sales (in-state and inter-state),
+ * 0% sales (nil-rated and exempt), and credit notes from settled returns (one off a consumer bill, two off B2B bills).
  *
  *   node seed/gst-demo.mjs            (QA_API_URL defaults to http://localhost:3000; password admin123)
  *
@@ -77,13 +77,15 @@ made.push(['nil-rated, consumer', 0, await sell(nilItem, 0, {}, 2)]);
 made.push(['exempt, consumer', 0, await sell(exemptItem, 0)]);
 made.push(['nil-rated, B2B', 0, await sell(nilItem, 0, { buyergstin: BUYER_IN })]);
 
-// 4. a settled return of a consumer bill: a credit note at the bill's own rate
-const back = made.find(([k, r]) => k === 'consumer' && r === 18)[2];
-const ret = must(await call(SALES, 'POST', '/sales/returns', [{ saleitemid: back.line.id, qty: 1, status: 'NEW', reason: 'Defective' }]), 'return');
-must(await call(SALES, 'PUT', '/sales/returns', { id: ret[0].id, status: 'ADJUSTED', refundmode: 'CREDIT' }), 'settle return');
+// 4. settled returns: a credit note at the bill's own rate. A consumer bill's note comes off the consumer sales; a B2B bill's note is listed as a credit note.
+for (const [kind, rate] of [['consumer', 18], ['B2B, in-state', 12], ['B2B, inter-state', 5]]) {
+  const back = made.find(([k, r]) => k === kind && r === rate)[2];
+  const ret = must(await call(SALES, 'POST', '/sales/returns', [{ saleitemid: back.line.id, qty: 1, status: 'NEW', reason: 'Defective' }]), 'return');
+  must(await call(SALES, 'PUT', '/sales/returns', { id: ret[0].id, status: 'ADJUSTED', refundmode: 'CREDIT' }), 'settle return');
+}
 
 for (const [kind, rate, b] of made) console.log(`  ${b.sale.gstinvoiceno}  ${kind} @ ${rate}%`);
 const month = today.slice(0, 7);
 const p = (await call(MGR, 'GET', `/gst/gstr1-json/preview?month=${month}`)).body;
-console.log(`\nGSTR-1 file for ${month}: consumer sales taxable ${p.totals.b2cs_taxable}, tax ${p.totals.b2cs_tax}, nil/exempt/non-GST ${p.totals.nil_total}`);
+console.log(`\nGSTR-1 file for ${month}: B2B ${p.totals.b2b_invoices} invoice(s), taxable ${p.totals.b2b_taxable}, tax ${p.totals.b2b_tax}; credit notes ${p.totals.cdnr_notes}, taxable ${p.totals.cdnr_taxable}, tax ${p.totals.cdnr_tax}; consumer sales taxable ${p.totals.b2cs_taxable}, tax ${p.totals.b2cs_tax}, nil/exempt/non-GST ${p.totals.nil_total}`);
 console.log('Not in the file:', p.notIncluded);

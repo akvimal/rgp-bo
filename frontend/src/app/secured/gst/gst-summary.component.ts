@@ -34,12 +34,12 @@ import { GstApiService } from "./gst-api.service";
           <div class="d-flex justify-content-between align-items-center mb-1">
             <div class="fw-semibold">Sales and returns <span class="badge bg-secondary ms-1" *ngIf="rp.snapshot">as it stood when the month was closed</span></div>
             <span>
-              <button class="btn btn-sm btn-outline-secondary me-1" type="button" (click)="downloadGstr1()" [disabled]="!sum.registered" title="The GSTR-1 file for the GST Offline Tool: consumer sales and nil-rated" data-testid="gsm-gstr1-json">GSTR-1 JSON</button>
+              <button class="btn btn-sm btn-outline-secondary me-1" type="button" (click)="downloadGstr1()" [disabled]="!sum.registered" title="The GSTR-1 file for the GST Offline Tool: B2B, credit notes, consumer sales and nil-rated" data-testid="gsm-gstr1-json">GSTR-1 JSON</button>
               <button class="btn btn-sm btn-outline-secondary" type="button" (click)="downloadReport()" data-testid="gsm-report-xlsx">Excel</button>
             </span>
           </div>
           <div class="alert alert-warning py-2 small" *ngIf="gstr1Notes.length" data-testid="gsm-gstr1-notes">
-            <div class="fw-semibold">The GSTR-1 file was made with consumer sales and nil-rated only. Not in it:</div>
+            <div class="fw-semibold">The GSTR-1 file holds B2B, credit notes, consumer sales and nil-rated. Not in it:</div>
             <ul class="mb-0"><li *ngFor="let n of gstr1Notes">{{n}}</li></ul>
           </div>
 

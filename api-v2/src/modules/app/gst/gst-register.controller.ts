@@ -29,7 +29,7 @@ export class GstRegisterController {
   @Get('sales-report') async report(@Query('month') month: string, @Query('store') store: string, @User() u: any) { await this.assertAllowed(u); return this.register.salesReport(u, month, store); }
   @Get('sales-report/xlsx') async reportXlsx(@Query('month') month: string, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertAllowed(u, 'export'); return this.file(res, await this.register.salesReportXlsx(u, month)); }
   /** what the GSTR-1 file would hold (totals) and what it leaves out, before it is downloaded */
-  @Get('gstr1-json/preview') async gstr1Preview(@Query('month') month: string, @User() u: any) { await this.assertAllowed(u); const { file, ...rest } = await this.register.gstr1(u, month); return { ...rest, b2cs: file.b2cs, nil: file.nil.inv }; }
+  @Get('gstr1-json/preview') async gstr1Preview(@Query('month') month: string, @User() u: any) { await this.assertAllowed(u); const { file, ...rest } = await this.register.gstr1(u, month); return { ...rest, b2b: file.b2b, cdnr: file.cdnr, b2cs: file.b2cs, nil: file.nil.inv }; }
   @Get('gstr1-json') async gstr1(@Query('month') month: string, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertAllowed(u, 'export'); return this.file(res, await this.register.gstr1File(u, month)); }
   @Get('sales-items') async items(@Query('month') month: string, @Query('rate') rate: string, @Query('store') store: string, @User() u: any) {
     await this.assertAllowed(u);

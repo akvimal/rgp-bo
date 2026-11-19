@@ -192,7 +192,7 @@ test.describe('GST register and summary @p1', () => {
     expect((await api.request('GET', `/gst/sales-items?month=${month}&rate=abc`, undefined, MGR)).status).toBe(400);
   });
 
-  test('GRG-11 the GSTR-1 file carries consumer sales and nil-rated in the offline tool layout, and says what it leaves out @happy', async ({ api }) => {
+  test('GRG-11 the GSTR-1 file carries B2B, credit notes, consumer sales and nil-rated in the offline tool layout, and says what it leaves out @happy', async ({ api }) => {
     await unregister(api);
     expect((await api.request('GET', `/gst/gstr1-json/preview?month=${month}`, undefined, MGR)).status).toBe(400);     // not registered: no return to make
     expect((await register(api, live())).status).toBeLessThan(300);
@@ -205,15 +205,20 @@ test.describe('GST register and summary @p1', () => {
           const total = Math.round(100 * (1 + rate / 100) * 100) / 100;
           Object.assign(b, { cashamt: total, total }); Object.assign(b.items[0], { taxpcnt: rate, total });
           const r = await api.request('POST', '/sales', b, SALES);
-          if (r.status < 300) return rate;
+          if (r.status < 300) return { rate, sale: r.body };
           const cur = r.body?.lines?.[0]?.current;
           expect(r.body?.code, JSON.stringify(r.body)).toBe('GST_RATE_CHANGED');
           rate = cur;
         }
         throw new Error('the rate kept changing');
       };
-      const rate = await sellAt(POOL[0]);
-      await sellAt(POOL[1], { buyergstin: OTHER_STATE });
+      const { rate } = await sellAt(POOL[0]);
+      const { rate: bRate, sale: bSale } = await sellAt(POOL[1], { buyergstin: OTHER_STATE });
+      // the buyer sends one back: a credit note to a buyer with a GSTIN, which goes in cdnr
+      const bLine = (await api.request('GET', `/sales/${bSale.id}`, undefined, MGR)).body.items[0];
+      const ret = await raise(api, bLine);
+      expect(ret.status, JSON.stringify(ret.body)).toBeLessThan(300);
+      expect((await settle(api, ret.body[0].id)).status).toBeLessThan(300);
       const p = (await api.request('GET', `/gst/gstr1-json/preview?month=${month}`, undefined, MGR)).body;
       const row = p.b2cs.find((r: any) => r.rt === rate && r.sply_ty === 'INTRA');
       expect(row, JSON.stringify(p.b2cs)).toMatchObject({ typ: 'OE', pos: '33' });
@@ -221,13 +226,32 @@ test.describe('GST register and summary @p1', () => {
       expect(row.camt).toBeCloseTo((row.txval * rate) / 200, 1);
       expect(row.samt).toBeCloseTo(row.camt, 2);
       expect(p.nil.map((n: any) => n.sply_ty)).toEqual(['INTRB2B', 'INTRAB2B', 'INTRB2C', 'INTRAB2C']);
-      expect(p.notIncluded.join(' ')).toMatch(/buyers with a GSTIN/);
+      // the registered buyer's invoice is in b2b, under their GSTIN, with the buyer's state as the place of supply and IGST
+      const buyer = p.b2b.find((c: any) => c.ctin === OTHER_STATE);
+      expect(buyer, JSON.stringify(p.b2b)).toBeTruthy();
+      const inv = buyer.inv.find((i: any) => i.itms.some((t: any) => t.itm_det.rt === bRate));
+      expect(inv).toMatchObject({ pos: '29', rchrg: 'N', inv_typ: 'R' });
+      expect(inv.inum).toMatch(/^[A-Za-z0-9\-/]{1,16}$/);
+      expect(inv.idt).toMatch(/^\d{2}-\d{2}-\d{4}$/);
+      const item = inv.itms.find((t: any) => t.itm_det.rt === bRate);
+      expect(item.num).toBe(Math.round(bRate * 100) + 1);
+      expect(item.itm_det.iamt).toBeCloseTo((item.itm_det.txval * bRate) / 100, 1);
+      expect(item.itm_det.camt).toBeUndefined();
+      const cn = p.cdnr.find((c: any) => c.ctin === OTHER_STATE)?.nt.find((x: any) => x.itms.some((t: any) => t.itm_det.rt === bRate));
+      expect(cn, JSON.stringify(p.cdnr)).toMatchObject({ ntty: 'C', pos: '29', rchrg: 'N', inv_typ: 'R' });
+      expect(cn.nt_num).toMatch(/^CN\/\d{2}-\d{2}\/\d{6}$/);
+      expect(cn.nt_dt).toMatch(/^\d{2}-\d{2}-\d{4}$/);
+      expect(cn.val).toBeCloseTo(bLine.total, 1);
+      expect(cn.itms.find((t: any) => t.itm_det.rt === bRate).itm_det.iamt).toBeGreaterThan(0);
+      expect(p.notIncluded.join(' ')).not.toMatch(/tax invoice\(s\) to buyers/);
       const res = await get(`/gst/gstr1-json?month=${month}`);
       expect(res.status).toBe(200);
       expect(res.headers.get('content-disposition')).toContain(`GSTR1_${MINE}_${month.slice(5, 7)}${month.slice(0, 4)}.json`);
       const file = await res.json();
       expect(file).toMatchObject({ gstin: MINE, fp: `${month.slice(5, 7)}${month.slice(0, 4)}`, version: 'GST3.2.4' });
       expect(file.b2cs).toEqual(p.b2cs);
+      expect(file.b2b).toEqual(p.b2b);
+      expect(file.cdnr).toEqual(p.cdnr);
       expect(Array.isArray(file.hsn.hsn_b2c) && Array.isArray(file.doc_issue.doc_det)).toBe(true);
       expect((await api.request('GET', '/gst/gstr1-json/preview?month=bad', undefined, MGR)).status).toBe(400);
       expect((await api.request('GET', `/gst/gstr1-json/preview?month=${month}`, undefined, SALES)).status).toBeGreaterThanOrEqual(400);
