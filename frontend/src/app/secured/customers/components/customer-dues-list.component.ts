@@ -1,4 +1,7 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { PeekAddressService } from "src/app/shared/peek-address.service";
+import { Subscription } from "rxjs";
+
 import { HttpClient } from "@angular/common/http";
 import { environment } from "src/environments/environment";
 
@@ -17,23 +20,30 @@ import { environment } from "src/environments/environment";
         <thead><tr><th>Customer</th><th>Mobile</th><th>Location</th><th class="text-end">Owes</th><th class="text-end">Limit</th><th class="text-end">Overdue</th><th></th></tr></thead>
         <tbody>
           <tr *ngFor="let r of rows" data-testid="dues-row">
-            <td>{{r.name}}</td><td>{{r.mobile || 'no mobile'}}</td><td>{{r.locality}}</td>
+            <td><a href="javascript:void(0)" (click)="openPeek(r.id)" class="text-reset text-decoration-none fw-semibold" data-testid="cust-name-link">{{r.name}}</a></td><td>{{r.mobile || 'no mobile'}}</td><td>{{r.locality}}</td>
             <td class="text-end">&#8377;{{r.balance | number:'1.2-2'}}</td><td class="text-end">&#8377;{{r.credit_limit | number:'1.0-0'}}</td>
             <td class="text-end" [class.text-danger]="r.overdue > 0"><ng-container *ngIf="r.overdue > 0">&#8377;{{r.overdue | number:'1.2-2'}} since {{r.since | date:'dd MMM'}}</ng-container></td>
-            <td class="text-end"><a [routerLink]="['../view', r.id]" class="btn btn-sm btn-outline-primary">Open</a></td>
+            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-primary" (click)="openPeek(r.id)">View</button></td>
           </tr>
         </tbody>
       </table>
     </div>
-    <ng-template #none><div class="hist-empty"><i class="bi bi-check-circle"></i>Nobody owes anything.</div></ng-template>`
+    <ng-template #none><div class="hist-empty"><i class="bi bi-check-circle"></i>Nobody owes anything.</div></ng-template>
+    <app-customer-peek [id]="peekId" (closed)="closePeek()" (select)="openPeek($event)"></app-customer-peek>`
 })
-export class CustomerDuesListComponent implements OnInit {
+export class CustomerDuesListComponent implements OnInit, OnDestroy {
+  peekId: number | null = null;
+  private peekSub?: Subscription;
+  openPeek(id: number) { this.peekAddress.open(id); }
+  closePeek() { this.peekAddress.close(); }
+  ngOnDestroy() { this.peekSub?.unsubscribe(); }
   rows: any[] = [];
   error = "";
   get total() { return this.rows.reduce((s, r) => s + r.balance, 0); }
   get late() { return this.rows.reduce((s, r) => s + r.overdue, 0); }
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private peekAddress: PeekAddressService) {}
   ngOnInit() {
+    this.peekSub = this.peekAddress.peek$.subscribe(v => this.peekId = v && /^\d+$/.test(v) ? Number(v) : null);
     this.http.get<any[]>(`${environment.apiHost}/customer-dues/owing/all`).subscribe(r => this.rows = r || [], () => this.error = "Could not load the list.");
   }
 }

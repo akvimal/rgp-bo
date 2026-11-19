@@ -1,4 +1,7 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { PeekAddressService } from "src/app/shared/peek-address.service";
+import { Subscription } from "rxjs";
+
 import { CustomersService } from "../customers.service";
 import { greetingName } from "../greeting";
 
@@ -18,7 +21,13 @@ const DEFAULT_MESSAGES: Record<string, string> = {
     selector: 'app-customer-audiences',
     templateUrl: 'customer-audiences.component.html'
 })
-export class CustomerAudiencesComponent implements OnInit {
+export class CustomerAudiencesComponent implements OnInit, OnDestroy {
+    /** the customer open in the side panel (kept in the address as ?peek=) */
+    peekId: number | null = null;
+    private peekSub?: Subscription;
+    openPeek(id: number) { this.peekAddress.open(id); }
+    closePeek() { this.peekAddress.close(); }
+    ngOnDestroy() { this.peekSub?.unsubscribe(); }
 
     audiences:any[] = [];
     capDays = 7;
@@ -42,9 +51,10 @@ export class CustomerAudiencesComponent implements OnInit {
     revealing = new Set<number>();
     privacy:any = null;
 
-    constructor(private service:CustomersService){}
+    constructor(private service:CustomersService, private peekAddress: PeekAddressService){}
 
     ngOnInit(){
+        this.peekSub = this.peekAddress.peek$.subscribe(v => this.peekId = v && /^\d+$/.test(v) ? Number(v) : null);
         this.service.privacy().subscribe(p => { this.privacy = p; this.canExport = !!p.canExport; }, () => this.canExport = false);
         this.service.audiences().subscribe(r => { this.audiences = r.audiences; this.capDays = r.contactCapDays; },
             err => this.error = this.say(err, 'Could not load the audiences.'));

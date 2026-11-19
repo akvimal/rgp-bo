@@ -52,7 +52,7 @@
   <div class="card-body py-2">
     <div class="d-flex flex-wrap justify-content-between gap-2">
       <div>
-        <span class="fw-semibold">{{r.name}}</span>
+        <a href="javascript:void(0)" (click)="openPeek(r.id)" class="text-reset text-decoration-none fw-semibold" data-testid="cust-name-link">{{r.name}}</a>
         <span class="small text-muted ms-1" *ngIf="r.alsoOnNumber?.length" data-testid="wl-also">(also on this number: {{r.alsoOnNumber.join(', ')}})</span>
         <span class="badge bg-info text-dark ms-2" *ngIf="r.audience === 'due_back'">Due back</span>
         <span class="badge bg-warning text-dark ms-2" *ngIf="r.audience === 'at_risk'">At risk</span>
@@ -103,7 +103,7 @@
   <ul class="list-unstyled mt-2" *ngIf="showSnoozed">
     <li class="card mb-1" *ngFor="let z of snoozed" [attr.data-testid]="'wl-snoozed-' + z.id">
       <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
-        <span class="fw-semibold">{{z.name}}</span>
+        <a href="javascript:void(0)" (click)="openPeek(z.id)" class="text-reset text-decoration-none fw-semibold" data-testid="cust-name-link">{{z.name}}</a>
         <span class="small text-muted">{{z.audienceLabel}} · {{z.reason}}<span *ngIf="z.note">: {{z.note}}</span> · by {{z.by || 'someone'}}<span *ngIf="z.times > 1"> · postponed {{z.times}} times in 30 days</span></span>
         <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="bringBack(z)" data-testid="wl-bring-back">Bring back today</button>
       </div>
@@ -111,3 +111,5 @@
   </ul>
 </div>
 </div>
+
+<app-customer-peek [id]="peekId" (closed)="closePeek()" (select)="openPeek($event)"></app-customer-peek>

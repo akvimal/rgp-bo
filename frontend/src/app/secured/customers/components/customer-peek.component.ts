@@ -61,6 +61,14 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
             <tbody><tr *ngFor="let m of months"><td>{{m.label}}</td><td class="text-end">{{m.count}} bill{{m.count === 1 ? '' : 's'}}</td><td class="text-end">&#8377;{{m.total | number:'1.0-0'}}</td></tr></tbody>
           </table>
         </app-section>
+
+        <app-section title="Recent bills" [open]="true" [summary]="bills.length ? '' : 'No bills yet'" testid="cpeek-bills">
+          <div class="text-muted small" *ngIf="!bills.length">No bills in the latest month.</div>
+          <div *ngFor="let b of bills" class="mb-2 small" data-testid="cpeek-bill">
+            <div class="d-flex justify-content-between"><strong>{{b.billdate | date:'dd MMM yyyy'}}</strong><span class="text-muted">Bill {{b.billno}}</span><strong>&#8377;{{b.total | number:'1.2-2'}}</strong></div>
+            <div class="text-muted" *ngFor="let it of b.items">{{it.title}} &times; {{it.qty}}</div>
+          </div>
+        </app-section>
       </ng-container>
     </app-peek>`
 })
@@ -76,6 +84,7 @@ export class CustomerPeekComponent implements OnChanges {
     household: any = null;
     dues: any = null;
     privacy: any = null;
+    bills: any[] = [];
     months: { label: string; count: number; total: number }[] = [];
     loading = false;
     error = '';
@@ -100,7 +109,7 @@ export class CustomerPeekComponent implements OnChanges {
 
     load() {
         const id = this.id;
-        this.customer = null; this.profile = null; this.household = null; this.dues = null; this.months = [];
+        this.customer = null; this.profile = null; this.household = null; this.dues = null; this.months = []; this.bills = [];
         this.error = ''; this.revealed = false; this.revealError = '';
         if (!id) { this.loading = false; return; }
         // a quick pick of another row while this one is loading must not let the older answer overwrite the newer
@@ -115,7 +124,10 @@ export class CustomerPeekComponent implements OnChanges {
         this.service.privacy().subscribe((p: any) => { if (live()) this.privacy = p; }, () => undefined);
         this.http.get<any>(`${environment.apiHost}/customer-dues/${id}`).subscribe((d: any) => { if (live()) this.dues = d; }, () => undefined);
         this.service.getCustomerOrderedMonths({ id }).subscribe((rows: any[]) => {
-            if (live()) this.months = (rows || []).slice(0, 3).map((r: any) => ({ label: `${MONTHS[r.mon - 1] || r.mon} ${r.yr}`, count: r.count, total: r.total }));
+            if (!live()) return;
+            this.months = (rows || []).slice(0, 3).map((r: any) => ({ label: `${MONTHS[r.mon - 1] || r.mon} ${r.yr}`, count: r.count, total: r.total }));
+            const last = (rows || [])[0];
+            if (last) this.service.getCustomerOrdersByPeriod({ id }, last.yr, last.mon).subscribe((b: any) => { if (live()) this.bills = (b || []).slice(0, 5); }, () => undefined);
         }, () => undefined);
     }
 

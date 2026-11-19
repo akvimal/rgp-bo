@@ -34,10 +34,12 @@
       <tr *ngFor="let m of g.members" data-testid="dup-row">
         <td><input type="radio" [name]="'keep-' + g.mobile" [value]="m.id" [(ngModel)]="keep[g.mobile]" data-testid="dup-keep"></td>
         <td><input type="checkbox" [disabled]="keep[g.mobile] === m.id" [(ngModel)]="picked[m.id]" data-testid="dup-pick"></td>
-        <td class="text-truncate" [title]="m.name || ''">{{m.name || '(no name)'}}</td>
+        <td class="text-truncate" [title]="m.name || ''"><a href="javascript:void(0)" (click)="openPeek(m.id)" class="text-reset text-decoration-none" data-testid="cust-name-link">{{m.name || '(no name)'}}</a></td>
         <td class="text-end">{{m.bills}}</td>
         <td>{{m.lastvisit ? (m.lastvisit | date:'dd MMM yyyy') : '-'}}</td>
       </tr>
     </tbody>
   </table>
 </div>
+
+<app-customer-peek [id]="peekId" (closed)="closePeek()" (select)="openPeek($event)"></app-customer-peek>

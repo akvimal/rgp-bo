@@ -1,10 +1,19 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { PeekAddressService } from "src/app/shared/peek-address.service";
+import { Subscription } from "rxjs";
+
 import { CustomersService } from "../customers.service";
 
 @Component({
     templateUrl: 'customer-duplicates.component.html'
 })
-export class CustomerDuplicatesComponent implements OnInit {
+export class CustomerDuplicatesComponent implements OnInit, OnDestroy {
+    /** the customer open in the side panel (kept in the address as ?peek=) */
+    peekId: number | null = null;
+    private peekSub?: Subscription;
+    openPeek(id: number) { this.peekAddress.open(id); }
+    closePeek() { this.peekAddress.close(); }
+    ngOnDestroy() { this.peekSub?.unsubscribe(); }
 
     groups: any[] = [];
     loading = false;
@@ -18,9 +27,10 @@ export class CustomerDuplicatesComponent implements OnInit {
     /** a merge the server stopped because the names differ: the person is asked whether they really are the same person */
     confirming: { g: any, ids: number[], text: string } | null = null;
 
-    constructor(private service: CustomersService) {}
+    constructor(private service: CustomersService, private peekAddress: PeekAddressService) {}
 
-    ngOnInit() { this.load(); }
+    ngOnInit() {
+        this.peekSub = this.peekAddress.peek$.subscribe(v => this.peekId = v && /^\d+$/.test(v) ? Number(v) : null); this.load(); }
 
     load() {
         this.loading = true;

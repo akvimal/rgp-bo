@@ -1,4 +1,7 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { PeekAddressService } from "src/app/shared/peek-address.service";
+import { Subscription } from "rxjs";
+
 import { CustomersService } from "../customers.service";
 import { greetingName } from "../greeting";
 
@@ -32,7 +35,13 @@ const REMINDERS: Record<string, string> = {
     selector: 'app-customer-worklist',
     templateUrl: 'customer-worklist.component.html'
 })
-export class CustomerWorklistComponent implements OnInit {
+export class CustomerWorklistComponent implements OnInit, OnDestroy {
+    /** the customer open in the side panel (kept in the address as ?peek=) */
+    peekId: number | null = null;
+    private peekSub?: Subscription;
+    openPeek(id: number) { this.peekAddress.open(id); }
+    closePeek() { this.peekAddress.close(); }
+    ngOnDestroy() { this.peekSub?.unsubscribe(); }
 
     outcomes = OUTCOMES;
     snoozeReasons = SNOOZE_REASONS;
@@ -47,9 +56,10 @@ export class CustomerWorklistComponent implements OnInit {
     busy = new Set<number>();
     privacy:any = null;
 
-    constructor(private service:CustomersService){}
+    constructor(private service:CustomersService, private peekAddress: PeekAddressService){}
 
     ngOnInit(){
+        this.peekSub = this.peekAddress.peek$.subscribe(v => this.peekId = v && /^\d+$/.test(v) ? Number(v) : null);
         try { const l = localStorage.getItem('rgp_followup_lang'); if(l === 'en' || l === 'ta') this.lang = l; } catch { /* a private window */ }
         this.loadWording();
         this.service.privacy().subscribe(p => this.privacy = p, () => this.privacy = null);
