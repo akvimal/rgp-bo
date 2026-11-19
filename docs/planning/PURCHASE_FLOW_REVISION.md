@@ -74,3 +74,15 @@ Built, uncommitted, not run in a browser, migration 182 not applied anywhere:
 - C: migration 182 (po_expect, off_po, off_po_reason on purchase_invoice_item); invoice created against a PO brings the PO's remaining lines in automatically; scan verify updates the PO's line (keeps its expectation) or creates a line marked off_po; a hand-added line for a product not on the PO is marked off_po; items page shows per-line differences (qty, over-supply, rate, MRP, disc %, GST %) and a note; header asks PO or "No purchase order" first, vendor read-only from the PO.
 - D: "read the copy for me" tick, "Read this copy / Read it again" on an attached copy, replacing a copy keeps checked lines.
 Not built: a reason prompt for off-order lines (a default reason is stored); removing a PO line from an invoice has no new control (the existing line delete is used); QA specs for the new flow (existing specs updated to choose "No purchase order").
+
+## Products not in the list, and items added after submission (2026-11-19)
+Built, uncommitted. Migration 231 (`purchase_order.amendments`) applied to rgp_qa only.
+- **A request for a product that is not in the list can go on an order.** It shows by the name typed, with a "new product" tag, in the order grid, the Add items list
+  and the PO PDF. What still waits is **receiving**: the request cannot be marked Received, and the invoice import skips the line, until the request is linked to a
+  product (or a product is made from it). The estimated value counts such a line as unpriced.
+- **Items can be added to a submitted order.** "Add items" shows on a Submitted order; a reason (at most 300 characters) is required. The items go on, the order goes
+  back to **Awaiting approval** (or is approved again on the record where the maker may approve their own), and the addition is kept on the order
+  (`amendments`: when, who, why, items) and listed on the order page. `POST purchaseorders/:id/amend { requestids, comment }`.
+  Only a Submitted order takes it: a draft is changed directly, an order awaiting approval or a cancelled one is refused.
+- Not decided with the user, taken as defaults: an order awaiting re-approval can have no new invoice started against it while it waits (invoices already started stay);
+  a turned-down amendment leaves the order Rejected with the added items on it, to remove them or change and submit again; the vendor is not told (the PDF is downloaded again).

@@ -55,6 +55,11 @@ export class PurchaseOrderService {
         return this.http.post(`${this.apiurl}/${id}/submit`, {});
     }
 
+    /** items added to a submitted order, with the reason; the order goes back for approval */
+    amend(id:number, requestids:number[], comment:string){
+        return this.http.post(`${this.apiurl}/${id}/amend`, { requestids, comment });
+    }
+
     approve(id:number){
         return this.http.post(`${this.apiurl}/${id}/approve`, {});
     }

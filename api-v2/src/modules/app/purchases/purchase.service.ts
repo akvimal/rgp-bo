@@ -17,7 +17,7 @@ import { canSeeRequest, cleanSlipLines, forRequesterView, lineComment } from "./
 /** what a request-only role may see: its own requests and every request of the store(s) it works in */
 export interface RequestScope { userId: number; storeIds: number[] }
 
-const UNLISTED_NOT_ORDERABLE = 'This request is for a product that is not in the product list yet. Link it to a product (or create the product) before it is ordered.';
+const UNLISTED_NOT_RECEIVABLE = 'This request is for a product that is not in the product list yet. Link it to a product (or create the product) before it is received.';
 
 @Injectable()
 export class PurchaseService {
@@ -234,13 +234,13 @@ export class PurchaseService {
             const text = `${value}`.trim();
             return text === '' ? undefined : text;
         };
-        // a product from the list, or the name of one that is not in it yet (purchasing links it before it can be ordered)
+        // a product from the list, or the name of one that is not in it yet (it can be ordered; purchasing links it to a product before it is received)
         const requestedname = dto.productid ? undefined : normalize(dto.requestedname);
         if(!dto.productid && !requestedname){
             throw new BadRequestException('Choose the product, or type its name if it is not in the product list.');
         }
-        if(!dto.productid && (dto.orderid || ['Ordered', 'Received'].includes(dto.status))){
-            throw new BadRequestException(UNLISTED_NOT_ORDERABLE);
+        if(!dto.productid && dto.status === 'Received'){
+            throw new BadRequestException(UNLISTED_NOT_RECEIVABLE);
         }
         if(!Number.isInteger(Number(dto.qty)) || Number(dto.qty) < 1){
             throw new BadRequestException('The quantity must be a whole number, at least 1.');
@@ -361,11 +361,11 @@ export class PurchaseService {
             }
             if(!(Number(v.orderedqty) > 0)) throw new BadRequestException('The quantity must be at least 1.');
         }
-        if(v.orderid || ['Ordered', 'Received'].includes(v.status)){
-            // a request for a product that is not in the list cannot be ordered until it is linked to one
+        if(v.status === 'Received'){
+            // a request for a product that is not in the list can be put on an order, but cannot be received until it is linked to a product
             const row = await this.requestRepository.findOne({ where: { id: +id } });
             if(row && !row.productid && !v.productid){
-                throw new BadRequestException(UNLISTED_NOT_ORDERABLE);
+                throw new BadRequestException(UNLISTED_NOT_RECEIVABLE);
             }
         }
         if(v.requestedname !== undefined){
@@ -479,6 +479,61 @@ export class PurchaseService {
         };
 
         await this.orderRepository.update(id, { ...nextState, updatedby: userid });
+        return this.findOrderById(`${id}`);
+    }
+
+    /**
+     * Items added to an order that was already submitted. A comment says why; the order goes back to Awaiting approval (or, where the maker may approve
+     * their own, is approved again on the record), and the addition is kept on the order. Only reviewed requests that are on no order can be added.
+     */
+    async amendOrder(id:number, body:{ requestids?: number[]; comment?: string }, userid:number, roleid?:number){
+        const comment = `${body?.comment ?? ''}`.trim();
+        if(!comment) throw new BadRequestException('Say why these items are being added to a submitted order.');
+        if(comment.length > 300) throw new BadRequestException('The reason is at most 300 characters.');
+        const requestids = Array.from(new Set((body?.requestids || []).map((r:any) => +r).filter((r:number) => r > 0)));
+        if(!requestids.length) throw new BadRequestException('Choose the items to add.');
+
+        const [po] = await this.manager.query(`select id, status from purchase_order where id = $1`, [+id]);
+        if(!po) throw new BadRequestException('That order was not found.');
+        if(po.status !== 'SUBMITTED'){
+            throw new BadRequestException(po.status === 'PENDING_APPROVAL'
+                ? 'This order is waiting for approval. It can be changed once it is approved or turned down.'
+                : po.status === 'CANCELLED' ? 'This order was cancelled.'
+                : 'Items are added to a submitted order. This one is not submitted: change it directly.');
+        }
+
+        const reqs = await this.manager.query(
+            `select r.id, r.status, r.order_id, r.qty, r.ordered_qty, coalesce(p.title, r.requested_name) as title
+               from purchase_request r left join product p on p.id = r.product_id
+              where r.id = any($1::int[]) and r.active and not r.archive`, [requestids]);
+        if(reqs.length !== requestids.length) throw new BadRequestException('One of those requests was not found.');
+        const busy = reqs.filter((r:any) => r.status !== 'Reviewed' || r.order_id);
+        if(busy.length) throw new BadRequestException(`${busy[0].title} is not waiting to be ordered (${busy[0].order_id ? 'it is on an order already' : `it is ${`${busy[0].status}`.toLowerCase()}`}).`);
+
+        const [who] = await this.manager.query(`select full_name from app_user where id = $1`, [userid]);
+        const entry = {
+            at: new Date().toISOString(), by: userid, byname: who?.full_name || null, comment,
+            items: reqs.map((r:any) => ({ requestid: +r.id, title: r.title, qty: +(r.ordered_qty ?? r.qty) })),
+        };
+        const selfApproved = !!roleid && await this.canApproveOrder(roleid) && await approvalModeFor(this.manager, { userId: userid }) === 'self';
+        const reason = `Items added after submission: ${comment}`.slice(0, 400);
+        const now = new Date();
+
+        await this.manager.transaction(async (tx) => {
+            for(const r of reqs){
+                await tx.query(`update purchase_request set status = 'Ordered', order_id = $2, updated_by = $3 where id = $1`, [+r.id, +id, userid]);
+            }
+            await tx.query(
+                `update purchase_order
+                    set amendments = coalesce(amendments, '[]'::jsonb) || $2::jsonb,
+                        status = $3, approval_status = $4, approval_reason = $5,
+                        approval_requested_by = $6, approval_requested_at = $7,
+                        approved_by = $8, approved_at = $9,
+                        rejected_by = null, rejected_at = null, rejection_reason = null, updated_by = $6
+                  where id = $1`,
+                [+id, JSON.stringify([entry]), selfApproved ? 'SUBMITTED' : 'PENDING_APPROVAL', selfApproved ? 'Approved' : 'Pending',
+                 selfApproved ? `Self-approved by the maker: ${reason}`.slice(0, 400) : reason, userid, now, selfApproved ? userid : null, selfApproved ? now : null]);
+        });
         return this.findOrderById(`${id}`);
     }
 
@@ -1016,7 +1071,7 @@ export class PurchaseService {
         let estimatedtotal = 0;
 
         for(const request of requests){
-            const product = request.product;
+            const product = request.product || (request.requestedname ? { title: request.requestedname } : null);       // not in the product list yet: the name typed
             const qty = +(request.orderedqty || request.qty || 0);
             const unitCost = unitCosts.get(+(product?.id || request.productid || 0)) || 0;
             estimatedtotal += qty * unitCost;

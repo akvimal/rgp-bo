@@ -13,6 +13,15 @@
   </div>
 
   <div class="alert alert-danger py-2" *ngIf="error" data-testid="po-error">{{error}}</div>
+  <div class="card mb-3" *ngIf="order?.amendments?.length" data-testid="po-amendments">
+    <div class="card-body py-2 small">
+      <div class="fw-semibold mb-1">Items added after the order was submitted</div>
+      <div *ngFor="let a of order.amendments" class="mb-1" data-testid="po-amendment">
+        {{a.at | date:'dd MMM yyyy, HH:mm'}}<span *ngIf="a.byname"> &middot; {{a.byname}}</span>: <em>{{a.comment}}</em>
+        <span class="text-muted"> &mdash; <ng-container *ngFor="let i of a.items; let last = last">{{i.title}} ({{i.qty}}){{last ? '' : ', '}}</ng-container></span>
+      </div>
+    </div>
+  </div>
   <div class="alert alert-warning py-2" *ngIf="order?.status === 'PENDING_APPROVAL'" data-testid="po-awaiting">
     Waiting for approval<span *ngIf="order?.approvalreason">: {{order.approvalreason}}</span>
   </div>
@@ -45,7 +54,7 @@
   </div>
 
   <div class="d-flex flex-wrap align-items-center gap-2 mb-3" data-testid="po-actions">
-    <button *ngIf="canEdit()" type="button" class="btn btn-primary" data-testid="po-add-request" (click)="onAdd()"><i class="bi bi-plus-lg me-1"></i>Add items</button>
+    <button *ngIf="canEdit() || canAmend()" type="button" class="btn btn-primary" data-testid="po-add-request" (click)="onAdd()" [title]="canAmend() ? 'Add items to this submitted order: it goes back for approval' : ''"><i class="bi bi-plus-lg me-1"></i>Add items</button>
     <button *ngIf="order?.requests?.length > 0 && canEdit()" type="button" class="btn btn-success" data-testid="po-proceed" (click)="onProceed()">{{order?.approvalrequired ? 'Submit for approval' : 'Submit'}}</button>
     <button *ngIf="canApprove" type="button" class="btn btn-success" data-testid="po-approve" (click)="onApprove()">Approve</button>
     <button *ngIf="canApprove" type="button" class="btn btn-danger" data-testid="po-reject-open" (click)="displayReject = true">Reject</button>
@@ -70,14 +79,16 @@
         <th *ngIf="canEdit()"></th>
       </tr>
     </ng-template>
-    <ng-template pTemplate="body" let-req>
-      <tr data-testid="po-fulfilment-row">
-        <td>{{req.product?.title}}
+    <ng-template pTemplate="body" let-req let-ri="rowIndex">
+      <tr data-testid="po-fulfilment-row" [class.table-warning]="repeated.has(req.product?.id)" [attr.data-repeated]="repeated.has(req.product?.id) ? 'yes' : null">
+        <td>{{lineTitle(req)}}
+          <span class="badge bg-info text-dark ms-1" *ngIf="!req.product" title="Not in the product list yet. Link it to a product on the Requests page before it can be invoiced." data-testid="po-unlisted">new product</span>
+          <span class="badge bg-warning text-dark ms-1" *ngIf="repeated.has(req.product?.id)" title="This product is on more than one line of this order" data-testid="po-repeated">repeated</span>
           <button *ngIf="req.product?.id" type="button" class="btn btn-link btn-sm p-0 ms-1" (click)="historyProduct = {id: req.product.id, title: req.product.title}" [attr.title]="'Stock history of ' + req.product.title" [attr.aria-label]="'Stock history of ' + req.product.title" data-testid="po-history"><i class="bi bi-clock-history"></i></button></td>
         <td class="text-end">{{req.product?.pack || '-'}}</td>
         <td class="text-end">{{req.unitcost ? (req.unitcost | number:'1.2-2') : '-'}}</td>
         <td class="text-end">
-          <input *ngIf="canEdit(); else fixedQty" class="form-control form-control-sm text-end po-qty" type="number" min="1" step="1" [value]="req.orderedqty ?? req.qty" (change)="setQty(req, $event)" [attr.aria-label]="'Quantity of ' + req.product?.title" data-testid="po-qty">
+          <input *ngIf="canEdit(); else fixedQty" class="form-control form-control-sm text-end po-qty" type="number" min="1" step="1" [value]="req.orderedqty ?? req.qty" (change)="setQty(req, $event)" (keydown.arrowup)="moveQty($event, -1)" (keydown.arrowdown)="moveQty($event, 1)" (focus)="qtyRow = ri" (blur)="qtyRow = null" [attr.aria-label]="'Quantity of ' + req.product?.title" data-testid="po-qty">
           <ng-template #fixedQty>{{req.orderedqty ?? req.qty}}</ng-template>
         </td>
         <td class="text-end">{{req.linevalue ? (req.linevalue | number:'1.2-2') : '-'}}</td>
@@ -108,6 +119,12 @@
     <input class="form-control form-control-sm w-auto" type="search" [(ngModel)]="pickFilter" placeholder="Search product or customer" aria-label="Search requests" data-testid="po-pick-filter">
     <span class="small text-muted">Reviewed requests that can be added. This vendor's come first.</span>
   </div>
+  <div class="alert alert-warning py-2 small" *ngIf="canAmend()" data-testid="po-amend-note">This order has been submitted. Items added now need approving again.</div>
+  <div class="mb-2" *ngIf="canAmend()">
+    <label class="form-label small mb-1" for="po-amend-comment">Why are these items being added? <span class="text-danger">*</span></label>
+    <input id="po-amend-comment" class="form-control form-control-sm" maxlength="300" [(ngModel)]="amendComment" placeholder="e.g. customer asked for it after the order went out" data-testid="po-amend-comment">
+  </div>
+  <div class="alert alert-danger py-2" *ngIf="error && displayForm" data-testid="po-amend-error">{{error}}</div>
   <div class="form-text" *ngIf="!availrequests.length" data-testid="po-no-requests">Nothing waiting. Mark a request as reviewed in Requests, and it can be added here.</div>
   <div class="table-responsive" *ngIf="availrequests.length" style="max-height:55vh">
     <table class="table table-sm table-hover align-middle mb-0" data-testid="po-pick-table">
@@ -120,7 +137,7 @@
       <tbody>
         <tr *ngFor="let ar of pickable" [class.table-active]="picked[ar.id]" (click)="picked[ar.id] = !picked[ar.id]" style="cursor:pointer" data-testid="po-pick-row">
           <td (click)="$event.stopPropagation()"><input type="checkbox" [(ngModel)]="picked[ar.id]" [attr.aria-label]="'Add ' + ar.product?.title" data-testid="po-pick-check"></td>
-          <td>{{ar.product?.title}} <span class="badge bg-warning text-dark" *ngIf="otherVendor(ar)" title="This request names a different vendor">other vendor</span></td>
+          <td>{{ar.product?.title || ar.requestedname}} <span class="badge bg-info text-dark" *ngIf="!ar.product" title="Not in the product list yet" data-testid="po-pick-unlisted">new product</span> <span class="badge bg-warning text-dark" *ngIf="otherVendor(ar)" title="This request names a different vendor">other vendor</span> <span class="badge bg-info text-dark" *ngIf="onOrder(ar)" title="This product is already on the order. Adding it makes a second line." data-testid="po-pick-onorder">already on this order</span></td>
           <td class="text-end">{{ar.qty}}</td>
           <td class="small">{{ar.requesttype}}</td>
           <td class="small">{{ar.priority}}</td>
@@ -136,7 +153,7 @@
     <span class="small text-muted" data-testid="po-pick-count">{{pickedIds.length}} of {{availrequests.length}} selected</span>
     <div>
       <button type="button" class="btn btn-outline-secondary me-2" (click)="displayForm = false">Cancel</button>
-      <button type="button" class="btn btn-primary" [disabled]="!pickedIds.length || adding" (click)="onSave()" data-testid="po-pick-add">Add {{pickedIds.length || ''}} item{{pickedIds.length === 1 ? '' : 's'}}</button>
+      <button type="button" class="btn btn-primary" [disabled]="!pickedIds.length || adding || (canAmend() && !amendComment.trim())" (click)="onSave()" data-testid="po-pick-add">Add {{pickedIds.length || ''}} item{{pickedIds.length === 1 ? '' : 's'}}<span *ngIf="canAmend()"> and send for approval</span></button>
     </div>
   </div>
 </p-dialog>

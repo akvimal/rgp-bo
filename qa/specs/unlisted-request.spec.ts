@@ -1,6 +1,6 @@
 /**
  * A request for a product that is not in the product list - UNL-1..4
- * The counter types the name; purchasing sees it flagged, links it to a product (or creates one), and only then can it be ordered.
+ * The counter types the name; purchasing sees it flagged and can put it on an order; it is linked to a product (or one is created) before it is received.
  */
 import { test, expect } from '../fixtures/index.js';
 
@@ -9,7 +9,7 @@ const COUNTER = 'sales1@local.test';
 const uniq = () => `Zzqx Tonic ${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`;
 
 test.describe('Requests for products not in the list @p1', () => {
-  test('UNL-1 a request can carry a typed name instead of a product, shows in the list, and cannot be ordered until linked @happy', async ({ api }) => {
+  test('UNL-1 a request can carry a typed name instead of a product, shows in the list, and cannot be received until linked @happy', async ({ api }) => {
     const name = uniq();
     const made = await api.request('POST', '/purchaserequests', { requestedname: name, qty: 4, source: 'Customer', requesttype: 'Ad Hoc', priority: 'Normal', status: 'Open', customername: 'QA Unlisted' }, COUNTER);
     expect(made.status, JSON.stringify(made.body)).toBeLessThan(300);
@@ -25,8 +25,8 @@ test.describe('Requests for products not in the list @p1', () => {
     expect(none.status).toBe(400);
     expect(JSON.stringify(none.body)).toContain('Choose the product');
 
-    // not orderable while it has no product
-    const early = await api.request('PUT', `/purchaserequests/${row.id}`, { status: 'Ordered', orderid: 1 }, MGR);
+    // it can be put on an order without a product (see POUI-6), but it cannot be marked received until it has one
+    const early = await api.request('PUT', `/purchaserequests/${row.id}`, { status: 'Received' }, MGR);
     expect(early.status).toBe(400);
     expect(JSON.stringify(early.body)).toContain('not in the product list');
 

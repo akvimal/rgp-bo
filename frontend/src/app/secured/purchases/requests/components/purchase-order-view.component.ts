@@ -30,6 +30,8 @@ export class PurchaseOrderViewComponent {
     picked:{[id:number]:boolean} = {};
     pickFilter = '';
     adding = false;
+    /** the reason for adding items to an order that was already submitted */
+    amendComment = '';
 
     editForm:FormGroup = new FormGroup({
         expecteddate: new FormControl(''),
@@ -53,13 +55,51 @@ export class PurchaseOrderViewComponent {
 
     get status() { return poStatus(this.order); }
 
+    /** the products that are on more than one line of this order: the same medicine ordered twice is shown, not stopped (two customers may each want it) */
+    get repeated():Set<number> {
+        const seen = new Set<number>(), twice = new Set<number>();
+        for(const r of (this.order?.requests || [])){
+            const id = r.product?.id;
+            if(!id) continue;
+            if(seen.has(id)) twice.add(id); else seen.add(id);
+        }
+        return twice;
+    }
+
+    /** a request in the "Add items" list whose product is already on this order */
+    onOrder(ar:any):boolean {
+        const id = ar.product?.id;
+        return !!id && (this.order?.requests || []).some((r:any) => r.product?.id === id);
+    }
+
+    /** the row whose quantity box has the cursor: the order is read again after a change, and the cursor is put back on it */
+    qtyRow: number | null = null;
+
     fetchOrder(id:number){
-        this.service.findById(id).subscribe(data => this.order = data);
+        this.service.findById(id).subscribe(data => {
+            const row = this.qtyRow;
+            this.order = data;
+            if(row !== null) setTimeout(() => this.focusQty(row));
+        });
+    }
+
+    private focusQty(row:number){
+        const boxes = document.querySelectorAll<HTMLInputElement>('[data-testid="po-fulfilment"] input.po-qty');
+        const box = boxes[row];
+        if(box){ box.focus(); box.select(); }
+    }
+
+    /** up and down in the ordered box go to the line above or below, not to a different number */
+    moveQty(event:any, step:number){
+        event.preventDefault();
+        const boxes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-testid="po-fulfilment"] input.po-qty'));
+        const next = boxes[boxes.indexOf(event.target) + step];
+        if(next){ next.focus(); next.select(); }
     }
 
     fetchAvailRequests(){
         this.reqService.findAllByCriteria({status:'Reviewed'}).subscribe((data:any) => {
-            this.availrequests = (data || []).filter((r:any) => !!r.product);        // one still waiting for a product cannot be ordered
+            this.availrequests = data || [];        // one for a product not in the list yet is orderable too: it shows by the name typed
         });
     }
 
@@ -75,7 +115,7 @@ export class PurchaseOrderViewComponent {
     }
 
     onAdd() {
-        this.picked = {}; this.pickFilter = ''; this.adding = false;
+        this.picked = {}; this.pickFilter = ''; this.adding = false; this.amendComment = ''; this.error = '';
         this.fetchAvailRequests();
         this.displayForm = true;
     }
@@ -111,7 +151,7 @@ export class PurchaseOrderViewComponent {
         const vid = this.order?.vendorid;
         const own = (r:any) => (vid && r.vendorid && String(r.vendorid) === String(vid)) ? 0 : (r.vendorid ? 2 : 1);   // this vendor, then no vendor named, then another vendor
         return this.availrequests
-            .filter((r:any) => !f || `${r.product?.title || ''} ${r.customername || ''}`.toLowerCase().includes(f))
+            .filter((r:any) => !f || `${r.product?.title || r.requestedname || ''} ${r.customername || ''}`.toLowerCase().includes(f))
             .sort((a:any, b:any) => own(a) - own(b));
     }
 
@@ -126,6 +166,16 @@ export class PurchaseOrderViewComponent {
     onSave() {
         const ids = this.pickedIds;
         if(!ids.length) return;
+        if(this.canAmend()){
+            // a submitted order: the items go on with a reason, and the order goes back for approval
+            if(!this.amendComment.trim()){ this.error = 'Say why these items are being added to a submitted order.'; return; }
+            this.adding = true; this.error = '';
+            this.service.amend(this.order.id, ids, this.amendComment.trim()).subscribe({
+                next: (o:any) => { this.adding = false; this.displayForm = false; this.changed(o); this.fetchAvailRequests(); },
+                error: (e) => { this.adding = false; this.failed(e, 'The items could not be added.'); }
+            });
+            return;
+        }
         this.adding = true;
         forkJoin(ids.map(id => this.reqService.update(id, { status: 'Ordered', orderid: this.order.id }))).subscribe({
             next: () => { this.adding = false; this.displayForm = false; this.changed(); },
@@ -203,6 +253,14 @@ export class PurchaseOrderViewComponent {
             importedSaveAs(blob, `PO-${this.order.ponumber || this.order.id}.pdf`);
           });
     }
+
+    /** a submitted order: items can still be added, with a reason, and it goes back for approval */
+    canAmend() {
+        return this.order?.status === 'SUBMITTED';
+    }
+
+    /** the name of an order line: the product, or the name typed when it is not in the product list yet */
+    lineTitle(req:any):string { return req?.product?.title || req?.requestedname || '-'; }
 
     canEdit() {
         return this.order?.status === 'PENDING' || this.order?.status === 'REJECTED';

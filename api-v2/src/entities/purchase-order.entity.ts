@@ -70,6 +70,10 @@ import { PurchaseRequest } from "./purchase-request.entity";
     @Column("text", { name: "cancel_reason", nullable: true })
     cancelreason: string | null;
 
+    /** items added after the order was submitted: [{ at, by, byname, comment, items: [{ requestid, title, qty }] }], oldest first */
+    @Column("jsonb", { name: "amendments", default: () => "'[]'" })
+    amendments: any[];
+
     @Column("integer", { name: "vendor_id" })
     vendorid: number;
 

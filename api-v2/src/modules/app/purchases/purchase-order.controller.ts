@@ -45,6 +45,12 @@ export class PurchaseOrderController {
     return this.service.submitOrder(+id, currentUser.id, currentUser.roleid);
   }
 
+  /** items added to an order that was already submitted: { requestids: [...], comment }. It goes back for approval. */
+  @Post(':id/amend')
+  amend(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+    return this.service.amendOrder(+id, body, currentUser.id, currentUser.roleid);
+  }
+
   @Post(':id/approve')
   async approve(@Param('id') id: string, @User() currentUser: any) {
     if(!(await this.service.canApproveOrder(currentUser.roleid))){

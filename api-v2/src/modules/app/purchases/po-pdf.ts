@@ -195,7 +195,7 @@ export function buildPoPdf(order: any, opts: PoPdfOptions): Promise<Buffer> {
       const rate = +req.unitcost || 0;
       const amount = +req.linevalue || +(rate * qty).toFixed(2);
       totalQty += qty; totalValue += amount;
-      const title = `${req.product?.title || '-'}`;
+      const title = `${req.product?.title || req.requestedname || '-'}`;
       const comp = `${req.product?.props?.composition || ''}`;
       const h = Math.max(20, heightOf(title, widths.item, { size: 9 }) + (comp ? heightOf(comp, widths.item, { italic: true, size: 7.5 }) : 0) + 8);
       if (y + h > BOTTOM - 40) { doc.addPage(); y = 40; tableHead(); }
