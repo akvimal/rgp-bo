@@ -57,6 +57,8 @@ describe('alert messages', () => {
       feedback_reply: ['feedback_reply'],
       feedback_waiting: ['feedback_waiting'],
       feedback_closing: ['feedback_closing'],
+      followup_retry: ['followup_retry_call', 'followup_retry_nudge'],
+      followup_lapsed: ['followup_lapsed'],
       kpi_behind_pace: ['kpi_behind'],
       kpi_rating_due: ['kpi_rating_due'],
     };

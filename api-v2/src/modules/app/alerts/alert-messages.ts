@@ -153,6 +153,18 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'Your report will close soon: {title}', body: 'We asked you something and have not heard back. It closes by itself in {days} day(s) unless you reply. Open Help and feedback.' },
     ta: { title: 'உங்கள் அறிக்கை விரைவில் மூடப்படும்: {title}', body: 'நாங்கள் உங்களிடம் ஒன்று கேட்டோம், பதில் வரவில்லை. நீங்கள் பதிலளிக்காவிட்டால் {days} நாளில் தானாக மூடப்படும். உதவி மற்றும் கருத்து பக்கத்தைத் திறக்கவும்.' },
   },
+  followup_retry_call: {
+    en: { title: 'Call {customer} again', body: '{customer} did not get through {days} days ago and has not bought since ({left} days left to come back). Open the customer to call or message again.' },
+    ta: { title: '{customer} ஐ மீண்டும் அழைக்கவும்', body: '{days} நாட்களுக்கு முன் {customer} உடன் தொடர்பு கிடைக்கவில்லை; அதன் பிறகு வாங்கவில்லை (திரும்ப வர இன்னும் {left} நாட்கள் உள்ளன). மீண்டும் அழைக்க அல்லது செய்தி அனுப்ப வாடிக்கையாளரைத் திறக்கவும்.' },
+  },
+  followup_retry_nudge: {
+    en: { title: 'Nudge {customer}', body: 'A message went to {customer} {days} days ago and they have not bought yet ({left} days left). A call or a reminder may bring them back.' },
+    ta: { title: '{customer} க்கு நினைவூட்டுங்கள்', body: '{days} நாட்களுக்கு முன் {customer} க்கு செய்தி அனுப்பப்பட்டது; இன்னும் வாங்கவில்லை (இன்னும் {left} நாட்கள் உள்ளன). ஒரு அழைப்பு அல்லது நினைவூட்டல் அவரை மீண்டும் வரவழைக்கலாம்.' },
+  },
+  followup_lapsed: {
+    en: { title: 'Contacted customers who did not come back: {count}', body: '{count} customers we contacted did not buy again in time (for example {names}). See the scorecard on the dashboard and decide who is worth another try.' },
+    ta: { title: 'தொடர்பு கொண்டும் திரும்பி வராத வாடிக்கையாளர்கள்: {count}', body: 'நாம் தொடர்பு கொண்ட {count} வாடிக்கையாளர்கள் உரிய நேரத்தில் மீண்டும் வாங்கவில்லை (எ.கா. {names}). டாஷ்போர்டில் மதிப்பெண் அட்டையைப் பார்த்து, யாரை மீண்டும் முயற்சிப்பது என்று முடிவு செய்யுங்கள்.' },
+  },
   kpi_behind: {
     en: { title: 'KPI behind pace: {measure}', body: '{evidence}. At this point in the month you are at {progress}% of the pace needed. Have a look at My KPI to see what to do.' },
     ta: { title: 'KPI பின்தங்கியுள்ளது: {measure}', body: '{evidence}. மாதத்தின் இந்த நிலையில் தேவையான வேகத்தில் {progress}% மட்டுமே உள்ளது. என் KPI பக்கத்தில் பார்க்கவும்.' },

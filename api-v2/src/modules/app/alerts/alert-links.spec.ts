@@ -18,6 +18,8 @@ const PAGES: RegExp[] = [
   /^\/secure\/quality\/audit$/,
   /^\/secure\/purchases\/invoices\/list$/,
   /^\/secure\/kpi\/(mine|rate)$/,
+  /^\/secure\/customers\/cust\/view\/\d+$/,
+  /^\/secure\/dashboard$/,
 ];
 
 const source = readFileSync(join(__dirname, 'alert-kinds.ts'), 'utf-8');
@@ -39,6 +41,7 @@ describe('the links in the alerts', () => {
     expect(source.match(/\/secure\/feedback\?id=\$\{r\.id\}/g)?.length).toBe(3);                // reply, waiting, closing
     expect(source.match(/\/secure\/todos\?id=\$\{r\.id\}/g)?.length).toBe(4);                   // soon, due, overdue, escalated
     expect(source).toContain('/secure/commitments/${r.id}');
+    expect(source).toContain('/secure/customers/cust/view/${r.customer_id}');                   // the customer to try again
     expect(source).toContain('/secure/settings/users/edit/${r.user_id}');
     expect(source).toContain('/secure/store/stock/passes/${r.id}');
   });

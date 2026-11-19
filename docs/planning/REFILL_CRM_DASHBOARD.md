@@ -1,6 +1,6 @@
 # Refill and follow-up: one contact log, a turnaround measure, and a "My work" dashboard for sales staff
 
-Status: **planned 2026-11-19; steps 1 (one contact log), 2 (turnaround measure) 3 (dashboard) and 4 (refill by medicine) built 2026-11-19; step 5 not built.** Asked for: a sales-staff dashboard with refill reminders, follow-ups and turnaround. Clarified: **turnaround = the contacted customer bought again and went back to the normal course.** Follow-up review also asked for gaps in the refill system, which has grown into a small CRM.
+Status: **planned 2026-11-19; steps 1 (one contact log), 2 (turnaround measure) 3 (dashboard), 4 (refill by medicine) and 5 (retry rules) built 2026-11-19; only the later ideas remain.** Asked for: a sales-staff dashboard with refill reminders, follow-ups and turnaround. Clarified: **turnaround = the contacted customer bought again and went back to the normal course.** Follow-up review also asked for gaps in the refill system, which has grown into a small CRM.
 
 ## 1. What exists today (read from the code)
 
@@ -80,7 +80,10 @@ Original plan:
 - Availability check: a due medicine that is out of stock or short-dated goes to the purchase suggestions before the call.
 - Needs a decision on where dose data comes from (typed once per product, taken from the prescription, or learned from repeat purchases).
 
-### Step 5 - Retry and escalation
+### Step 5 - Retry and escalation - BUILT 2026-11-19
+As built, on the alerts engine, with no migration (the rules are created for each business by `ensureDefaults`): rules in `customer-followup-ladder.ts` (10 tests) and two alert kinds in the pharmacy `refills` module, both editable in Settings > Alerts. **Customer to try again** (`followup_retry`): for a customer's latest contact (last 30 days, still inside its return window, no purchase since, customer not marked do-not-contact or "no" to messages, not dues or review invites) with outcome no answer or call back later it tells the person who made the contact to **call again**, with outcome message sent to **nudge**, once the gap has passed (refill reminders 3 days, other contacts 5 days, both settings) and only until the number of tries since the customer's last bill reaches the limit (3, a setting). It links to the customer's page (the contact list hides a customer for the contact gap, so it could not be the link) and clears when the customer is contacted again or buys. **Contacted customers who did not come back** (`followup_lapsed`): once a week, when at least 3 (setting) customers' return windows ended in the last 7 days (setting) without a purchase, owners and managers get one alert with the count and up to three names, linking to the dashboard scorecard. English and Tamil texts added (the Tamil is a draft for a native speaker, like the rest). Decisions: a reminder is for a person; nothing is sent to the customer, because there is no sending service (WhatsApp messaging is still design-only), so "automatic sending only if the shop switches it on" is not built.
+Checked on a scratch copy of `rgp_qa` with planted contacts and `POST /alerts/run`: a call-again and a nudge for the right person, none for a contact too recent, one with the tries used up, or a do-not-contact customer; the weekly roll-up for three lapsed customers went to the business head; a new contact cleared the alert; the two kinds and their settings are listed. Not done: a Playwright spec, an escalation to a named manager of the store (the roll-up goes to every owner and manager), per-audience retry gaps beyond refill and other, and a ladder for dues.
+Original plan:
 - A rule per audience (for example: no answer on day 3, then WhatsApp, then flag to the manager on day 7), run by the alerts engine. Reminder to the person first; automatic sending only if the shop switches it on and consent allows.
 
 ### Later

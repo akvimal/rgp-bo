@@ -10,6 +10,9 @@ import { stageOf } from '../todos/todo-rules';
 import { NOT_A_PERSON } from '../../../core/roles';
 import { FeedbackStatus, daysUntilClose, needsReminder } from '../feedback/feedback-rules';
 import { ModuleKey } from '../../../core/modules/modules';
+import { DEFAULT_WINDOWS, TWindows } from '../customers/customer-turnaround-rules';
+import { loadTurnaround } from '../customers/customer-turnaround.service';
+import { LadderContact, recentlyLapsed, retryAdvice, weekStartOf } from '../customers/customer-followup-ladder';
 
 export type Severity = 'info' | 'warning' | 'critical';
 export const SEVERITIES: Severity[] = ['info', 'warning', 'critical'];
@@ -52,6 +55,16 @@ export interface AlertKind {
 
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
 const addDays = (day: string, n: number) => new Date(Date.parse(day + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+
+/** the return windows of the follow-up measure, from the shop's settings */
+async function followupWindows(ctx: Ctx): Promise<TWindows> {
+  const get = async (key: string, fallback: number, max: number) => {
+    const [r] = await ctx.manager.query(`select setting_value from app_setting where setting_key = $1 and active and not archive limit 1`, [key]);
+    const n = Math.round(Number(r?.setting_value));
+    return Number.isFinite(n) && n >= 1 && n <= max ? n : fallback;
+  };
+  return { refillDays: await get('turnaround_refill_days', DEFAULT_WINDOWS.refillDays, 60), lapsedDays: await get('turnaround_lapsed_days', DEFAULT_WINDOWS.lapsedDays, 90) };
+}
 
 export const KINDS: AlertKind[] = [
   {
@@ -631,6 +644,74 @@ export const KINDS: AlertKind[] = [
     },
   },
   {
+    kind: 'followup_retry',
+    module: 'refills',
+    label: 'Customer to try again',
+    description: 'A customer was contacted about a refill, or to bring them back, and the contact did not get through (no answer, or "call back later") or was a message, and they have not bought since. After a few days the person who made the contact is reminded to try again, up to a limit. Nothing is sent to the customer. The alert clears when the customer is contacted again or buys.',
+    params: [
+      { key: 'refill_retry_days', label: 'Try a refill reminder again after', min: 1, max: 14, default: 3, unit: 'days' },
+      { key: 'other_retry_days', label: 'Try any other contact again after', min: 1, max: 21, default: 5, unit: 'days' },
+      { key: 'max_tries', label: 'Stop reminding after this many tries', min: 1, max: 6, default: 3, unit: 'tries' },
+    ],
+    defaultSeverity: 'info',
+    async evaluate(ctx, p) {
+      const windows = await followupWindows(ctx);
+      const rows = await ctx.manager.query(
+        `with last as (select distinct on (l.customer_id) l.id, l.customer_id, l.created_by, l.created_on, l.audience, l.source, l.outcome
+                         from customer_contact_log l order by l.customer_id, l.created_on desc, l.id desc)
+         select last.id, last.customer_id, last.created_by, last.created_on, last.audience, last.source, last.outcome, c.name,
+                exists (select 1 from sale s where s.customer_id = last.customer_id and s.status = 'COMPLETE' and s.bill_date > last.created_on) as bought,
+                (select count(*)::int from customer_contact_log x
+                  where x.customer_id = last.customer_id and x.outcome in ('NO_ANSWER', 'CALLBACK', 'SENT')
+                    and x.created_on > coalesce((select max(s.bill_date) from sale s where s.customer_id = last.customer_id and s.status = 'COMPLETE' and s.bill_date <= last.created_on), '1970-01-01')) as tries
+           from last join customer c on c.id = last.customer_id join app_user u on u.id = last.created_by
+          where last.created_on >= now() - interval '30 days' and last.outcome in ('NO_ANSWER', 'CALLBACK', 'SENT')
+            and c.active and not c.archive and not c.do_not_contact and coalesce(c.contact_consent, '') <> 'NO'
+            and ${BUSINESS_OF_USER_SQL} = $1`, [ctx.businessId]);
+      const out: Finding[] = [];
+      for (const r of rows) {
+        const c: LadderContact = { customerId: r.customer_id, at: new Date(r.created_on), audience: r.audience, source: r.source, outcome: r.outcome, tries: Number(r.tries), bought: !!r.bought };
+        const a = retryAdvice(c, windows, { refillRetryDays: p.refill_retry_days, otherRetryDays: p.other_retry_days, maxTries: p.max_tries });
+        if (!a) continue;
+        out.push({
+          key: `followup_retry:${r.id}`, storeid: null, code: a.action === 'nudge' ? 'followup_retry_nudge' : 'followup_retry_call',
+          params: { customer: String(r.name || 'A customer').trim(), days: String(a.daysSince), left: String(a.daysLeft) },
+          link: `/secure/customers/cust/view/${r.customer_id}`,
+          recipients: { roles: [] as string[], userids: [r.created_by] as number[] },
+        });
+      }
+      return out;
+    },
+  },
+  {
+    kind: 'followup_lapsed',
+    module: 'refills',
+    label: 'Contacted customers who did not come back',
+    description: 'Once a week, when several customers who were contacted (a refill reminder, or a message to bring them back) did not buy again within their window, the managers are told, with a few names. Decide who is worth another try. Nothing is sent to the customers.',
+    params: [
+      { key: 'min_count', label: 'Tell the managers when at least', min: 1, max: 50, default: 3, unit: 'customers' },
+      { key: 'recent_days', label: 'Count windows that ended in the last', min: 1, max: 30, default: 7, unit: 'days' },
+    ],
+    defaultSeverity: 'info',
+    async evaluate(ctx, p) {
+      const windows = await followupWindows(ctx);
+      const longest = Math.max(windows.refillDays, windows.lapsedDays);
+      const from = addDays(ctx.today, -(p.recent_days + longest));
+      const people = await ctx.manager.query(`select u.id from app_user u where u.active and not u.archive and ${BUSINESS_OF_USER_SQL} = $1`, [ctx.businessId]);
+      const mine = new Set<number>(people.map((x: any) => +x.id));
+      const { crows, results } = await loadTurnaround(ctx.manager, from, ctx.today, null, windows);
+      const lapsed = recentlyLapsed(results.filter((r) => mine.has(r.contact.userId)), p.recent_days);
+      if (lapsed.length < p.min_count) return [];
+      const names = new Map<number, string>(crows.map((r: any) => [+r.customer_id, String(r.customer || '').trim()]));
+      const shown = lapsed.slice(0, 3).map((r) => names.get(r.contact.customerId) || 'a customer').join(', ');
+      return [{
+        key: `followup_lapsed:${weekStartOf(ctx.today)}`, storeid: null, code: 'followup_lapsed',
+        params: { count: String(lapsed.length), names: lapsed.length > 3 ? `${shown} and ${lapsed.length - 3} more` : shown },
+        link: '/secure/dashboard',
+      }];
+    },
+  },
+  {
     kind: 'kpi_behind_pace',
     label: 'KPI behind pace',
     description: 'Part-way through the month, a staff member is behind on a KPI the system measures (sales behind the pace needed for full marks, or a "lower is better" figure that has already cost half its points). They are told once for each measure each month.',
@@ -724,6 +805,8 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity; re
   { kind: 'feedback_reply', name: 'Reply to your report', severity: 'info' },
   { kind: 'feedback_waiting', name: 'Report waiting for an answer', severity: 'info' },
   { kind: 'feedback_closing', name: 'Your report will close soon', severity: 'info' },
+  { kind: 'followup_retry', name: 'Customer to try again', severity: 'info' },
+  { kind: 'followup_lapsed', name: 'Contacted customers who did not come back', severity: 'info', recipients: { roles: ['owners', 'managers'], userids: [] as number[] } },
   { kind: 'kpi_behind_pace', name: 'KPI behind pace', severity: 'info' },
   { kind: 'kpi_rating_due', name: 'KPI ratings to give', severity: 'warning' },
 ];
