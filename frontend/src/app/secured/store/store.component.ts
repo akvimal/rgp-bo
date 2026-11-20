@@ -23,9 +23,15 @@ import { StockService } from "./stock/stock.service";
                     </li>
                 </ul>
                 <ul class="nav" *ngIf="!onCash">
-                    <li class="nav-item" *isNavAuth>
-                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock">Stock</a>
-                    </li>
+                    <!-- one row of tabs under the title: the stock pages, then Transfers (the old second row of tabs under a "Stock" tab said the same word twice) -->
+                    <ng-container *isNavAuth>
+                        <li class="nav-item"><a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock/products" data-testid="stock-tab-products">Products</a></li>
+                        <li class="nav-item"><a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock/expiry" data-testid="stock-tab-expiry">Expiry</a></li>
+                        <li class="nav-item"><a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock/passes" data-testid="stock-tab-passes">Out-passes</a></li>
+                        <li class="nav-item"><a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock/writeoffs" data-testid="stock-tab-writeoffs">Write-offs</a></li>
+                        <li class="nav-item"><a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock/adjust" data-testid="stock-tab-adjust">Adjustments</a></li>
+                        <li class="nav-item"><a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock/count" data-testid="stock-tab-count">Count</a></li>
+                    </ng-container>
                     <ng-container *ngIf="transfersOn">
                         <li class="nav-item" *isNavAuth>
                             <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="transfers" data-testid="store-tab-transfers">Transfers</a>
