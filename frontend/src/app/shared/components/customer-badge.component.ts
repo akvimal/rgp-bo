@@ -17,12 +17,19 @@ import { CustomerBadge, CustomerBadgeService } from "../customer-badge.service";
     styles: [`
     .cust-badge { display:inline-flex; align-items:center; gap:.3rem; padding:.1rem .55rem; border-radius:1rem; font-size:.78rem; font-weight:600; border:1px solid transparent; white-space:nowrap; }
     .cust-badge.big { font-size:.95rem; padding:.2rem .8rem; }
-    .tone-gold { background:#fff4cc; color:#7a5a00; border-color:#e6c75a; }
-    .tone-silver { background:#eef1f4; color:#4c5963; border-color:#c3cbd2; }
-    .tone-bronze { background:#f8e9dc; color:#7a4a1f; border-color:#dcb28a; }
-    .tone-new { background:#e3f0fc; color:#1a5a99; border-color:#a9cdee; }
-    .tone-watch { background:#fff1d6; color:#7a5200; border-color:#e8c27a; }
-    .tone-plain { background:#f1f3f5; color:#555; border-color:#d5d9dd; }
+    .tone-gold { background:#f2c94c; color:#3b2a00; border-color:#c99a14; }
+    .tone-silver { background:#b9c3cd; color:#1d2830; border-color:#8b97a3; }
+    .tone-bronze { background:#b8793f; color:#fff; border-color:#8a5628; }
+    .tone-new { background:#8cc0ee; color:#0a2e52; border-color:#5a97cf; }
+    .tone-watch { background:#f4b183; color:#4a2300; border-color:#d08850; }
+    .tone-plain { background:#dfe3e7; color:#3a4148; border-color:#b3bac1; }
+    :host-context(html[data-theme="dark"]) .tone-gold { background:#5a4813; color:#f2d77f; border-color:#8c7120; }
+    :host-context(html[data-theme="dark"]) .tone-silver { background:#3d4853; color:#d5dce3; border-color:#5f6d7a; }
+    :host-context(html[data-theme="dark"]) .tone-bronze { background:#6b4122; color:#f0c29c; border-color:#94623a; }
+    :host-context(html[data-theme="dark"]) .tone-new { background:#1f4466; color:#a6d0f5; border-color:#356a9c; }
+    :host-context(html[data-theme="dark"]) .tone-watch { background:#66401a; color:#f5bf80; border-color:#94632d; }
+    :host-context(html[data-theme="dark"]) .tone-plain { background:#343b43; color:#c6ccd2; border-color:#505964; }
+    :host-context(html[data-theme="dark"]) .cust-cue { color:#aeb6bf; }
     .due { font-weight:500; }
     .cust-cue { font-size:.8rem; color:#555; margin-top:.15rem; }
     `]
