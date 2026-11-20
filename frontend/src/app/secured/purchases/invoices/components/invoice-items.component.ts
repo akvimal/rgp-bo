@@ -318,6 +318,11 @@ export class InvoiceItemsComponent {
         }
     }
 
+    /** a verified line of a draft invoice is opened again (back to "to verify") so it can be edited, then verified again */
+    reopenItem(i:any){
+        this.invService.updateItems([i.id], {status: 'NEW'}).subscribe(() => this.fetchItems(this.invoice.id));
+    }
+
     verifyItems(){
         if(this.items) {
             const ids = this.items

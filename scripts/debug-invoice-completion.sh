@@ -6,7 +6,7 @@
 # It repeats the exact sum the completion check makes (purchase-invoice.service.ts assertPrintedAgrees -> billedNet -> invoiceNet):
 #   lines counted: active, not archived, status <> 'DISPUTED';  a REJECTED line counts at rejected_total, any other at total
 #   each counted total x (1 + tax%) summed, then scaled by the cash discount factor
-# and then shows what could make that differ from the vendor's invoice:
+# and then shows what could make that differ from the vendor invoice:
 #   1. header figures (net total entered, cash discount, status)
 #   2. every line row, including ones the check ignores (inactive / archived / disputed), with stored total vs qty x rate x (1 - disc)
 #   3. lines whose stored total does not match qty x rate x (1 - disc)
@@ -113,6 +113,6 @@ select invoice_no,
 \echo   - a line in section 2 marked ignored (inactive / archived / DISPUTED) whose value with GST is about the gap -> restore or count it
 \echo   - a section 3 line whose diff is about the gap -> a mistyped line total
 \echo   - if_lines_from_qty_x_rate close to the net total -> stored line totals are stale, re-save the lines
-\echo   - if none fit: a line is missing from the invoice (compare the vendor's paper to section 2), or the net total was typed wrongly
+\echo   - if none fit: a line is missing from the invoice (compare the vendor paper copy to section 2), or the net total was typed wrongly
 SQL
 done

@@ -200,6 +200,9 @@
                             <a *ngIf="i.status === 'NEW'" (click)="showItemEdit(i.id)" title="Edit">
                                 <i class="bi bi-pencil-square text-primary"></i>
                             </a>
+                            <a *ngIf="i.status === 'VERIFIED' && invoice.status === 'NEW'" role="button" (click)="reopenItem(i)" title="Verified. Click to open it again so it can be corrected" aria-label="Open the verified line again to correct it" [attr.data-testid]="'item-reopen-' + i.id">
+                                <i class="bi bi-unlock text-secondary"></i>
+                            </a>
                         </td>
                         <td>
                             <span [class.text-decoration-line-through]="i.status === 'REJECTED'">{{i.product?.title}}</span>
