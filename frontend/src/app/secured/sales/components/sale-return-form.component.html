@@ -5,7 +5,7 @@
            <strong>Order No.:</strong> {{header.orderno}} &nbsp;&nbsp;<strong>Bill No.:</strong> {{header.billno}} &nbsp;&nbsp;<strong>Bill Date:</strong> {{header.billdate | date : 'dd MMM yyyy'}}
         </div>
         <div class="col-6 text-end">
-          <strong>Name:</strong> {{header.customername}} <strong>Mobile:</strong> {{header.customermobile}}
+          <strong>Name:</strong> {{header.customername}} <app-customer-badge class="ms-1" [customerId]="header.customerid"></app-customer-badge> <strong>Mobile:</strong> {{header.customermobile}}
         </div>
     </div>
     <div class="row">

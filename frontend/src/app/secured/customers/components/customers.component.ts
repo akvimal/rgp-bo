@@ -12,6 +12,19 @@ import { ActivatedRoute } from "@angular/router";
 })
 export class CustomersComponent implements OnDestroy {
 
+  /** the help panel on how customers are ranked (the badge beside a name) */
+  showLevels = false;
+  readonly levelHelp = [
+    { name: 'Champion', meaning: 'Among your best on recency, visits and spend together.', action: 'Greet by name; do not keep them waiting.' },
+    { name: 'Loyal', meaning: 'Comes often and recently, though not always the top spender.', action: 'Greet by name; thank them for coming back.' },
+    { name: 'Big spender', meaning: 'Spends a lot but visits rarely.', action: 'Make the visit count; mention home delivery.' },
+    { name: 'Regular', meaning: 'A steady customer.', action: 'Nothing special; treat them well.' },
+    { name: 'New', meaning: 'First bill in the last 90 days and fewer than 3 visits.', action: 'Welcome them; a second visit makes a regular.' },
+    { name: 'At risk', meaning: 'Later than their usual gap (or over 120 days with no steady pattern).', action: 'Ask how they have been.' },
+    { name: 'Lapsed', meaning: 'No visit for longer than the active period (365 days unless changed).', action: 'Welcome them back; ask what kept them away.' },
+    { name: 'No purchases yet', meaning: 'On record, but no bill.', action: 'Ask for their first purchase.' },
+  ];
+
     customers:any[] = [];
     segments = ['OTC only', 'Chronic only', 'OTC + Chronic', 'Other', 'No purchases'];
 

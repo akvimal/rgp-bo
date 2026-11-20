@@ -26,7 +26,7 @@ export class SaleReturnFormComponent {
                                 billdate:data['billdate']};
                 if(data['customer']){
                     this.header = {...this.header, customername: data['customer']['name'],
-                            customermobile: data['customer']['mobile']}
+                            customermobile: data['customer']['mobile'], customerid: data['customer']['id']}
                 }
                 
                 this.items = data.items.map((i:any) => {

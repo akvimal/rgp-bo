@@ -109,7 +109,7 @@
             <small class="text-muted">{{i.sale?.ordertype || '-'}} &middot; {{i.sale?.billdate | date:'dd MMM yyyy'}}</small>
           </td>
           <td>
-            <div>{{i.receivername || i.sale?.customer?.name || '-'}}</div>
+            <div>{{i.receivername || i.sale?.customer?.name || '-'}} <app-customer-badge class="ms-1" [customerId]="i.sale?.customer?.id"></app-customer-badge></div>
             <small class="text-muted">{{i.receiverphone || i.sale?.customer?.mobile}}</small>
           </td>
           <td>

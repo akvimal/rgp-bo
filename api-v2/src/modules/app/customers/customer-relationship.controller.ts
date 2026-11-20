@@ -22,6 +22,12 @@ export class CustomerRelationshipController {
     if (!(await this.privacy.canRevealAll(user))) throw new ForbiddenException('Audiences list full contact details: ask a manager.');
   }
 
+  /** the badge (tier, segment, a line of guidance) of each customer in ?ids=1,2,3: open to every login that can see customers, it carries no figures */
+  @Get('badges')
+  badges(@Query('ids') ids: string) {
+    return this.relations.badges(String(ids || '').split(',').map((x) => Number(x)));
+  }
+
   /** the wording of the messages staff send from the contact list */
   @NeedsCustomers('worklist.use')
   @Get('followup-templates')

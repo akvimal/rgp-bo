@@ -73,7 +73,7 @@
       </thead>
       <tbody>
         <tr *ngFor="let m of shown" [class.text-muted]="!m.canContact" [attr.data-testid]="'aud-row-' + m.id">
-          <td><a href="javascript:void(0)" (click)="openPeek(m.id)" class="text-reset text-decoration-none" data-testid="cust-name-link">{{m.name}}</a><span class="small text-muted ms-1" *ngIf="m.alsoOnNumber?.length" [title]="'Same number: ' + m.alsoOnNumber.join(', ')" data-testid="aud-also">+ {{m.alsoOnNumber.join(', ')}} on this number</span><span *ngIf="m.tier" class="badge ms-1" [ngClass]="m.tier === 'Gold' ? 'bg-warning text-dark' : 'bg-light text-muted border'">{{m.tier}}</span></td>
+          <td><a href="javascript:void(0)" (click)="openPeek(m.id)" class="text-reset text-decoration-none" data-testid="cust-name-link">{{m.name}}</a><span class="small text-muted ms-1" *ngIf="m.alsoOnNumber?.length" [title]="'Same number: ' + m.alsoOnNumber.join(', ')" data-testid="aud-also">+ {{m.alsoOnNumber.join(', ')}} on this number</span><app-customer-badge class="ms-1" [customerId]="m.id"></app-customer-badge></td>
           <td>{{m.mobile || "no mobile"}}</td>
           <td>{{m.segment}}</td>
           <td class="small">{{m.reason}}</td>

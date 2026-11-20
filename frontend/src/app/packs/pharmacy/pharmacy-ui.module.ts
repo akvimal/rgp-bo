@@ -1,3 +1,4 @@
+import { SharedModule } from "../../shared/shared.module";
 import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
 import { FormsModule } from "@angular/forms";
@@ -11,7 +12,7 @@ import { RxFollowupsComponent } from "./rx-followups.component";
  */
 @NgModule({
   declarations: [ScheduleDetailComponent, RxFollowupsComponent],
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SharedModule],
   exports: [ScheduleDetailComponent, RxFollowupsComponent],
 })
 export class PharmacyUiModule {}

@@ -12,7 +12,7 @@ import { CustomersService } from "../../secured/customers/customers.service";
                 [inputStyle]="{'background-color':'#f4f7ff'}"
                 (completeMethod)="filterCustomer($event)" [minLength]="3">
                 <ng-template let-customer pTemplate="item">
-                    <div>{{customer.name}} - {{customer.mobile || 'no mobile'}}<span *ngIf="customer.locality" class="text-muted"> ({{customer.locality}})</span></div>
+                    <div class="d-flex align-items-center gap-2">{{customer.name}} - {{customer.mobile || 'no mobile'}}<span *ngIf="customer.locality" class="text-muted"> ({{customer.locality}})</span><app-customer-badge [customerId]="customer.id"></app-customer-badge></div>
                 </ng-template>
     </p-autoComplete>            
     `

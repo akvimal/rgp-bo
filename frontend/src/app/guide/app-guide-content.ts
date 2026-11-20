@@ -116,7 +116,7 @@ export const PAGES: PageGuide[] = [
     purpose: 'Your customers, their bills and documents, and who to contact today.',
     tasks: ['Find or add a customer (the mobile number is the key). People who share a number are one household with one account: the till asks who the bill is for, and Account on the customer page changes the number or gives a person their own account.', 'Keep a prescription in their documents.', 'Contact today: the short daily list of regulars due back, people slipping away and prescriptions to collect.', 'Audiences and duplicates (for the people who run the shop).'],
     who: 'Counter staff, store heads and the owner.',
-    watch: ['Phone numbers may be masked until you press Show; each reveal is counted and kept.', 'Never contact a customer who asked to stop.'], keywords: 'customer mobile contact worklist audience',
+    watch: ['Phone numbers may be masked until you press Show; each reveal is counted and kept.', 'Never contact a customer who asked to stop.', 'The badge beside a name (for example Gold \u00b7 Champion) says how valuable the customer is and how they are doing; see "What the customer badges mean" in the walkthroughs.'], keywords: 'customer mobile contact worklist audience',
   },
   {
     id: 'nav-commitments', group: 'sell', title: 'Customer orders', route: '/secure/commitments',
@@ -474,6 +474,28 @@ export const WALKTHROUGHS: Walkthrough[] = [
     id: 'w-adjust', title: 'Adjust stock with a reason', from: 'nav-store',
     steps: ['Open Stock, find the product and batch, and press Adjust.', 'Enter the units to add or remove, choose the reason (damaged, expired, returned to vendor, shrinkage, correction or other) and add a comment.', 'If the adjustment is for an audit, choose the audit.', 'Save. A large one waits for approval.'],
     tips: ['An approved adjustment cannot be deleted: make an opposite one instead.'], keywords: 'adjust write off damaged expired shrinkage',
+  },
+  {
+    id: 'w-customer-levels', title: 'What the customer badges mean', from: 'nav-customers',
+    steps: [
+      'The badge beside a customer\'s name has two parts: how valuable they are (Gold, Silver or Bronze) and how they are doing with us (Champion, Loyal, Big spender, Regular, New, At risk or Lapsed). Example: Gold \u00b7 Champion.',
+      'Gold, Silver, Bronze is the value. It compares the customer with all your other customers on three things over the last year: how recently they came, how often, and how much they spent. Gold is the top group, Silver the middle, Bronze the rest. It is relative to your own shop, so it fits a small shop and a large one.',
+      'Champion: among your best on recency, visits and spend all together. Greet by name and do not keep them waiting.',
+      'Loyal: comes often and recently, though not always the highest spender. Greet by name and thank them for coming back.',
+      'Big spender: spends a lot but visits rarely. Make the visit count and mention home delivery.',
+      'Regular: a steady customer. Treat them well; there is nothing special to do.',
+      'New: the first bill was in the last 90 days and they have had fewer than 3 visits. Welcome them and make a good first impression; a second visit is what turns them into a regular.',
+      'At risk: used to come, but is now later than their usual gap (or, with no steady pattern, more than 120 days). Ask how they have been. Shown in amber, not red, because the customer may see the screen.',
+      'Lapsed: no visit for longer than the active period (365 days unless your shop changed it). Welcome them back and, if they agree, ask what kept them away.',
+      'No purchases yet: the customer is on record but has no bill.',
+      '"Refill due" is added when a customer with a steady pattern is now past their usual gap for a refill. Ask if they need their regular items.',
+    ],
+    tips: [
+      'The line under the badge at the till is guidance, not a rule. Treat every customer well; use the badge to remember who deserves a little extra.',
+      'You see the badge only, never the amounts behind it. Managers can see the detail on the customer page.',
+      'Badges are worked out from the bills and refreshed every few minutes, so one bill rung up a minute ago may not have changed it yet.',
+    ],
+    keywords: 'customer badge tier gold silver bronze segment champion loyal big spender new at risk lapsed value level refill due',
   },
   {
     id: 'w-contact', title: 'Call your regular customers', from: 'nav-customers',

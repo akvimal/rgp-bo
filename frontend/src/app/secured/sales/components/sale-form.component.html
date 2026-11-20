@@ -37,6 +37,9 @@
                     <a role="button" class="ms-1" (click)="showPrevSalesCopy()" title="Earlier bills of this customer"><i class="bi bi-files text-success"></i></a>
                     <a role="button" (click)="resetCustomer()" title="Choose another customer"><i class="bi bi-x-square text-danger"></i></a>
                 </div>
+                <div class="mt-1" *ngIf="sale.customer.existing && sale.customer.id" data-testid="sale-customer-badge">
+                    <app-customer-badge [customerId]="sale.customer.id" [cue]="true" size="lg"></app-customer-badge>
+                </div>
                 <div class="small mt-1 d-flex flex-wrap align-items-center gap-2" *ngIf="household && sale.customer.existing" data-testid="sale-household">
                     <span class="text-muted">{{household.people.length > 1 ? 'Who is this for?' : 'On this number:'}}</span>
                     <ng-container *ngIf="household.people.length > 1">

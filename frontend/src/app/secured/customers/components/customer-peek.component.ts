@@ -15,6 +15,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
     template: `
     <app-peek [open]="!!id" [title]="customer?.name || 'Customer'" [subtitle]="subtitle" testid="cpeek" [loading]="loading" [error]="error"
       [fullPage]="id ? ['/secure/customers/cust/view', id] : null" (closed)="closed.emit()" (retry)="load()">
+      <span badges class="ms-1" *ngIf="id"><app-customer-badge [customerId]="id"></app-customer-badge></span>
       <span badges class="ms-1" *ngIf="profile">
         <span class="badge bg-light text-muted border" *ngIf="profile.status === 'inactive'">Inactive</span>
       </span>

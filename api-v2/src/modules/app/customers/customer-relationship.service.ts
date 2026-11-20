@@ -6,6 +6,7 @@ import { isManagerRole, isOwnerRole } from 'src/core/roles';
 import { NIL_MOBILE } from './customer-rules';
 import { SNOOZE_REASONS, checkSnooze } from './customer-snooze';
 import { InviteFacts, reasonText, reviewInviteDecision, reviewMessage } from './customer-review-rules';
+import { badgeOf } from './customer-badge';
 import { AUDIENCES, AudienceDef, CustomerFacts, Profile, SEGMENTS, classify, collapseByNumber, contactable } from './customer-relationship-rules';
 
 export const CONTACT_CHANNELS = ['CALL', 'WHATSAPP', 'SMS', 'VISIT', 'OTHER'];
@@ -114,6 +115,27 @@ export class CustomerRelationshipService {
     const byId = new Map<number, any>();
     for (const r of rows) byId.set(r.id, { ...out.get(r.id), spend12: r.spend12, visits12: r.visits12 });
     return byId;
+  }
+
+  private badgeCache: { at: number; map: Map<number, any> } | null = null;
+
+  /**
+   * The badge (tier, segment, one line of guidance) for each customer id asked about, for the counter and the lists. The figures behind them take every
+   * customer's bills to work out, so they are kept for a few minutes and shared: a badge can be a few minutes behind the latest bill.
+   */
+  async badges(ids: number[]) {
+    const now = Date.now();
+    if (!this.badgeCache || now - this.badgeCache.at > 10 * 60 * 1000) {
+      const { activeDays } = await this.settings();
+      const rows = await this.rows();
+      this.badgeCache = { at: now, map: classify(rows, activeDays) };
+    }
+    const out: Record<number, any> = {};
+    for (const id of Array.from(new Set(ids.filter((i) => Number.isInteger(i) && i > 0))).slice(0, 200)) {
+      const p = this.badgeCache.map.get(id);
+      out[id] = p ? badgeOf(p) : null;
+    }
+    return out;
   }
 
   async profileOf(id: number) {
