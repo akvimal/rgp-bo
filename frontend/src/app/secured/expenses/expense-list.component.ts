@@ -71,6 +71,7 @@ export class ExpenseListComponent implements OnInit {
   stores: any[] = [];
   role = "";
   limit = 0;
+  autoEach = 0;
   pendingForMe = 0;
   message = "";
   error = "";
@@ -84,7 +85,7 @@ export class ExpenseListComponent implements OnInit {
 
   ngOnInit() {
     this.filter.period = this.api.thisMonth();
-    this.api.get("policy").subscribe(p => { this.role = p.role; this.limit = p.limit; this.stores = p.stores; });
+    this.api.get("policy").subscribe(p => { this.role = p.role; this.limit = p.limit; this.autoEach = p.auto_each || 0; this.stores = p.stores; });
     this.api.get("categories").subscribe(c => this.categories = c.filter((x: any) => x.active));
     this.load();
   }
@@ -114,6 +115,7 @@ export class ExpenseListComponent implements OnInit {
     if (!f || !(+f.amount > 0)) return "";
     if (this.isBusinessHead) return "Raised by you, so it is approved straight away.";
     if (this.role === "Store Head") return +f.amount <= this.limit ? "Within your store limit, so it is approved straight away." : `Above the store limit of ${this.limit}: the Business Head will approve it.`;
+    if (this.autoEach > 0 && +f.amount <= this.autoEach) return `Up to ${this.autoEach} it is approved straight away, unless the store has reached its small-expense total for the day; then the Store Head approves it.`;
     return "The Store Head will approve it.";
   }
 

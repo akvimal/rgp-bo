@@ -45,6 +45,42 @@ export class ExpenseService {
     return Number.isFinite(n) && n >= 0 ? n : 5000;
   }
 
+  /** small store expenses approved on the spot: each up to `each`, and no more than `daily` in all per store per expense date (0 turns it off) */
+  async autoLimits(): Promise<{ each: number; daily: number }> {
+    const rows = await this.manager.query(`select setting_key, setting_value from app_setting where category = 'expense' and setting_key in ('auto_approve_limit','auto_approve_daily_limit') and active and not archive`);
+    const get = (k: string, d: number) => { const v = rows.find((r: any) => r.setting_key === k)?.setting_value; const n = v === undefined || v === null || v === '' ? NaN : Number(v); return Number.isFinite(n) && n >= 0 ? n : d; };
+    return { each: get('auto_approve_limit', 100), daily: get('auto_approve_daily_limit', 500) };
+  }
+
+  async setAutoLimits(b: any, by: any) {
+    const each = Number(b?.each), daily = Number(b?.daily);
+    if (![each, daily].every((n) => Number.isFinite(n) && n >= 0 && n <= 10000000)) throw new BadRequestException('Both amounts must be between 0 and 1,00,00,000 (0 turns it off).');
+    if (each > 0 && daily > 0 && daily < each) throw new BadRequestException('The daily amount cannot be less than the amount for one expense.');
+    const before = await this.autoLimits();
+    const put = async (key: string, value: number, description: string) => {
+      // (an UPDATE ... RETURNING comes back as [rows, count] from the driver, so the insert is guarded by the table itself)
+      await this.manager.query(`update app_setting set setting_value = $2, updated_on = now(), updated_by = $3 where category = 'expense' and setting_key = $1`, [key, String(value), by.id]);
+      await this.manager.query(`insert into app_setting (category, setting_key, setting_value, description, active, archive)
+        select 'expense', $1::varchar, $2::varchar, $3::varchar, true, false where not exists (select 1 from app_setting where category = 'expense' and setting_key = $1::varchar)`, [key, String(value), description]);
+    };
+    await put('auto_approve_limit', each, 'A store expense up to this amount is approved on the spot (0 = off)');
+    await put('auto_approve_daily_limit', daily, 'The most that is approved on the spot per store per day (0 = off)');
+    await this.audit.record({ userId: by.id, action: 'expense.auto_limits_set', entityType: 'app_setting', entityId: null, summary: `Auto-approve ${before.each}/${before.daily} -> ${each}/${daily}`, details: { from: before, to: { each, daily } } });
+    return { each, daily };
+  }
+
+  /** whether a store expense is small enough to approve on the spot: under the amount for one, and within what has been auto-approved today at the store */
+  private async autoApproves(storeId: number | null, date: string, amount: number): Promise<boolean> {
+    if (!storeId) return false;
+    const { each, daily } = await this.autoLimits();
+    if (!(each > 0) || amount > each) return false;
+    if (daily > 0) {
+      const [u] = await this.manager.query(`select coalesce(sum(amount), 0)::float8 as used from expense where store_id = $1 and expense_date = $2 and status = 'APPROVED' and decision_note like 'Auto-approved%'`, [storeId, date]);
+      if (+u.used + amount > daily) return false;
+    }
+    return true;
+  }
+
   private canDecide(c: Ctx, e: { store_id: number | null; amount: any; raised_by: number; status: string }): boolean {
     if (e.status !== 'PENDING') return false;
     if (isOwnerRole(c.role)) return true;
@@ -92,7 +128,8 @@ export class ExpenseService {
     const st = isOwnerRole(c.role)
       ? await this.manager.query(`select id, location as name from stores where active order by location`)
       : await this.manager.query(`select id, location as name from stores where id = any($1) order by location`, [c.stores]);
-    return { limit: c.limit, role: c.role, stores: st };
+    const auto = await this.autoLimits();
+    return { limit: c.limit, auto_each: auto.each, auto_daily: auto.daily, role: c.role, stores: st };
   }
 
   // ------------------------------------------------------------------ the ledger
@@ -157,6 +194,7 @@ export class ExpenseService {
     let status = 'PENDING', note: string | null = null;
     if (isOwnerRole(c.role)) { status = 'APPROVED'; note = 'Raised by the Business Head'; }
     else if (c.role === 'Store Head' && f.amount <= c.limit) { status = 'APPROVED'; note = 'Within the store limit'; }
+    else if (await this.autoApproves(f.store_id, f.expense_date, f.amount)) { status = 'APPROVED'; note = `Auto-approved: small store expense (up to ${(await this.autoLimits()).each})`; }
     const [r] = await this.manager.query(
       `insert into expense (expense_date, store_id, category_id, amount, gst_amount, payee, bill_no, pay_mode, description, receipt_path, status, raised_by, decided_by, decided_on, decision_note, cash_source, shift_id, bank_account_id, reference)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) returning id`,

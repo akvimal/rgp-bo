@@ -33,6 +33,8 @@ export class ExpenseController {
   @Put('categories/:id') @Needs('manage') saveCategory(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.service.saveCategory(id, b, u); }
   @Put('limit') @Needs('manage') limit(@Body() b: any, @User() u: any) { return this.service.setLimit(b?.limit, u); }
 
+  @Put('auto-limits') @Needs('manage') autoLimits(@Body() b: any, @User() u: any) { return this.service.setAutoLimits(b, u); }
+
   @Get('recurring') @Needs('manage') recurring() { return this.service.recurring(); }
   @Post('recurring') @Needs('manage') addRecurring(@Body() b: any, @User() u: any) { return this.service.saveRecurring(null, b, u); }
   @Put('recurring/:id') @Needs('manage') saveRecurring(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.service.saveRecurring(id, b, u); }

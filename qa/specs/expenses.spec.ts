@@ -83,8 +83,8 @@ test.describe('Expenses @p1', () => {
   });
 
   test('EXP-3 editing, removing and who sees what @negative', async ({ api }) => {
-    const id = (await api.request('POST', '/expenses', exp(counterStore, 90, { payee: 'QA edit me' }), COUNTER)).body.id;
-    const edited = await api.request('PUT', `/expenses/${id}`, exp(counterStore, 95, { payee: 'QA edited' }), COUNTER);
+    const id = (await api.request('POST', '/expenses', exp(counterStore, 190, { payee: 'QA edit me' }), COUNTER)).body.id;
+    const edited = await api.request('PUT', `/expenses/${id}`, exp(counterStore, 195, { payee: 'QA edited' }), COUNTER);
     expect(edited.status).toBeLessThan(300);
     expect((await api.request('PUT', `/expenses/${id}`, exp(counterStore, 1), SH)).status).toBe(403);                    // only the raiser (or Business Head)
     expect((await api.request('DELETE', `/expenses/${id}`, undefined, SH)).status).toBe(403);
@@ -176,5 +176,27 @@ test.describe('Expenses @p1', () => {
     await expect(counter.page.getByTestId('exp-add')).toBeVisible();
     await expect(counter.page.getByTestId('exp-tab-setup')).toHaveCount(0);
     await expect(counter.page.getByTestId('exp-tab-report')).toHaveCount(0);
+  });
+  test('EXP-6 a small store expense is approved on the spot, within a daily total per store @happy', async ({ api }) => {
+    cat = (await api.request('GET', '/expenses/categories', undefined, MGR)).body.find((c: any) => c.name === 'Repairs and maintenance').id;
+    counterStore = (await api.request('GET', '/expenses/policy', undefined, COUNTER)).body.stores[0].id;
+    const before = (await api.request('GET', '/expenses/policy', undefined, MGR)).body;
+    try {
+      // a day no other run has used (the rule counts a store's day), so the total starts at nothing
+      const date = new Date(Date.now() - (400 + Math.floor(Math.random() * 3000)) * 864e5).toISOString().slice(0, 10);
+      expect((await api.request('PUT', '/expenses/auto-limits', { each: 100, daily: 250 }, MGR)).status).toBeLessThan(300);
+      expect((await api.request('PUT', '/expenses/auto-limits', { each: 100, daily: 50 }, MGR)).status).toBe(400);   // the day cannot be less than one expense
+      await api.request('PUT', '/expenses/auto-limits', { each: 100, daily: 250 }, MGR);
+      const raise = (amount: number) => api.request('POST', '/expenses', exp(counterStore, amount, { expense_date: date, pay_mode: 'BANK' }), COUNTER);
+      expect((await raise(100)).body.status).toBe('APPROVED');       // up to the limit for one
+      expect((await raise(101)).body.status).toBe('PENDING');        // above it
+      expect((await raise(100)).body.status).toBe('APPROVED');       // 200 of 250 so far
+      expect((await raise(60)).body.status).toBe('PENDING');         // would make 260: waits for the Store Head
+      expect((await raise(50)).body.status).toBe('APPROVED');        // 250 exactly
+      await api.request('PUT', '/expenses/auto-limits', { each: 0, daily: 0 }, MGR);
+      expect((await raise(10)).body.status).toBe('PENDING');         // switched off
+    } finally {
+      await api.request('PUT', '/expenses/auto-limits', { each: before.auto_each, daily: before.auto_daily }, MGR);
+    }
   });
 });
