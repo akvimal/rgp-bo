@@ -15,10 +15,12 @@ export class SalesItemListComponent {
   @Input() category: any;
   props: any;
   items: SaleItem[] = [];
+  /** the shift names to filter by */
+  shifts: string[] = [];
   productProps$?:Observable<any>;
 
-  criteria: { category: string, props: any[], product: string, fromdate: string, todate: string }
-    = { category: '', props: [], product: '', fromdate: '', todate: '' }
+  criteria: { category: string, props: any[], product: string, fromdate: string, todate: string, shift: string }
+    = { category: '', props: [], product: '', fromdate: '', todate: '', shift: '' }
 
   constructor(private service: SaleService, private propService:PropsService, private dateService:DateUtilService) { }
 
@@ -28,6 +30,7 @@ export class SalesItemListComponent {
       this.criteria.category = this.category; 
     }
     this.productProps$ = this.propService.productProps$;
+    this.service.itemShifts().subscribe((s) => this.shifts = s || [], () => this.shifts = []);
     this.setDefaultCriteria();
     this.fetchSaleItems();
   }
@@ -37,6 +40,7 @@ export class SalesItemListComponent {
     this.criteria.fromdate = this.dateService.parseDate(new Date());
     this.criteria.product = '';
     this.criteria.category = '';
+    this.criteria.shift = '';
     this.criteria.props = [];
   }
 

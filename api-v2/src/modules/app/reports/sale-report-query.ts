@@ -41,6 +41,11 @@ export function buildSaleReportQuery(criteria: any, stores: number[] | null): Sa
     where.push(`coalesce(s.store_id, ss.store_id) = any($${params.length}::int[])`);
   }
 
+  if (criteria.shift !== undefined && criteria.shift !== null && criteria.shift !== '') {
+    params.push(text(criteria.shift, 'shift'));
+    where.push(`ss.name = $${params.length}`);
+  }
+
   const product = criteria.product;
   if (product !== undefined && product !== null) {
     if (typeof product !== 'object' || Array.isArray(product)) throw new BadRequestException('product must be an object.');
@@ -63,13 +68,15 @@ export function buildSaleReportQuery(criteria: any, stores: number[] | null): Sa
   }
 
   const sql = `
-        select s.bill_date, s.bill_no, s.more_props, c."name" || coalesce(' (' || c.mobile || ')', '') as customer, round(s.total) as sale_total,
+        select s.bill_date, s.bill_no, s.more_props, sh.name || ' (' || to_char(sh.shift_date, 'DD Mon') || ')' as shift, su.full_name as served_by, c."name" || coalesce(' (' || c.mobile || ')', '') as customer, round(s.total) as sale_total,
         p.title as product, (batch || ' (' || to_char(exp_date, 'Mon-YY') || ')') as batch, si.mrp_cost as MRP, si.qty, si.price as price, si.total as item_total
         from sale s
         inner join sale_item si on si.sale_id = s.id
         inner join product p on p.id = si.product_id
         left join customer c on c.id = s.customer_id
         left join store_shifts ss on ss.id = s.shift_id
+        left join store_shifts sh on sh.id = s.shift_id
+        left join app_user su on su.id = coalesce(s.acting_user_id, s.created_by)
         where ${where.join(' and ')}
         order by s.bill_date desc, s.bill_no desc
         limit ${MAX_REPORT_ROWS + 1}`;     // one more than allowed, so the service can tell that the days asked for hold too much

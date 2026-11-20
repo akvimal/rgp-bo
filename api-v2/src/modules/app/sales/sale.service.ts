@@ -1,3 +1,4 @@
+import { storesVisibleTo } from "src/core/store-scope";
 import { userError } from 'src/core/db-error';
 import { SaleHooks } from "src/core/sale-hooks/sale-hooks";
 import { ModulesService } from "src/core/modules/modules.service";
@@ -42,6 +43,8 @@ export interface SaleItemsQuery {
   category?: string;
   fromdate?: string;
   todate?: string;
+  /** the name of a shift (Morning, Evening ...): only bills rung up in a shift of that name */
+  shift?: string;
   props?: Array<{ id: string; value: string }>;
 }
 
@@ -578,13 +581,24 @@ export class SaleService {
         return { data, total, page, limit };
     }
 
+    /** the shift names bills were rung up in, over the stores this person may read, for the sale report's shift filter */
+    async shiftNames(userId: number) {
+        const scope = await storesVisibleTo(this.manager, userId);
+        const rows = await this.manager.query(
+            `select distinct sh.name from store_shifts sh where ($1::int[] is null or sh.store_id = any($1::int[])) order by sh.name`, [scope.stores]);
+        return rows.map((r: any) => r.name);
+    }
+
     async findAllItems(query: SaleItemsQuery, userid: number | null | undefined) {
        const qb = await this.saleItemRepository.createQueryBuilder("item")
                     .leftJoinAndSelect("item.sale", "sale")
                     .leftJoinAndSelect("sale.customer", "customer")
                     .leftJoinAndSelect("item.purchaseitem", "purchaseitem")
                     .leftJoinAndSelect("purchaseitem.product", "product")
-                    .select(['item','sale','customer','purchaseitem','product'])
+                    .leftJoin("sale.shift", "shift")
+                    .leftJoin("sale.actinguser", "serving")
+                    .leftJoin("sale.created", "creator")
+                    .select(['item','sale','customer','purchaseitem','product', 'shift.id', 'shift.name', 'shift.shiftdate', 'serving.id', 'serving.fullname', 'creator.id', 'creator.fullname'])
                     .where('sale.status = :st', { st:'COMPLETE' })
                     .andWhere('sale.active = true AND sale.archive = false')
                     .andWhere('item.active = true AND item.archive = false')
@@ -593,6 +607,9 @@ export class SaleService {
                     } 
         if(query.category){
             qb.andWhere('product.category = :ctg', { ctg:query.category });
+        }
+        if(query.shift){
+            qb.andWhere('shift.name = :shiftname', { shiftname: String(query.shift).slice(0, 60) });
         }
         if(query.fromdate && query.todate){
             qb.andWhere(

@@ -31,6 +31,10 @@ export class SaleService {
         return this.http.post(`${this.apiurl}/returns`,returns);
     }
 
+    itemShifts(){
+        return this.http.get<string[]>(`${this.apiurl}/items/shifts`);
+    }
+
     findAllItems(criteria:any){
         return this.http.post(`${this.apiurl}/items/criteria`,criteria);
     }

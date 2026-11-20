@@ -299,6 +299,11 @@ export class SaleController {
       return this.saleService.findSavedSales();
     }
 
+    @Get('/items/shifts')
+    async itemShifts(@User() currentUser: any) {
+      return this.saleService.shiftNames(currentUser.id);
+    }
+
     @Post('/items/criteria')
     async findAllItems(@Body() criteria: any, @User() currentUser: any) {
       return this.saleService.findAllItems(criteria,undefined);
