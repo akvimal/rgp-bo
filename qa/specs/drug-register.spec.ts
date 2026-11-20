@@ -315,4 +315,21 @@ test.describe('Drug register @p1', () => {
     }
     expect((await register(api)).status).toBe(200);
   });
+  test('DREG-9 the business can switch the prescription form off for Schedule H or H1 @happy', async ({ api }) => {
+    await required(api, 'H1,H,X');
+    const today = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+    const h = await drug(api, `fh-${run}`, 'H');
+    const h1 = await drug(api, `fh1-${run}`, 'H1');
+    try {
+      expect((await api.request('GET', '/schedule/config', undefined, SALES)).body.required).toEqual(expect.arrayContaining(['H', 'H1']));   // on by default
+      expect((await api.request('PUT', '/config/compliance', { values: { rx_form_h: false }, effectiveFrom: today }, MGR)).status).toBe(200);
+      const cfg = (await api.request('GET', '/schedule/config', undefined, SALES)).body;
+      expect(cfg.required).not.toContain('H');
+      expect(cfg.required).toContain('H1');
+      expect((await api.request('POST', '/sales', bill(h), SALES)).status).toBeLessThan(300);     // Schedule H: no form, no details asked
+      expect((await api.request('POST', '/sales', bill(h1), SALES)).status).toBe(400);             // Schedule H1 still asks
+    } finally {
+      await api.request('DELETE', '/config/compliance/rx_form_h', undefined, MGR);
+    }
+  });
 });

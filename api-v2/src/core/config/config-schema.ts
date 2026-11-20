@@ -47,6 +47,8 @@ export const CONFIG_DEFS: ConfigDef[] = [
   i('compliance', 'escalate_days', 'Days late before the Business Head is told, for all items', 3, 1, 10, 'days'),
   i('compliance', 'waiver_max_days', 'Longest waiver the Business Head can grant', 7, 1, 30, 'days'),
   { ...b('compliance', 'block_expired_licence', 'Stop billing when the drug licence has ended (a waiver lifts it)', false), pack: 'pharmacy' },
+  { ...b('compliance', 'rx_form_h', 'Billing: ask for the prescription details (patient, prescriber, prescription) on a Schedule H drug', true), pack: 'pharmacy' },
+  { ...b('compliance', 'rx_form_h1', 'Billing: ask for the prescription details (patient, prescriber, prescription) on a Schedule H1 drug', true), pack: 'pharmacy' },
   { scope: 'compliance', key: 'drug_register', label: 'Drug register entry', kind: 'enum', default: 'block', options: ['block'], locked: true, pack: 'pharmacy' },
   { scope: 'compliance', key: 'licence_expiry', label: 'Licence and registration expiry', kind: 'enum', default: 'escalate', options: ['escalate'], locked: true, pack: 'pharmacy' },
 

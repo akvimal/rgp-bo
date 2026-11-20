@@ -29,7 +29,7 @@ maybe('DrugRegisterService against PostgreSQL', () => {
         catch (e) { await c.query('rollback'); throw e; } finally { c.release(); }
       },
     };
-    svc = new DrugRegisterService(manager, audit as any);
+    svc = new DrugRegisterService(manager, audit as any, { valuesFor: async () => ({}) } as any);
     const [u] = await q(`select u.id, u.role_id as roleid from app_user u join app_role r on r.id = u.role_id where r.name = 'Business Head' and u.active order by u.id limit 1`);
     user = { id: u.id, roleid: u.roleid };
     const [s] = await q(

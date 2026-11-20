@@ -3,6 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { AuditService } from 'src/core/audit/audit.service';
+import { ConfigService } from 'src/core/config/config.service';
 import { businessOfUser } from 'src/core/business-of-user';
 import { isOwnerRole } from 'src/core/roles';
 import { SaleContext, SavedSaleContext } from 'src/core/sale-hooks/sale-hooks';
@@ -27,12 +28,19 @@ const withRx = (q: any) => String(q?.prescriber ?? '') === 'true';
 
 @Injectable()
 export class DrugRegisterService {
-  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService, private readonly businessConfig: ConfigService) {}
 
   // ------------------------------------------------------------------ settings
-  async required(m: EntityManager = this.manager): Promise<Schedule[]> {
+  /**
+   * the schedules whose bills ask for the register details. Two business-level flags (Settings > Compliance) switch the form off for Schedule H and for
+   * Schedule H1; with no business given every schedule in the setting applies (as before).
+   */
+  async required(m: EntityManager = this.manager, businessId?: number | null): Promise<Schedule[]> {
     const [s] = await m.query(`select setting_value from app_setting where setting_key = 'schedule_register_required' and active and not archive limit 1`);
-    return parseRequired(s ? (s.setting_value ?? '') : undefined);
+    const list = parseRequired(s ? (s.setting_value ?? '') : undefined);
+    if (!businessId) return list;
+    const flags = await this.businessConfig.valuesFor(businessId, 'compliance');
+    return list.filter((x) => !(x === 'H' && flags.rx_form_h === false) && !(x === 'H1' && flags.rx_form_h1 === false));
   }
 
   async since(m: EntityManager = this.manager): Promise<string> {
@@ -44,12 +52,13 @@ export class DrugRegisterService {
    * the schedules whose bills are held back until the patient and the prescriber are given; the others can be completed and the details added later.
    * The setting is a list ("H1,X"); "yes" means every schedule, and "no" or nothing means none.
    */
-  async enforced(m: EntityManager = this.manager): Promise<Schedule[]> {
+  async enforced(m: EntityManager = this.manager, businessId?: number | null): Promise<Schedule[]> {
     const [s] = await m.query(`select setting_value from app_setting where setting_key = 'schedule_register_enforce' and active and not archive limit 1`);
     const v = String(s?.setting_value ?? '').trim().toLowerCase();
-    if (v === 'yes') return [...SCHEDULES];
-    if (!v || v === 'no') return [];
-    return parseRequired(v);
+    const all = v === 'yes' ? [...SCHEDULES] : !v || v === 'no' ? [] : parseRequired(v);
+    if (!businessId) return all;
+    const on = await this.required(m, businessId);
+    return all.filter((x) => on.includes(x));
   }
 
   /** months a prescription on file can be used again for a repeat supply of a chronic medicine */
@@ -58,7 +67,7 @@ export class DrugRegisterService {
     return parseStandingMonths(s?.setting_value);
   }
 
-  async config() { return { required: await this.required(), since: await this.since(), enforce: await this.enforced(), standing_months: await this.standingMonths() }; }
+  async config(user?: any) { const biz = user ? await businessOfUser(this.manager, user.id) : null; return { required: await this.required(this.manager, biz), since: await this.since(), enforce: await this.enforced(this.manager, biz), standing_months: await this.standingMonths() }; }
 
   // ------------------------------------------------------------------ the bill
   private async scheduledProducts(m: EntityManager, productIds: number[]): Promise<ScheduledProduct[]> {
@@ -79,13 +88,15 @@ export class DrugRegisterService {
     if (String(ctx.sale?.status || '').toUpperCase() !== 'COMPLETE') return;
     const lines = this.billLines(ctx.sale);
     const scheduled = scheduledLines(lines, await this.scheduledProducts(ctx.manager, [...new Set(lines.map((l) => l.productid))]));
-    const covered = requiredLines(scheduled, await this.required(ctx.manager));
+    const [stRow] = ctx.storeId ? await ctx.manager.query(`select business_id from stores where id = $1`, [ctx.storeId]) : [undefined];
+    const biz = stRow?.business_id ?? null;
+    const covered = requiredLines(scheduled, await this.required(ctx.manager, biz));
     if (!covered.length) return;
     const basisProblems = rxProblems(ctx.sale?.props?.scheduledetail, ctx.sale?.props?.documents, istDay());
     if (basisProblems.length) throw new BadRequestException(`This bill has a scheduled drug. Give ${basisProblems.join(', ')}.`);
     const walkIn = normaliseRx(ctx.sale?.props?.scheduledetail, ctx.sale?.props?.documents).basis === 'LATER' && String(ctx.sale?.customer?.mobile ?? '') === NIL_MOBILE;
     if (walkIn) throw new BadRequestException('A prescription to follow needs a customer on record to ask: add the customer to the bill.');
-    const enforced = await this.enforced(ctx.manager);
+    const enforced = await this.enforced(ctx.manager, biz);
     const need = covered.filter((n) => enforced.includes(n.product.schedule));
     if (!need.length) return;
     const basisNow = normaliseRx(ctx.sale?.props?.scheduledetail, ctx.sale?.props?.documents).basis;
@@ -314,7 +325,7 @@ export class DrugRegisterService {
     if (asked > to) throw new BadRequestException('The period starts after it ends.');
     const since = await this.since();
     const from = asked > since ? asked : since;
-    const required = await this.required();
+    const required = await this.required(this.manager, await businessOfUser(this.manager, user.id));
     const empty = { from, to, since, required, totals: { supplies: 0, covered: 0, with_rx: 0, missing: 0 }, by_schedule: [], by_user: [], by_basis: [] };
     if (!ids.length || !required.length || from > to) return empty;
     const rows = await this.manager.query(
@@ -463,7 +474,7 @@ export class DrugRegisterService {
     const totals: Record<string, { lines: number; units: number }> = {};
     for (const s of SCHEDULES) totals[s] = { lines: 0, units: 0 };
     rows.filter((r: any) => !r.superseded).forEach((r: any) => { totals[r.schedule].lines += 1; totals[r.schedule].units += r.qty; });
-    return { from, to, rows, totals, stores: sc.stores, ...(await this.config()), coverage: await this.coverage(user) };
+    return { from, to, rows, totals, stores: sc.stores, ...(await this.config(user)), coverage: await this.coverage(user) };
   }
 
   /**
@@ -498,7 +509,7 @@ export class DrugRegisterService {
   /** scheduled drugs sold since the register began that have no register line: the bill was made some other way, or before the details were asked for */
   async coverage(user: any) {
     const sc = await this.scope(user);
-    const required = await this.required();
+    const required = await this.required(this.manager, await businessOfUser(this.manager, user.id));
     const since = await this.since();
     const ids = sc.stores.map((s) => s.id);
     if (!ids.length) return { since, required, missing: 0, items: [], months: [] };

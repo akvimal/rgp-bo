@@ -27,7 +27,7 @@ export class DrugRegisterController {
   }
 
   /** what the counter needs: which schedules need details on a bill */
-  @Get('config') config() { return this.register.config(); }
+  @Get('config') config(@User() u: any) { return this.register.config(u); }
   @Get('prescribers') prescribers(@Query('q') q: string, @User() u: any) { return this.register.prescribers(u, q); }
   /** what is already on record for a customer: prescriptions kept with them and the patient and prescriber of their last supplies */
   @Get('customer/:id/context') customerContext(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.register.customerContext(u, id); }
