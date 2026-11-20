@@ -274,6 +274,42 @@ export class PurchaseService {
         return this.requestRepository.save(await this.buildRequestRow(dto, userid, requestOnly));
     }
 
+    /**
+     * A purchase request for one product, sized as the Reorder list would size it: what the sales and the minimum stock call for, less what is on hand and on
+     * order. Where the list has no figure (nothing sold lately), the product's minimum stock, else `fallbackqty` (what the customer last bought), else 1.
+     * Used from a screen that notices a product is out (the refill follow-up). A product already asked for, or on an order that is not received, is not asked
+     * for twice: the existing request is returned with `already: true`.
+     */
+    async requestReorder(body: { productid?: any; fallbackqty?: any; note?: string }, userid: number, requestOnly = false) {
+        const productid = Math.floor(+body?.productid);
+        if (!(productid > 0)) throw new BadRequestException('Choose the product.');
+        const [product] = await this.manager.query(`select id, title, min_stock from product where id = $1 and active`, [productid]);
+        if (!product) throw new BadRequestException('That product was not found.');
+        const [open] = await this.manager.query(
+            `select r.id, r.status, r.order_id, coalesce(r.ordered_qty, r.qty) as qty
+               from purchase_request r left join purchase_order o on o.id = r.order_id
+              where r.product_id = $1 and r.active and not r.archive and r.status in ('Open', 'Reviewed', 'Ordered')
+                and (r.order_id is null or o.status in ('PENDING', 'PENDING_APPROVAL', 'SUBMITTED'))
+              order by r.id desc limit 1`, [productid]);
+        if (open) return { already: true, requestid: +open.id, status: open.status, orderid: open.order_id ? +open.order_id : null, qty: +open.qty, title: product.title };
+
+        let qty = 0;
+        try {
+            const rows = await this.findSuggestions({ includezero: 'true' });
+            const row = rows.find((x: any) => +x.product_id === productid);
+            qty = Math.max(0, Math.ceil(+row?.trend_qty || 0));
+        } catch { qty = 0; }
+        if (!(qty > 0)) qty = Math.max(0, Math.floor(+product.min_stock || 0));
+        if (!(qty > 0)) qty = Math.max(0, Math.floor(+body?.fallbackqty || 0));
+        if (!(qty > 0)) qty = 1;
+        const note = `${body?.note ?? ''}`.trim().slice(0, 200);
+        const saved: any = await this.createRequest({
+            productid, qty, requesttype: 'Refill', source: 'Customer', priority: 'High',
+            comments: note || 'Out of stock for a refill follow-up',
+        } as any, userid, requestOnly);
+        return { already: false, requestid: +saved.id, status: saved.status, qty, title: product.title };
+    }
+
     /** one row per line, built from the shared fields and the line */
     private lineDto(shared: any, line: any): CreatePurchaseRequestDto {
         return {

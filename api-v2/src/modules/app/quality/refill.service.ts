@@ -144,6 +144,17 @@ export class RefillService {
       for (const s of st) stock.set(+s.product_id, stockState(Number(s.total), Number(s.beyond)));
       for (const id of dueProducts) if (!stock.has(id)) stock.set(id, 'none');
     }
+    // medicines already asked for (a request not yet ordered, or on an order not received), so the screen does not offer to ask again
+    const asked = new Map<number, string>();
+    if (dueProducts.size) {
+      const rq = await this.manager.query(
+        `select distinct on (r.product_id) r.product_id, r.status, r.order_id
+           from purchase_request r left join purchase_order o on o.id = r.order_id
+          where r.product_id = any($1::int[]) and r.active and not r.archive and r.status in ('Open', 'Reviewed', 'Ordered')
+            and (r.order_id is null or o.status in ('PENDING', 'PENDING_APPROVAL', 'SUBMITTED'))
+          order by r.product_id, r.id desc`, [[...dueProducts]]);
+      for (const q of rq) asked.set(+q.product_id, q.status === 'Ordered' ? 'On order' : 'Requested');
+    }
     for (let i = rows.length - 1; i >= 0; i--) {
       const r = rows[i];
       const d = picked.get(r.customer_id);
@@ -157,7 +168,7 @@ export class RefillService {
       r.expected_on = dayTextOfIndex(d.expectedDay);
       r.days_over = today - d.expectedDay;
       r.bucket = bucketOf(r.days_over);
-      r.medicines = d.due.map((m) => ({ title: m.title, expected_on: dayTextOfIndex(m.expected_day), basis: m.basis, supply_days: m.supply_days, qty: m.qty, stock: stock.get(m.product_id) || 'ok' }));
+      r.medicines = d.due.map((m) => ({ product_id: m.product_id, requested: asked.get(m.product_id) || null, title: m.title, expected_on: dayTextOfIndex(m.expected_day), basis: m.basis, supply_days: m.supply_days, qty: m.qty, stock: stock.get(m.product_id) || 'ok' }));
     }
   }
 

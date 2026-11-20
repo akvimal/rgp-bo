@@ -51,6 +51,13 @@ export class PurchaseRequestController {
         return this.service.createRequest(createDto, currentUser.id, !!(await this.scopeOf(currentUser)));
     }
 
+    /** a request for one product sized as the Reorder list sizes it (from the refill follow-up when the medicine is out of stock) */
+    @Post('reorder')
+    @PurchasingAlsoAllow('request')
+    async reorder(@Body() body: any, @User() currentUser: any) {
+        return this.service.requestReorder(body, currentUser.id, !!(await this.scopeOf(currentUser)));
+    }
+
     /** several products asked for together (shared fields copied onto each line's request) */
     @Post('slip')
     @PurchasingAlsoAllow('request')

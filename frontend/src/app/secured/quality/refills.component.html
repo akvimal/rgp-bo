@@ -1,8 +1,7 @@
 <div class="form-compact">
 <div class="card">
   <div class="card-body pt-3">
-    <h5 class="card-title mb-0">Refill follow-up</h5>
-    <div class="small text-muted mb-2">Chronic-medicine customers who are due, or late, for their usual refill. Based on their own buying pattern (at least 3 visits).</div>
+    <div class="small text-muted mb-2">Chronic-medicine customers who are due, or late, for their usual refill (at least 3 visits).</div>
 
     <div class="row g-2" *ngIf="data">
       <div class="col-6 col-md-3"><button class="btn w-100 text-start" [ngClass]="bucket === 'OVERDUE' ? 'btn-danger' : 'btn-outline-danger'" data-testid="rf-chip-overdue" (click)="pick('OVERDUE')"><div class="fs-5">{{data.counts.OVERDUE}}</div><div class="small">Overdue</div></button></div>
@@ -22,6 +21,7 @@
     </div>
 
     <div *ngIf="error" class="alert alert-danger mt-3" data-testid="rf-error">{{error}}</div>
+    <div *ngIf="notice" class="alert alert-success py-2 mt-3" data-testid="rf-notice">{{notice}}</div>
 
     <div class="table-responsive mt-3">
       <table class="table table-sm align-middle" data-testid="rf-table">
@@ -29,12 +29,15 @@
         <tbody>
           <ng-container *ngFor="let r of data?.rows">
             <tr data-testid="rf-row">
-              <td>{{r.name}}<div class="small"><a [href]="'tel:' + r.mobile">{{r.mobile}}</a> · <a *ngIf="!r.messages" [href]="waLink(r.mobile)" target="_blank" rel="noopener">WhatsApp</a><a *ngIf="r.messages" href="javascript:void(0)" data-testid="rf-message" (click)="openMessage(r)">Message</a></div></td>
+              <td>{{r.name}} <app-customer-badge class="ms-1" [customerId]="r.customer_id"></app-customer-badge><div class="small"><a [href]="'tel:' + r.mobile">{{r.mobile}}</a> · <a *ngIf="!r.messages" [href]="waLink(r.mobile)" target="_blank" rel="noopener">WhatsApp</a><a *ngIf="r.messages" href="javascript:void(0)" data-testid="rf-message" (click)="openMessage(r)">Message</a></div></td>
               <td class="small" style="max-width:300px">
                 <ng-container *ngIf="r.medicines?.length; else plainTitles">
-                  <div *ngFor="let m of r.medicines" data-testid="rf-medicine">{{m.title}}
-                    <span class="text-muted">· runs out {{m.expected_on | date:'dd MMM'}} ({{m.basis === 'own' ? 'their own pattern' : 'product default'}})</span>
-                    <span class="badge bg-danger ms-1" *ngIf="m.stock === 'none'" data-testid="rf-nostock" title="None on the shelf: order it before calling">Not in stock</span>
+                  <div *ngFor="let m of r.medicines" data-testid="rf-medicine">{{m.title}}<span class="fw-semibold" *ngIf="m.qty" title="What they bought last time" data-testid="rf-lastqty"> &times; {{m.qty}}</span>
+                    <span class="text-muted" [title]="m.basis === 'own' ? 'Worked out from their own buying pattern' : 'Worked out from the product default'">· runs out {{m.expected_on | date:'dd MMM'}}</span>
+                    <ng-container *ngIf="m.stock === 'none'">
+                      <span class="text-success ms-1" *ngIf="m.requested" [title]="m.requested === 'On order' ? 'Not in stock; already on an order' : 'Not in stock; already on a purchase request'" data-testid="rf-requested"><i class="bi bi-cart-check-fill"></i> {{m.requested}}</span>
+                      <button type="button" class="btn btn-link text-danger p-0 ms-1 align-baseline" *ngIf="!m.requested" [disabled]="requesting === m.product_id" (click)="requestItem(r, m)" title="Not in stock. Click to add it to the purchase requests (quantity from the Reorder list)" aria-label="Not in stock: add to purchase requests" data-testid="rf-nostock"><i class="bi bi-cart-plus-fill"></i></button>
+                    </ng-container>
                     <span class="badge bg-warning text-dark ms-1" *ngIf="m.stock === 'short'" data-testid="rf-shortdated" title="Only stock that expires within 60 days">Short-dated only</span>
                   </div>
                 </ng-container>

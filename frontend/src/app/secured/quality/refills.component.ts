@@ -67,6 +67,23 @@ export class RefillsComponent implements OnInit, OnDestroy {
     );
   }
 
+  // a medicine that is out of stock, added to the purchase requests from the row
+  requesting: number | null = null;
+  notice = "";
+
+  requestItem(r: any, m: any) {
+    if (this.requesting) return;
+    this.requesting = m.product_id; this.error = ""; this.notice = "";
+    this.http.post<any>(`${environment.apiHost}/purchaserequests/reorder`, { productid: m.product_id, fallbackqty: m.qty, note: `Refill due for ${r.name || "a customer"}: out of stock` }).subscribe(
+      res => {
+        this.requesting = null;
+        m.requested = res.status === "Ordered" ? "On order" : "Requested";
+        this.notice = res.already ? `${res.title} is already on a purchase request or order.` : `${res.title}: a purchase request for ${res.qty} was added.`;
+      },
+      err => { this.requesting = null; const e = err?.error?.message; this.error = Array.isArray(e) ? e.join(" ") : (e || "Could not add the request."); }
+    );
+  }
+
   /** the day this customer's refill was due, kept with the contact so a later bill can be judged against it */
   private dueOf(customerId: number): string | undefined {
     const r = (this.data?.rows || []).find((x: any) => x.customer_id === customerId);
