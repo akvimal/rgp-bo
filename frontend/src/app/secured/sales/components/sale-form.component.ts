@@ -527,7 +527,8 @@ export class SaleFormComponent {
 
   redirectAfterSubmit(status:string,id:number){
     if(status === 'COMPLETE')
-      this.router.navigateByUrl(`/secure/sales/view/${id}`); 
+      // a bill paid in part or whole by UPI or card asks for the payment to be confirmed on the print page before it can be printed
+      this.router.navigateByUrl(`/secure/sales/view/${id}`, { state: { confirmPayment: true } });
     else 
       this.router.navigate([`/secure/sales/pos/edit`,id]);
   }

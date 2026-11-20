@@ -96,6 +96,22 @@ export class SaleViewComponent {
       this.service.find(this.saleIdNum).subscribe((data:any) => this.setSale(data));
     }
 
+    /** a bill just completed with a digital payment: the person confirms the money came in before the bill can be printed */
+    confirmPayment = false;
+    private confirmAsked = false;
+    private readonly justCompleted = !!(history.state && history.state.confirmPayment);
+
+    paymentReceived(){
+      this.confirmPayment = false;
+      try { history.replaceState({ ...(history.state || {}), confirmPayment: false }, ''); } catch { /* the page is shown as it is */ }
+    }
+
+    /** the money did not come in: the payment on the bill is corrected (the same panel as Correct details) */
+    paymentNotReceived(){
+      this.confirmPayment = false;
+      this.correcting = true; this.corrected = false;
+    }
+
     voiding = false;
     voidReason = '';
     voidBusy = false;
@@ -200,6 +216,8 @@ export class SaleViewComponent {
         digiamt: +data.digiamt || 0, digimethod: data.digimethod, cashamt: +data.cashamt || 0,
         staffcomments: data.staffcomments || null, creditamt: +data.creditamt || 0, commitmentamt: +data.commitmentamt || 0, staffcreditamt: +data.staffcreditamt || 0
       };
+      this.sale.digirefno = data.digirefno || '';
+      if(!this.confirmAsked && this.justCompleted && this.sale.digiamt > 0 && data.status === 'COMPLETE'){ this.confirmPayment = true; this.confirmAsked = true; }
       this.saleStaff = data?.actinguser?.fullname || data?.created?.fullname || '';
       this.itemsCount = items.length;
       this.finalAmt = Math.round(data.total);

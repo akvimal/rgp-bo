@@ -55,6 +55,8 @@
 .bill-thanks { font-weight: 700; color: #012970; margin-top: 3px; }
 
 @media print {
+    /* until the payment is confirmed the bill does not print, whichever way printing is started */
+    .hold-print { display: none !important; }
     .bill-card { border: 0; box-shadow: none; }
     .bill { font-size: 11px; max-width: none; }
     .bill-items th, .bill-items td { padding: 3px 5px; }
