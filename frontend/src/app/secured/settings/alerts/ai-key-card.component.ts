@@ -1,4 +1,4 @@
-import { Component, EventEmitter, OnInit, Output } from "@angular/core";
+import { Component, EventEmitter, Input, OnInit, Output } from "@angular/core";
 import { AlertsService } from "../../alerts/alerts.service";
 
 /** The assistant's key: pasted here by the Business Head, kept encrypted on the server, never shown again. Used by every assistant in the app. */
@@ -7,7 +7,7 @@ import { AlertsService } from "../../alerts/alerts.service";
   template: `
     <div class="card mt-3" *ngIf="ai" data-testid="aik-card">
       <div class="card-body">
-        <h5 class="card-title m-0 p-0 mt-3">AI assistant</h5>
+        <h5 class="card-title m-0 p-0 mt-3" *ngIf="heading">AI assistant</h5>
         <div class="small text-muted mb-2">Drafts alert rules, checklists, job roles, KPIs and incentive proposals. Only anonymous totals leave this server, never names, salaries or bills. Nothing it drafts is used until you approve it.</div>
         <div class="alert alert-warning py-2" *ngIf="ai.off" data-testid="aik-off">The assistant is switched off for this server.</div>
         <div class="mb-2" *ngIf="!ai.off">
@@ -56,6 +56,8 @@ import { AlertsService } from "../../alerts/alerts.service";
     </div>`,
 })
 export class AiKeyCardComponent implements OnInit {
+  /** a page that is itself titled "AI assistant" turns the card heading off */
+  @Input() heading = true;
   @Output() changed = new EventEmitter<void>();
   ai: any = null;
   usage: any = null;
