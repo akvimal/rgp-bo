@@ -148,6 +148,9 @@ test.describe('Invoices marked for payment @p1', () => {
     test.skip(!carried, 'no carried-over invoice in this data set');
     const { page } = await app.open(MGR, `/secure/purchases/invoices/list?view=ready&vendor=${carried.vendor_id}`);
     await expectShell(page);
+    // the vendor can have more ready invoices than one page holds: narrow the list to the invoice by its number
+    await page.getByTestId('inv-search').fill(carried.invoice_no);
+    await page.getByTestId('inv-search').press('Enter');
     const plain = page.locator(`[data-testid=inv-row][data-invoice="${carried.invoice_no}"]`);
     await expect(plain).toBeVisible();
     await expect(plain).not.toHaveClass(/table-success/);
@@ -155,6 +158,8 @@ test.describe('Invoices marked for payment @p1', () => {
     await expect(plain.getByTestId('inv-ready-since')).toContainText('carried over');
 
     await page.goto(`/secure/purchases/invoices/list?view=ready&vendor=${mine.vendorid}`);
+    await page.getByTestId('inv-search').fill(mine.no);
+    await page.getByTestId('inv-search').press('Enter');
     const green = page.locator(`[data-testid=inv-row][data-invoice="${mine.no}"]`);
     await expect(green).toHaveClass(/table-success/);
     await expect(green.getByTestId('inv-payment')).toHaveText('Ready for payment');

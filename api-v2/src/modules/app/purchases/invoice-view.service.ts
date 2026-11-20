@@ -112,7 +112,7 @@ export class InvoiceViewService {
         from (
           select i.id, i.vendor_id, btrim(v.business_name) as business_name, i.invoice_no, i.challan_no, i.challan_date, i.invoice_date,
                  coalesce(i.due_date, i.invoice_date) as due_date, i.status, i.total::numeric as total,
-                 coalesce(i.payment_status, 'Unpaid') as stored_status, i.gst_recon_status, i.gst_period,
+                 coalesce(i.payment_status, 'Unpaid') as stored_status, coalesce(gr.status, i.gst_recon_status) as gst_recon_status, i.gst_period,
                  i.hold_reason, i.approved_on, i.approval_note, ua.full_name as approved_by_name,
                  i.payment_ready_on as ready_on, i.payment_ready_note as ready_note, ur.full_name as ready_by_name, (i.payment_ready_by is not null) as ready_marked,
                  (${policy.enabled ? 'true' : 'false'} and i.approved_on is null and (${Number(policy.limit) || 0} <= 0 or i.total::numeric > ${Number(policy.limit) || 0})) as needs_appr,
@@ -122,6 +122,7 @@ export class InvoiceViewService {
             join vendor v on v.id = i.vendor_id
             left join app_user ua on ua.id = i.approved_by
             left join app_user ur on ur.id = i.payment_ready_by
+            left join lateral (select r.status from gst_reconciliation r where r.purchase_invoice_id = i.id and r.active and not r.archive order by r.id desc limit 1) gr on true
             left join lateral (select coalesce(sum(amount), 0)::numeric as paid, max(pay_date) filter (where amount > 0) as last_payment,
                                       (count(*) filter (where amount > 0))::int as payments
                                  from vendor_payment where invoice_id = i.id) p on true

@@ -212,9 +212,8 @@
             <th role="button" (click)="sortBy('due_date')">Due {{sortIcon('due_date')}}</th>
             <th role="button" (click)="sortBy('business_name')">Vendor {{sortIcon('business_name')}}</th>
             <th class="text-end" role="button" (click)="sortBy('total')">Amount {{sortIcon('total')}}</th>
-            <th class="text-end" role="button" (click)="sortBy('paid_amount')">Paid {{sortIcon('paid_amount')}}</th>
             <th class="text-end" role="button" (click)="sortBy('balance_amount')">Balance {{sortIcon('balance_amount')}}</th>
-            <th class="text-center" role="button" (click)="sortBy('payment_status')">Payment {{sortIcon('payment_status')}}</th>
+            <th class="text-center" role="button" (click)="sortBy('payment_status')">Status {{sortIcon('payment_status')}}</th>
             <th role="button" (click)="sortBy('ready_on')" *ngIf="view.startsWith('ready')">Ready since {{sortIcon('ready_on')}}</th>
             <th class="text-center" title="GST 2B reconciliation">GST</th>
             <th class="text-end">Actions</th>
@@ -230,30 +229,33 @@
             <td class="text-nowrap">{{p.due_date | date:'dd MMM yyyy'}}<div class="small text-danger" *ngIf="p.days_overdue > 0" data-testid="inv-late">{{p.days_overdue}} day{{p.days_overdue === 1 ? '' : 's'}} late</div></td>
             <td>{{p.business_name}}</td>
             <td class="text-end">{{p.total | number:'1.2-2'}}</td>
-            <td class="text-end">{{p.paid_amount | number:'1.2-2'}}<div class="small text-muted" *ngIf="p.last_payment">{{p.last_payment | date:'dd MMM'}}</div></td>
             <td class="text-end fw-semibold" data-testid="inv-balance" [class.text-danger]="p.days_overdue > 0">{{p.balance_amount | number:'1.2-2'}}</td>
             <td class="text-center"><span class="badge" [ngClass]="payClass(payLabel(p))" data-testid="inv-payment">{{payLabel(p)}}</span>
               <div class="small text-muted" *ngIf="p.on_hold" [title]="p.hold_reason">{{p.hold_reason}}</div>
+              <div class="small text-muted" *ngIf="p.paid_amount > 0 && p.balance_amount > 0" data-testid="inv-part-paid">&#8377;{{p.paid_amount | number:'1.2-2'}} paid<span *ngIf="p.last_payment"> &middot; {{p.last_payment | date:'dd MMM'}}</span></div>
+              <div class="small text-muted" *ngIf="p.balance_amount <= 0 && p.last_payment" data-testid="inv-paid-on">paid {{p.last_payment | date:'dd MMM yyyy'}}</div>
+              <div class="small text-danger" *ngIf="p.days_overdue > 0 && !p.on_hold">overdue {{p.days_overdue}}d</div>
+              <div class="small text-muted" *ngIf="p.not_ready">completed, not yet marked ready</div>
               <div class="small text-muted" *ngIf="isMarked(p) && p.ready_by && !view.startsWith('ready')" data-testid="inv-ready-by" [title]="p.ready_note || ''">ready {{readyAgo(p)}} &middot; {{p.ready_by}}</div>
               <div class="small text-muted" *ngIf="approval.enabled && p.approved" data-testid="inv-approved-by">approved by {{p.approved_by}}</div></td>
             <td *ngIf="view.startsWith('ready')" class="small" data-testid="inv-ready-since"><ng-container *ngIf="isMarked(p); else carried">{{p.ready_on | date:'dd MMM'}}<div class="text-muted">{{readyAgo(p)}}<span *ngIf="p.ready_by"> &middot; {{p.ready_by}}</span></div></ng-container><ng-template #carried><span class="text-muted" title="This invoice was already complete and unpaid when marking was introduced, so it counts as ready, but nobody marked it">carried over</span></ng-template><div class="text-muted" *ngIf="p.ready_note" [title]="p.ready_note">{{p.ready_note}}</div></td>
             <td class="text-center"><span *ngIf="p.status === 'COMPLETE'" class="badge" [ngClass]="gstClass(p.gst_status)" data-testid="inv-gst">{{gstLabel(p.gst_status)}}</span></td>
             <td class="text-end text-nowrap">
-              <button class="btn btn-outline-secondary btn-sm py-0" type="button" (click)="openPeek(p.id)" title="View the amounts, items and payments" data-testid="inv-view"><i class="bi bi-eye"></i></button>
-              <div class="d-flex flex-wrap gap-1 justify-content-end" style="min-width:8rem">
-              <a class="btn btn-primary btn-sm py-0" data-testid="inv-add-invoice" *ngIf="p.awaiting" [routerLink]="['../edit', p.id]" title="The vendor's invoice has come: enter its number, date and total">Add invoice no.</a>
-              <button class="btn btn-primary btn-sm py-0" data-testid="inv-mark-ready" *ngIf="p.not_ready" (click)="markReady(p)" title="Checked: may go to finance for payment">Mark ready</button>
-              <button class="btn btn-primary btn-sm py-0" data-testid="inv-pay" *ngIf="canPay(p)" (click)="openPay(p)" title="Record a payment">Pay</button>
-              <button class="btn btn-outline-secondary btn-sm py-0" data-testid="inv-history" *ngIf="p.payments > 0" (click)="openHistory(p)" title="Payments recorded">Payments</button>
-              <button class="btn btn-success btn-sm py-0" data-testid="inv-approve" *ngIf="p.awaiting_approval && approval.canmanage" (click)="approveInv(p)" title="Clear this invoice for payment">Approve</button>
-              <button class="btn btn-outline-secondary btn-sm py-0" data-testid="inv-unapprove" *ngIf="p.approved && p.balance_amount > 0 && !p.payments && approval.canmanage" (click)="unapproveInv(p)" title="Take the approval back">Withdraw approval</button>
-              <button class="btn btn-outline-warning btn-sm py-0" data-testid="inv-hold" *ngIf="p.status === 'COMPLETE' && p.balance_amount > 0 && !p.on_hold" (click)="openHold(p)" title="Hold: no payment until released">Hold</button>
-              <button class="btn btn-warning btn-sm py-0" data-testid="inv-release" *ngIf="p.on_hold" (click)="release(p)">Release</button>
-              <button class="btn btn-outline-danger btn-sm py-0" data-testid="inv-delete" *ngIf="p.status === 'NEW' && !p.payments" (click)="askDelete(p)" title="Delete this draft invoice"><i class="bi bi-trash"></i> Delete</button>
+              <div class="d-flex flex-nowrap gap-1 justify-content-end">
+              <button class="btn btn-outline-secondary btn-sm py-0" type="button" (click)="openPeek(p.id)" title="View the amounts, items and payments" aria-label="View" data-testid="inv-view"><i class="bi bi-eye"></i></button>
+              <a class="btn btn-outline-primary btn-sm py-0" data-testid="inv-add-invoice" *ngIf="p.awaiting" [routerLink]="['../edit', p.id]" title="The vendor's invoice has come: enter its number, date and total" aria-label="Add invoice number"><i class="bi bi-pencil-square"></i></a>
+              <button class="btn btn-outline-success btn-sm py-0" data-testid="inv-mark-ready" *ngIf="p.not_ready" (click)="markReady(p)" title="Ready to pay: checked, may go to finance for payment" aria-label="Ready to pay"><i class="bi bi-check2-circle"></i></button>
+              <button class="btn btn-primary btn-sm py-0" data-testid="inv-pay" *ngIf="canPay(p)" (click)="openPay(p)" title="Record a payment" aria-label="Pay"><i class="bi bi-cash-coin"></i></button>
+              <button class="btn btn-outline-secondary btn-sm py-0" data-testid="inv-history" *ngIf="p.payments > 0" (click)="openHistory(p)" title="Payments recorded" aria-label="Payments"><i class="bi bi-clock-history"></i></button>
+              <button class="btn btn-success btn-sm py-0" data-testid="inv-approve" *ngIf="p.awaiting_approval && approval.canmanage" (click)="approveInv(p)" title="Clear this invoice for payment" aria-label="Approve"><i class="bi bi-patch-check"></i></button>
+              <button class="btn btn-outline-secondary btn-sm py-0" data-testid="inv-unapprove" *ngIf="p.approved && p.balance_amount > 0 && !p.payments && approval.canmanage" (click)="unapproveInv(p)" title="Take the approval back" aria-label="Withdraw approval"><i class="bi bi-arrow-counterclockwise"></i></button>
+              <button class="btn btn-outline-warning btn-sm py-0" data-testid="inv-hold" *ngIf="canHold(p)" (click)="openHold(p)" title="Hold: no payment until released" aria-label="Hold"><i class="bi bi-pause-circle"></i></button>
+              <button class="btn btn-warning btn-sm py-0" data-testid="inv-release" *ngIf="p.on_hold" (click)="release(p)" title="Release the hold" aria-label="Release"><i class="bi bi-play-circle"></i></button>
+              <button class="btn btn-outline-danger btn-sm py-0" data-testid="inv-delete" *ngIf="p.status === 'NEW' && !p.payments" (click)="askDelete(p)" title="Delete this draft invoice" aria-label="Delete"><i class="bi bi-trash"></i></button>
             </div>
             </td>
           </tr>
-          <tr *ngIf="!loading && !invoices.length"><td colspan="12" class="text-center text-muted py-4" data-testid="inv-empty">No invoices match.</td></tr>
+          <tr *ngIf="!loading && !invoices.length"><td colspan="11" class="text-center text-muted py-4" data-testid="inv-empty">No invoices match.</td></tr>
         </tbody>
       </table>
     </div>

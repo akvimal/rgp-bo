@@ -408,7 +408,12 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
 
     // ---------------------------------------------------------------- pay
     canPay(inv: any): boolean {
-        return this.mayRecord && ['Unpaid', 'Part Paid', 'Overdue'].includes(inv.payment_status) && inv.balance_amount > 0;
+        return this.mayRecord && !!inv.payment_ready && ['Unpaid', 'Part Paid', 'Overdue'].includes(inv.payment_status) && inv.balance_amount > 0;
+    }
+
+    /** hold is offered only once the invoice is marked ready for payment */
+    canHold(inv: any): boolean {
+        return inv.status === 'COMPLETE' && !!inv.payment_ready && inv.balance_amount > 0 && !inv.on_hold;
     }
 
     openPay(inv: any) {
@@ -539,12 +544,12 @@ export class InvoiceListComponent implements OnInit, OnDestroy {
     }
 
     gstLabel(s: string | null): string {
-        const m: any = { MATCHED: 'Matched', PROBABLE: 'Probable', MISMATCH: 'Mismatch', MISSING_IN_2B: 'Missing in 2B', EXCLUDED: 'Excluded', DISPUTED: 'Disputed' };
+        const m: any = { MATCHED: 'Matched', PROBABLE: 'Probable', MISMATCH: 'Mismatch', MISSING_IN_2B: 'Missing in 2B', EXCLUDED: 'Excluded', DISPUTED: 'Disputed', ACCEPTED: 'Accepted', CARRIED_FORWARD: 'Carried forward' };
         return s && s !== 'UNRECONCILED' ? (m[s] || s) : 'Not checked';
     }
 
     gstClass(s: string | null): string {
-        return s === 'MATCHED' ? 'bg-success' : s === 'PROBABLE' ? 'bg-info text-dark' : s === 'MISMATCH' || s === 'DISPUTED' ? 'bg-danger'
+        return s === 'MATCHED' || s === 'ACCEPTED' ? 'bg-success' : s === 'PROBABLE' ? 'bg-info text-dark' : s === 'MISMATCH' || s === 'DISPUTED' ? 'bg-danger'
             : s === 'MISSING_IN_2B' ? 'bg-warning text-dark' : 'bg-light text-muted border';
     }
 
