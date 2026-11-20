@@ -203,7 +203,7 @@
       <td class="text-end">{{item.adhoc_qty}}</td>
       <td class="text-end" style="min-width:9.5rem;">
         <div class="d-flex align-items-center gap-2">
-          <input class="form-control text-end" type="number" [(ngModel)]="item.final_qty" [attr.aria-label]="'Quantity to order of ' + item.title">
+          <input class="form-control text-end" type="number" data-reo-final (keydown.arrowup)="moveFinal($event, -1)" (keydown.arrowdown)="moveFinal($event, 1)" [(ngModel)]="item.final_qty" [attr.aria-label]="'Quantity to order of ' + item.title">
           <button type="button" class="btn btn-link btn-sm p-0 text-nowrap" (click)="showHistory(item)" [attr.title]="'Stock history of ' + item.title" [attr.aria-label]="'Stock history of ' + item.title" data-testid="reo-history"><i class="bi bi-clock-history"></i></button>
         </div>
       </td>

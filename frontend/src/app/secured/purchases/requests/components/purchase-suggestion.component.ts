@@ -17,6 +17,15 @@ import { VendorsService } from "../../vendors/vendors.service";
     `]
 })
 export class PurchaseSuggestionComponent implements OnDestroy {
+
+  /** up and down in the Final Qty box go to the same box of the row above or below, instead of changing the number */
+  moveFinal(event: any, step: number) {
+    event.preventDefault();
+    const boxes: HTMLInputElement[] = Array.from((event.target as HTMLElement).closest('table')?.querySelectorAll('input[data-reo-final]') || []);
+    const next = boxes[boxes.indexOf(event.target as HTMLInputElement) + step];
+    if (next) { next.focus(); next.select(); }
+  }
+
     suggestions:any[] = [];
     /** the product whose stock history is open in the panel on the right (null = closed) */
     historyProduct:{id:number,title:string} | null = null;
