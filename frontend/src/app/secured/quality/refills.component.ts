@@ -48,9 +48,18 @@ export class RefillsComponent implements OnInit, OnDestroy {
       if (next !== this.storeId) { this.storeId = next; this.load(); }
     });
     this.load();
+    // purchase requests change on another screen or tab: look again when this one is back in view
+    window.addEventListener('focus', this.refresh);
+    document.addEventListener('visibilitychange', this.refresh);
   }
 
-  ngOnDestroy() { this.sub?.unsubscribe(); }
+  private refresh = () => { if (!document.hidden && !this.loading && !this.saving && !this.open) this.load(); };
+
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
+    window.removeEventListener('focus', this.refresh);
+    document.removeEventListener('visibilitychange', this.refresh);
+  }
 
   pick(key: string) { this.bucket = key; this.load(); }
 
