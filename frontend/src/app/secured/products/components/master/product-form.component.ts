@@ -170,13 +170,13 @@ export class ProductFormComponent {
 
       onSave(){
         const obj = { 
-          title: this.form.value.title.trim(), 
-          hsn:this.form.value.hsn.trim(),
-          code:this.form.value.code.trim(), 
+          title: (this.form.value.title || '').trim(),
+          hsn:(this.form.value.hsn || '').trim(),
+          code:(this.form.value.code || '').trim(),
           pack:this.form.value.pack, 
           category:this.form.value.category, 
           props: this.getTrimmedProps(this.form.value.props),
-          mfr:this.form.value.mfr.trim(),
+          mfr:(this.form.value.mfr || '').trim(),
           brand:this.form.value.brand?.trim(),
           binlocation: this.form.value.binlocation?.trim() || null,
           dosageform: this.form.value.dosageform || null,
