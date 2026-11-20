@@ -5,6 +5,7 @@ import { Invoice } from "../invoice.model";
 import { InvoiceService } from "../invoices.service";
 import { FileUploadService } from "../../../documents/file-upload.service";
 import { stateName } from "../../vendors/gst-util";
+import { VendorsService } from "../../vendors/vendors.service";
 
 @Component({
     templateUrl: './invoice-items.component.html'
@@ -55,7 +56,63 @@ export class InvoiceItemsComponent {
     confirmingDelete:boolean = false;
     deleteError:string = '';
 
-    constructor(private route:ActivatedRoute, private router:Router, private invService: InvoiceService, private files: FileUploadService){}
+    constructor(private route:ActivatedRoute, private router:Router, private invService: InvoiceService, private files: FileUploadService, private vendorsService: VendorsService){}
+
+    // ---------------------------------------------------------------- order lines the vendor did not deliver
+    undel:any = null;
+    undelVendors:any[] = [];
+    /** the decision on each undelivered line: { action, qty, vendorid, orderid } */
+    undelPick:{[requestid:number]:any} = {};
+    undelBusy:boolean = false;
+    undelError:string = '';
+    undelMessage:string = '';
+
+    loadUndelivered(){
+        if(!this.invoice?.id || this.invoice.status !== 'NEW' || !this.invoice.purchaseorderid){ this.undel = null; return; }
+        this.invService.undelivered(this.invoice.id).subscribe((u:any) => {
+            this.undel = u;
+            const keep = this.undelPick;
+            this.undelPick = {};
+            (u.lines || []).forEach((l:any) => {
+                this.undelPick[l.request_id] = keep[l.request_id] && keep[l.request_id].qty <= l.undelivered ? keep[l.request_id] : { action: 'wait', qty: l.undelivered, vendorid: l.po_vendor_id, orderid: null };
+            });
+            if(!this.undelVendors.length) this.vendorsService.options(true).subscribe((v:any) => this.undelVendors = v || [], () => {});
+        }, () => { this.undel = null; });
+    }
+
+    /** lines with a decision other than waiting, that still lack what the decision needs (a quantity, a vendor, an order) */
+    get undelProblem():string {
+        for(const l of (this.undel?.lines || [])){
+            const p = this.undelPick[l.request_id];
+            if(!p || p.action === 'wait') continue;
+            if(!(+p.qty >= 1) || +p.qty > l.undelivered) return `${l.title}: the quantity must be between 1 and ${l.undelivered}.`;
+            if(p.action === 'new' && !p.vendorid) return `${l.title}: choose the vendor for the new order.`;
+            if(p.action === 'existing' && !p.orderid) return `${l.title}: choose the order to add it to.`;
+        }
+        return '';
+    }
+
+    get undelMoving():number { return (this.undel?.lines || []).filter((l:any) => (this.undelPick[l.request_id]?.action || 'wait') !== 'wait').length; }
+
+    saveUndelivered(){
+        if(this.undelBusy || this.undelProblem) return;
+        this.undelBusy = true; this.undelError = ''; this.undelMessage = '';
+        const moves = (this.undel?.lines || []).map((l:any) => {
+            const p = this.undelPick[l.request_id] || { action: 'wait' };
+            return { requestid: l.request_id, action: p.action, qty: +p.qty, vendorid: p.action === 'new' ? +p.vendorid : undefined, orderid: p.action === 'existing' ? +p.orderid : undefined };
+        });
+        this.invService.decideUndelivered(this.invoice.id, moves).subscribe((r:any) => {
+            this.undelBusy = false;
+            const parts = (r.results || []).map((x:any) => x.action === 'new' ? `${x.lines} line${x.lines === 1 ? '' : 's'} on new order ${x.order_id}`
+                : x.action === 'existing' ? `${x.lines} line${x.lines === 1 ? '' : 's'} added to order ${x.order_id}${x.sent_for_approval ? ' (sent back for approval)' : ''}`
+                : `${x.lines} line${x.lines === 1 ? '' : 's'} kept as a request`);
+            this.undelMessage = (parts.length ? 'Moved: ' + parts.join('; ') + '. ' : '') + (r.waiting_qty ? `${r.waiting_qty} still to come on this order.` : 'Nothing is left waiting.');
+            this.loadUndelivered();
+        }, (err:any) => {
+            this.undelBusy = false;
+            this.undelError = (Array.isArray(err?.error?.message) ? err.error.message.join(' ') : err?.error?.message) || 'Could not save the decisions.';
+        });
+    }
 
     /** the lines with their tax (the Net total below), after a cash discount printed at the foot of the invoice, against the printed total */
     get expectedTotal(): number {
@@ -127,6 +184,7 @@ export class InvoiceItemsComponent {
 
         this.invService.find(id).subscribe((inv:any) => {
             this.invoice = inv;
+            this.loadUndelivered();
             this.checkTotal(inv);
             // lines of a scanned copy still to check against it keep the invoice from being completed
             if(inv.status === 'NEW'){

@@ -1,4 +1,5 @@
 import { RoleModule } from "../roles/role.module";
+import { InvoiceUndeliveredService } from "./invoice-undelivered.service";
 import { InvoiceViewService } from "./invoice-view.service";
 import { InvoiceExtractController } from "./invoice-extract/invoice-extract.controller";
 import { InvoiceExtractService } from "./invoice-extract/invoice-extract.service";
@@ -59,7 +60,7 @@ import { VendorReturnService } from "./vendor-return.service";
       VendorPaymentController,
       VendorReturnController,
       PurchaseDownloadController],
-    providers: [PurchaseService,PurchaseInvoiceService,VendorPaymentService,VendorReturnService,InvoiceViewService,InvoiceExtractService,InvoiceAiService,AiProvider,AiCacheService,
+    providers: [PurchaseService,PurchaseInvoiceService,InvoiceUndeliveredService,VendorPaymentService,VendorReturnService,InvoiceViewService,InvoiceExtractService,InvoiceAiService,AiProvider,AiCacheService,
       InvoiceScanService,JwtService],
     exports: [PurchaseService,PurchaseInvoiceService,VendorPaymentService],
   })

@@ -7,6 +7,7 @@ import { AuthGuard } from "src/modules/auth/auth.guard";
 import { PurchasingGuard } from "../roles/purchasing.guard";
 import { UpdateInvoicesDto } from "./dto/update-invoices.dto";
 import { User } from "src/core/decorator/user.decorator";
+import { InvoiceUndeliveredService } from "./invoice-undelivered.service";
 import { ProductService } from "../products/product.service";
 
 @ApiTags('PurchaseInvoices')
@@ -15,7 +16,7 @@ import { ProductService } from "../products/product.service";
 @UseGuards(AuthGuard, PurchasingGuard)
 export class PurchaseInvoiceController {
 
-    constructor(private purchaseInvoiceService:PurchaseInvoiceService, private view:InvoiceViewService, private products:ProductService){}
+    constructor(private purchaseInvoiceService:PurchaseInvoiceService, private view:InvoiceViewService, private products:ProductService, private undelivered:InvoiceUndeliveredService){}
 
     private filterOf(q:any){
       const num = (v:any) => (v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined);
@@ -50,6 +51,19 @@ export class PurchaseInvoiceController {
     @Get('/:id/price-check')
     async priceCheck(@Param('id', ParseIntPipe) id:number) {
       return this.purchaseInvoiceService.priceCheck(id);
+    }
+
+    /** order lines the vendor did not deliver on this invoice, and the open orders they can be added to */
+    @Get('/:id/undelivered')
+    async undeliveredList(@Param('id', ParseIntPipe) id: number) {
+      return this.undelivered.list(id);
+    }
+
+    /** { moves: [{ requestid, qty, action: wait | new | existing | request, vendorid?, orderid? }] } */
+    @Post('/:id/undelivered')
+    async undeliveredDecide(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() currentUser: any) {
+      await this.purchaseInvoiceService.assertEditable(currentUser.id, { invoiceIds: [id] });
+      return this.undelivered.decide(id, body?.moves || [], currentUser.id, currentUser.roleid);
     }
 
     @Post('/:id/hold')

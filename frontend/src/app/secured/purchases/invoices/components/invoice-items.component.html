@@ -120,6 +120,55 @@
         </div>
     </div>
 
+
+    <div class="card mt-3 border-warning" *ngIf="invoice.status === 'NEW' && undel && undel.lines?.length" data-testid="undelivered-panel">
+        <div class="card-body">
+            <h6 class="inv-title mb-1">Not delivered <span class="inv-label fw-normal">({{undel.lines.length}} line{{undel.lines.length === 1 ? '' : 's'}} of order {{undel.order_id}})</span></h6>
+            <div class="small text-muted mb-2">The vendor has not delivered everything ordered. For each line say what happens to the rest: it is still to come on this order, it is ordered again (a new order, same or another vendor), it is added to another open order, or it is kept as a request. A moved quantity leaves this order as not delivered. The invoice cannot be completed until this is decided.</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-2">
+                    <thead class="table-light"><tr><th>Product</th><th class="text-end">Ordered</th><th class="text-end">On other invoices</th><th class="text-end">On this invoice</th><th class="text-end">Not delivered</th><th>What happens</th><th style="width:6rem">Qty</th><th>Where</th></tr></thead>
+                    <tbody>
+                        <tr *ngFor="let l of undel.lines" data-testid="undelivered-row" [attr.data-request]="l.request_id">
+                            <td>{{l.title}}</td>
+                            <td class="text-end">{{l.ordered}}</td>
+                            <td class="text-end">{{l.other}}</td>
+                            <td class="text-end">{{l.here}}</td>
+                            <td class="text-end fw-semibold">{{l.undelivered}}</td>
+                            <td>
+                                <select class="form-select form-select-sm" [(ngModel)]="undelPick[l.request_id].action" [attr.aria-label]="'What happens to ' + l.title" data-testid="undelivered-action">
+                                    <option value="wait">Still to come on this order</option>
+                                    <option value="new">Order again (new order)</option>
+                                    <option value="existing">Add to another open order</option>
+                                    <option value="request">Keep as a request</option>
+                                </select>
+                            </td>
+                            <td><input type="number" min="1" [max]="l.undelivered" class="form-control form-control-sm text-end" *ngIf="undelPick[l.request_id].action !== 'wait'" [(ngModel)]="undelPick[l.request_id].qty" aria-label="Quantity to move" data-testid="undelivered-qty"></td>
+                            <td>
+                                <select class="form-select form-select-sm" *ngIf="undelPick[l.request_id].action === 'new'" [(ngModel)]="undelPick[l.request_id].vendorid" aria-label="Vendor of the new order" data-testid="undelivered-vendor">
+                                    <option [ngValue]="null">Choose vendor...</option>
+                                    <option *ngFor="let v of undelVendors" [ngValue]="v.id">{{v.name}}<span *ngIf="v.id === l.po_vendor_id"> (same vendor)</span></option>
+                                </select>
+                                <select class="form-select form-select-sm" *ngIf="undelPick[l.request_id].action === 'existing'" [(ngModel)]="undelPick[l.request_id].orderid" aria-label="Order to add to" data-testid="undelivered-order">
+                                    <option [ngValue]="null">Choose order...</option>
+                                    <option *ngFor="let o of undel.open_orders" [ngValue]="o.id">#{{o.id}} &middot; {{o.vendor}} &middot; {{o.status === 'PENDING' ? 'draft' : 'submitted'}} &middot; {{o.lines}} line{{o.lines === 1 ? '' : 's'}}</option>
+                                </select>
+                                <span class="small text-muted" *ngIf="undelPick[l.request_id].action === 'request'">Waits in Requests to be ordered</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <button type="button" class="btn btn-primary btn-sm" [disabled]="undelBusy || !!undelProblem" (click)="saveUndelivered()" data-testid="undelivered-save">{{undelMoving ? 'Save: move ' + undelMoving + ' line' + (undelMoving === 1 ? '' : 's') : 'Save: all still to come'}}</button>
+                <span class="small text-muted" *ngIf="undel.decided_qty !== null && !undelMoving">Decided on this invoice already: {{undel.decided_qty}} still to come.</span>
+                <span class="small text-danger" *ngIf="undelProblem">{{undelProblem}}</span>
+                <span class="small text-danger" *ngIf="undelError" data-testid="undelivered-error">{{undelError}}</span>
+            </div>
+        </div>
+    </div>
+    <div class="alert alert-success py-2 small mt-3 mb-0" *ngIf="undelMessage" data-testid="undelivered-message">{{undelMessage}}</div>
+
     <div class="card mt-3">
         <div class="card-body">
             <h6 class="inv-title mb-3">Items <span class="inv-label fw-normal">({{items?.length || 0}})</span></h6>

@@ -897,6 +897,7 @@ export class PurchaseInvoiceService {
         if(values?.status === 'COMPLETE'){
           for(const id of ids) await this.assertReadyToComplete(id);
           for(const id of ids) await this.assertNoDisputes(id);
+          for(const id of ids) await this.assertUndeliveredDecided(id);
           for(const id of ids) await this.assertNetTotalEntered(id, values);
           for(const id of ids) await this.assertPrintedAgrees(id);
           for(const id of ids) await this.assertPriceRules(id, userid);
@@ -940,6 +941,37 @@ export class PurchaseInvoiceService {
         if(open && open.n > 0){
           throw new BadRequestException(`${open.n} line${open.n === 1 ? '' : 's'} of the scanned invoice ${open.n === 1 ? 'is' : 'are'} still to check. Check ${open.n === 1 ? 'it' : 'them'} against the invoice copy, or discard what is not on the invoice, before completing.`);
         }
+      }
+
+      /**
+       * Lines of the order this invoice is against that the vendor has not (fully) delivered: ordered, less what other invoices took, less what is on this one.
+       * Each has a quantity left, which the user either moves (new order, another open order, a request) or says is still to come.
+       */
+      async undeliveredOf(invoiceid:number): Promise<any[]>{
+        const rows = await this.manager.query(
+          `select r.id as request_id, r.product_id, coalesce(p.title, r.requested_name) as title, r.vendor_id,
+                  coalesce(r.ordered_qty, r.qty)::int as ordered,
+                  coalesce(o.q, 0)::float8 as other, coalesce(h.q, 0)::float8 as here, po.vendor_id as po_vendor_id
+             from purchase_invoice i
+             join purchase_order po on po.id = i.purchase_order_id::int
+             join purchase_request r on r.order_id = po.id and r.active and not r.archive and r.status <> 'Not delivered'
+             left join product p on p.id = r.product_id
+             left join lateral (select sum(x.qty) as q from purchase_invoice_item x join purchase_invoice xi on xi.id = x.invoice_id
+                                 where x.request_id = r.id and x.invoice_id <> i.id and x.active and not x.archive and xi.active and not xi.archive) o on true
+             left join lateral (select sum(x.qty) as q from purchase_invoice_item x
+                                 where x.request_id = r.id and x.invoice_id = i.id and x.active and not x.archive and x.status <> 'REJECTED') h on true
+            where i.id = $1 and coalesce(i.purchase_order_id, '') <> '' order by r.id`, [invoiceid]);
+        return rows.map((r:any) => ({ ...r, undelivered: Math.max(0, Math.round((r.ordered - r.other - r.here) * 1000) / 1000) })).filter((r:any) => r.undelivered > 0);
+      }
+
+      /** an invoice against an order cannot be completed while lines of the order are undelivered and nobody has said what becomes of them */
+      private async assertUndeliveredDecided(invoiceid:number){
+        const lines = await this.undeliveredOf(invoiceid);
+        if(!lines.length) return;
+        const left = lines.reduce((t:number, l:any) => t + l.undelivered, 0);
+        const [inv] = await this.manager.query(`select undelivered_checked_qty as q from purchase_invoice where id = $1`, [invoiceid]);
+        if(inv?.q !== null && inv?.q !== undefined && Math.abs(+inv.q - left) < 0.0005) return;
+        throw new BadRequestException(`${lines.length} line${lines.length === 1 ? '' : 's'} of the order ${lines.length === 1 ? 'was' : 'were'} not delivered (${lines.slice(0, 3).map((l:any) => l.title).join(', ')}${lines.length > 3 ? ', ...' : ''}). Under "Not delivered", choose what to do with ${lines.length === 1 ? 'it' : 'them'} before completing the invoice.`);
       }
 
       /** an invoice cannot be completed while a line is still being clarified with the vendor */

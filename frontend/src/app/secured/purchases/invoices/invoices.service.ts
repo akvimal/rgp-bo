@@ -97,6 +97,16 @@ export class InvoiceService {
         return this.http.get<any[]>(`${this.apiurl}/purchases/${invoiceid}/payments`);
     }
 
+    /** order lines the vendor did not deliver on this invoice, and the open orders they can be added to */
+    undelivered(invoiceid:number){
+        return this.http.get<any>(`${this.apiurl}/purchases/${invoiceid}/undelivered`);
+    }
+
+    /** what to do with them: [{ requestid, qty, action: wait | new | existing | request, vendorid?, orderid? }] */
+    decideUndelivered(invoiceid:number, moves:any[]){
+        return this.http.post<any>(`${this.apiurl}/purchases/${invoiceid}/undelivered`, { moves });
+    }
+
     /** the step after completing an invoice: mark it ready for payment (with an optional note), or take the mark back */
     markReady(invoiceid:number, note?:string){
         return this.http.post<any>(`${this.apiurl}/purchases/${invoiceid}/payment-ready`, { note });
