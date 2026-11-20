@@ -166,6 +166,9 @@
 <div class="sale-actions d-flex justify-content-between align-items-center mb-3">
     <div class="d-flex gap-2">
         <button (click)="submit('PENDING')" class="btn btn-outline-secondary" [disabled]="total === 0" data-testid="sale-save">Save for later</button>
+        <label class="d-flex align-items-center gap-1 mb-0 small text-muted" title="Compliance will not ask for this bill to be finished or discarded" data-testid="sale-keep-parked-label">
+            <input type="checkbox" class="form-check-input mt-0" [(ngModel)]="keepParked" data-testid="sale-keep-parked"> Keep parked, no reminder
+        </label>
         <button type="button" (click)="discard()" *ngIf="sale.id && sale.status === 'PENDING'" class="btn btn-outline-danger">Discard</button>
     </div>
     <button (click)="submit('COMPLETE')" class="btn btn-primary btn-lg px-5" [disabled]="!isSaleFormValid() || chronicMobileMissing || scheduleMissing" data-testid="sale-complete">Complete</button>

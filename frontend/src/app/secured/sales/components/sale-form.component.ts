@@ -104,6 +104,7 @@ export class SaleFormComponent {
             if(result['props'])
               this.documents = result['props']['documents'];
             this.scheduleDetail = (result['props'] && result['props']['scheduledetail']) || {};
+            this.keepParked = !!(result['props'] && result['props']['parkexempt']);
 
             this.sale = result;
 
@@ -294,6 +295,8 @@ export class SaleFormComponent {
 
   // ------------------------------------------------------------------ pharmacy pack: the drug register
   scheduleDetail: any = {};
+  /** a parked bill the shop means to keep: Compliance does not chase it to be finished or discarded */
+  keepParked = false;
   scheduleRequired: string[] = [];
   /** the schedules the shop holds a bill back for until the patient and the prescriber are given; for the others they are optional */
   scheduleEnforce: string[] = [];
@@ -463,7 +466,7 @@ export class SaleFormComponent {
 
     // set before the copy below: the payload is built from the bill as it stands, so these have to be on it by then
     // (they were set after it, which sent no documents, no prescription or patient details, no serving person and no store)
-    this.sale.props = {documents: this.documents, ...(this.scheduledItems.length ? {scheduledetail: this.scheduleDetail} : {})};
+    this.sale.props = {documents: this.documents, ...(this.scheduledItems.length ? {scheduledetail: this.scheduleDetail} : {}), ...(status === 'PENDING' && this.keepParked ? {parkexempt: true} : {})};
     this.sale['actinguserid'] = this.operatorContext.selectedOperatorId || this.sale['actinguserid'];
     this.sale['storeid'] = this.storeContext.selectedStoreId || this.sale['storeid'];
 

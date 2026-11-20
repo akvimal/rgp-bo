@@ -96,7 +96,7 @@ export class ComplianceService {
       `select s.id, s.store_id, coalesce(s.acting_user_id, s.created_by) as person, s.bill_no, s.total::float as total,
               to_char(s.created_on at time zone '${TZ}', 'YYYY-MM-DD') as day
          from sale s join stores st on st.id = s.store_id
-        where st.business_id = $1 and s.status = 'PENDING' and (s.created_on at time zone '${TZ}')::date < $2::date`, [businessId, today]);
+        where st.business_id = $1 and s.status = 'PENDING' and coalesce(s.more_props->>'parkexempt', '') <> 'true' and (s.created_on at time zone '${TZ}')::date < $2::date`, [businessId, today]);
     for (const p of parked) owed.push({ item_key: 'parked_bill', store_id: p.store_id, person_id: p.person, period_key: String(p.id), due_on: addDays(p.day, 1), detail: { bill: p.bill_no || p.id, total: p.total, day: p.day } });
 
     return { keys: ITEMS.map((i) => i.key), owed };
