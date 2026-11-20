@@ -41,7 +41,7 @@ for NO in "$@"; do
 \echo === 1. invoice header ===
 select i.id, i.invoice_no, i.challan_no, i.status, i.active, i.archive, i.vendor_id,
        i.printed_total::numeric(14,2) as net_total_entered, coalesce(i.cash_discount,0)::numeric(14,2) as cash_discount,
-       i.total::numeric(14,2) as stored_total, i.payment_ready
+       i.total::numeric(14,2) as stored_total, i.payment_ready_on
   from purchase_invoice i
  where upper(i.invoice_no) like upper('%$N%') or upper(coalesce(i.challan_no,'')) like upper('%$N%');
 
