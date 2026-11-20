@@ -11,6 +11,7 @@ import { environment } from 'src/environments/environment';
 import { AuthModule } from './@core/auth/auth.module';
 import { AuthTokenInterceptor } from './@core/auth/auth-token.interceptor';
 import { CancelOnNavigateInterceptor } from './@core/cancel-on-navigate.interceptor';
+import { LoadingInterceptor } from './@core/loading.interceptor';
 import { HttpTimingInterceptor } from './@core/performance/http-timing.interceptor';
 import { RouterModule } from '@angular/router';
 import { PosComponent } from './pos.component';
@@ -49,6 +50,11 @@ import { ToastModule } from 'primeng/toast';
     {
       provide: HTTP_INTERCEPTORS,
       useClass: HttpTimingInterceptor,
+      multi: true,
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: LoadingInterceptor,
       multi: true,
     },
     {
