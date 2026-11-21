@@ -245,10 +245,12 @@ export class SaleFormComponent {
           mrptotal += +(i.mrpcost||0)*i.qty;
       });
 
-      this.sale.total = Math.round(this.total);
+      // the bill total rounds up to the next rupee (0.45 -> 1); toFixed first so float noise such as 100.0000001 does not add a rupee
+      const roundedTotal = Math.ceil(+(+this.total).toFixed(2));
+      this.sale.total = roundedTotal;
       this.sale.mrptotal = Math.round(mrptotal);
       this.sale.totalitems = this.sale.items?.filter((i:any) => i.edited).length;
-      this.sale.saving = this.prodUtilService.getSaving(mrptotal,Math.round(this.total));
+      this.sale.saving = this.prodUtilService.getSaving(mrptotal,roundedTotal);
 
       this.sale.docpending = false;
     }

@@ -80,7 +80,7 @@ export class SaleFormItemsComponent{
       i['total'] = itemtotal;
       i['qtyready'] = true;
       i['unitsbal'] = i.available - i.qty;
-      this.total = Math.round(this.total + itemtotal);
+      this.total = Math.ceil(+(this.total + itemtotal).toFixed(2));
     });
     
     const newTotal = this.total - (this.offer.amount||0);
@@ -182,7 +182,7 @@ export class SaleFormItemsComponent{
     const old = item.total || 0; //previous total
     item.total = this.calculateTotal(item.qty,item.price,item.taxpcnt); //new total
 
-    this.total = Math.round(this.total - old + item.total);
+    this.total = Math.ceil(+(this.total - old + item.total).toFixed(2));
 
   }
 
