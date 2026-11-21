@@ -15,7 +15,14 @@ describe('the starter cards', () => {
   it('have different keys', () => {
     expect(new Set(STARTER_CARDS.map((c) => c.key)).size).toBe(12);
   });
-  it('never put a dose in the guidance', () => {
-    for (const c of STARTER_CARDS) for (const o of c.options) expect(String(o.guidance || '')).not.toMatch(/\b\d+\s*(mg|ml|tablets?|times)\b.*\b(daily|a day|hourly|every)\b/i);
+  it('give every option a dose and the days, and never the vague "as directed" line', () => {
+    for (const c of STARTER_CARDS) for (const o of c.options) {
+      expect({ card: c.key, option: o.composition, dose: !!o.dose, days: !!o.days }).toEqual({ card: c.key, option: o.composition, dose: true, days: true });
+      expect(String(o.guidance || '')).not.toMatch(/as directed|pack or by the pharmacist/i);
+    }
+  });
+  it('write morning - noon - night doses in the form the counter reads', () => {
+    const slotted = STARTER_CARDS.flatMap((c) => c.options).filter((o) => /\d\s*(\([^)]*\))?\s*-\s*\d/.test(String(o.dose)));
+    expect(slotted.length).toBeGreaterThan(5);
   });
 });

@@ -44,6 +44,8 @@ export const ISSUE_ICONS: Record<Issue, string> = {
 export interface GuideWarning { id: number; text: string; textTa?: string | null; icon?: string | null }
 export interface GuideOption {
   id: number; composition: string; compositionKey: string | null; form: string | null; audiences: Audience[]; excludes: Issue[];
+  /** how much and when, as the counter reads it: "1 (bf) - 0 - 1 (af)" (morning - noon - night; bf before food, af after food), or in words */
+  dose?: string | null; days?: number | null;
   guidance?: string | null; guidanceTa?: string | null; sortOrder: number;
 }
 export interface GuideCard {
@@ -103,12 +105,34 @@ export function advise(card: GuideCard, a: Answers): Advice {
   return { refer: false, options, dropped, caution: issues.has('other_medicines') };
 }
 
+// ------------------------------------------------------------------ the dose, as the counter reads it
+
+/** one part of a day: an amount (a number or a fraction, with an optional unit) and, in brackets, before food (bf) or after food (af) */
+const SLOT = /^(\d+(?:\.\d+)?|\d\/\d)(?:\s*(?:ml|tab|tabs|cap|caps|sachet|sachets|drop|drops|puff|puffs|g|mg))?(?:\s*\(\s*(bf|af)\s*\))?$/i;
+export interface DoseSlot { amount: string; when: 'bf' | 'af' | null }
+
+/** "1 (bf) - 0 - 1 (af)" -> morning, noon and night; null when it is not written that way (a dose in words is allowed: see looksLikeSlots) */
+export function doseSlots(dose: string | null | undefined): DoseSlot[] | null {
+  const parts = String(dose ?? '').trim().split(/\s*-\s*/);
+  if (parts.length !== 3) return null;
+  const slots: DoseSlot[] = [];
+  for (const p of parts) {
+    const m = SLOT.exec(p.trim());
+    if (!m) return null;
+    slots.push({ amount: p.trim().replace(/\s*\(\s*(bf|af)\s*\)\s*$/i, ''), when: m[2] ? (m[2].toLowerCase() as 'bf' | 'af') : null });
+  }
+  return slots;
+}
+
+/** written like morning - noon - night (digits either side of dashes) but maybe wrong: it must then read properly */
+export const looksLikeSlots = (dose: string): boolean => /\d\s*(\([^)]*\))?\s*-\s*\d/.test(dose);
+
 // ------------------------------------------------------------------ a card fit to save
 
 export interface CardInput {
   key: string; name: string; nameTa?: string | null; icon?: string | null; asksDuration?: boolean; durationLimitDays: number; referralText: string; referralTextTa?: string | null; sortOrder?: number;
   warnings: { text: string; textTa?: string | null; icon?: string | null }[];
-  options: { composition: string; form?: string | null; audiences: string[]; excludes?: string[]; guidance?: string | null; guidanceTa?: string | null }[];
+  options: { composition: string; form?: string | null; audiences: string[]; excludes?: string[]; dose?: string | null; days?: number | null; guidance?: string | null; guidanceTa?: string | null }[];
 }
 
 const cut = (v: unknown, n: number) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
@@ -148,7 +172,12 @@ export function validateCard(raw: any): { ok: true; card: CardInput } | { ok: fa
     if (!audiences.length || audiences.some((a: string) => !(AUDIENCES as readonly string[]).includes(a))) errors.push(`Option ${n}: say who it is for (child 2 to 12, adult, over 60).`);
     const excludes = (Array.isArray(o?.excludes) ? o.excludes : []).map(String);
     if (excludes.some((e: string) => !(ISSUES as readonly string[]).includes(e))) errors.push(`Option ${n}: an unknown "do not give with" tick.`);
-    options.push({ composition, form, audiences: Array.from(new Set(audiences)), excludes: Array.from(new Set(excludes)), guidance: cutText(o?.guidance, 600) || null, guidanceTa: cutText(o?.guidanceTa, 800) || null });
+    const dose = cut(o?.dose, 120);
+    if (dose.length < 2) errors.push(`Option ${n}: write the dose, for example "1 (bf) - 0 - 1 (af)".`);
+    else if (looksLikeSlots(dose) && !doseSlots(dose)) errors.push(`Option ${n}: write the dose as morning - noon - night, for example "1 (bf) - 0 - 1 (af)" (bf before food, af after food).`);
+    const days = Number(o?.days);
+    if (!Number.isInteger(days) || days < 1 || days > 30) errors.push(`Option ${n}: say for how many days (1 to 30).`);
+    options.push({ composition, form, audiences: Array.from(new Set(audiences)), excludes: Array.from(new Set(excludes)), dose, days: Number.isInteger(days) ? days : null, guidance: cutText(o?.guidance, 600) || null, guidanceTa: cutText(o?.guidanceTa, 800) || null });
   });
   if (errors.length) return { ok: false, errors };
   return { ok: true, card: { key, name, nameTa: cut(raw?.nameTa, 160) || null, icon: cutIcon(raw?.icon), asksDuration: raw?.asksDuration !== false, durationLimitDays: limit, referralText, referralTextTa: cutText(raw?.referralTextTa, 800) || null, sortOrder: Number.isInteger(Number(raw?.sortOrder)) ? Number(raw.sortOrder) : 100, warnings, options } };

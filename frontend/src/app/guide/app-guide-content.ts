@@ -394,6 +394,18 @@ export const PAGES: PageGuide[] = [
     who: 'The Business Head.', watch: ['Only anonymous totals leave the server to the model, never names, salaries or bills.', 'A cheaper model saves money on short jobs; give KPI drafts the most capable one.'], keywords: 'ai assistant key model openrouter anthropic limit usage cost haiku sonnet opus complexity',
   },
   {
+    id: 'setup-reference-data', group: 'setup', title: 'Reference data', route: '/secure/settings/business-profile/reference-data', needs: ['businessprofile'],
+    purpose: 'The brand dictionary behind Check brand and the price lists the shop compares its prices with.',
+    tasks: ['Brand dictionary: choose the Common Drug Codes for India files together (BrandMaster.txt and GenericMaster.txt are needed), press Preview, then Replace the dictionary.', 'PMBI Jan Aushadhi list: choose the published PDF, press Preview, then Load the list.', 'Another seller\'s price list: give it a name, choose a CSV or Excel file with a heading row, check which column is which, press Preview, then Load the list. Loading the same name again replaces that list.', 'Remove a list that is no longer wanted.'],
+    who: 'The Business Head.', watch: ['A preview shows what was found and what it would replace before anything is written.', 'A composition column lets a list be matched with your products; without one, the brand dictionary is used where the product name is one of its brands.'], keywords: 'reference data brand dictionary price list pmbi jan aushadhi competitor csv excel upload cdci',
+  },
+  {
+    id: 'setup-counter-guide', group: 'setup', title: 'Counter guide cards', route: '/secure/settings/counter-guide', needs: ['counterguide.view'],
+    purpose: 'The cards behind the Counter guide at the counter: everyday problems with their warning signs and the medicines that may be offered. A card reaches the counter only after a pharmacist approves it.',
+    tasks: ['Add the starter cards (drafts) once, or write a new card.', 'Open a card: set its problem, picture, how many days is too long, what to say when a doctor is advised, its warning signs and its options.', 'Save. The card is a draft and is not shown at the counter.', 'The pharmacist reads the whole card, ticks the confirmation and presses Approve. It then appears at the counter under their name.', 'Retire a card to take it off the counter; delete a draft or a retired card.'],
+    who: 'The pharmacist signs off; the Business Head or a store head writes.', watch: ['Editing an approved card makes a new draft that needs approving again, so the card leaves the counter until then.', 'The number beside each option is how many products carry that composition. A zero means the shop writes it differently: fix the option or the product.', 'Prescription-only products are never offered, whatever a card says. A child under 2 and pregnancy are always sent to a doctor.'], keywords: 'counter guide cards headache fever pharmacist approve warning signs otc everyday medicines',
+  },
+  {
     id: 'setup-alerts', group: 'setup', title: 'Alerts', route: '/secure/settings/alerts', needs: ['alerts.manage'],
     purpose: 'What the shop is told about, who is told and how loudly, and whether alerts also go to staff on Telegram.',
     tasks: ['Switch a built-in alert on or off and change its numbers.', 'Add your own alert, or describe it in a sentence (the assistant drafts it once its key is added under Settings > AI assistant).', 'Add the Telegram bot of the shop (Add the bot) and see who has connected and how the messages went.'],
@@ -425,6 +437,16 @@ export const PAGES: PageGuide[] = [
 
 // ------------------------------------------------------------------------------------------------ the jobs, step by step
 export const WALKTHROUGHS: Walkthrough[] = [
+  {
+    id: 'w-counter-guide-card', title: 'Write and approve a Counter guide card (pharmacist)', from: 'setup-counter-guide',
+    steps: ['Open Counter guide cards. Press Add the starter cards (drafts) the first time, or New card.', 'Open the card. Check the problem, its picture, and "Doctor after (days)": at or past that many days the guide says see a doctor.', 'Read the warning signs. Any one ticked at the counter means a doctor, so keep them plain and add the ones your practice would add. A card needs at least two.', 'Read each option: the composition with its strength, the form, who it is for, and what it must not be given with. Check the product count beside it is not zero.', 'Give each option its dose and days, written morning - noon - night: 1 (bf) - 0 - 1 (af) is one in the morning before food, none at noon, one at night after food. Add guidance in your own words and the Tamil text.', 'Press Save, then tick that you have read the whole card and press Approve.'],
+    tips: ['Starter cards are only a starting point written without a clinician: do not approve one you have not read and edited.', 'Prescription-only products are never offered whatever a card says; a child under 2 and pregnancy are always sent to a doctor.', 'Changing an approved card makes a new draft: approve it again to put it back at the counter.'], keywords: 'counter guide card approve pharmacist sign off write',
+  },
+  {
+    id: 'w-counter-guide-use', title: 'Use the Counter guide at the counter', from: 'nav-sales',
+    steps: ['Press Counter guide in the Sales header (it shows once a card has been approved).', 'Tap the problem.', 'The medicines in stock come at once for an adult, 2 to 3 days, no warning sign and nothing else. Ask the customer and tap a chip at the top if an answer is not right: who it is for, how long, the warning signs (any one means see a doctor and no medicine is shown) or anything else (allergy, ulcer, blood pressure and so on).', 'Each option shows how much and when (morning, noon, night; bf before food, af after food) and for how many days, then the real products in stock with batch, expiry and price. Press Add to bill on the one the pharmacist agrees to; with no bill open it opens a new one.'],
+    tips: ['The answers stay at the top as chips: tap one to change it and the advice is worked out again.', 'It helps the counter and the pharmacist; it is not medical advice, and the pharmacist decides what is given.'], keywords: 'counter guide headache fever cold otc suggest medicine stock',
+  },
   {
     id: 'w-bill', title: 'Make a bill', from: 'nav-sales',
     steps: ['Open Sales and billing. Make sure your shift is open (My shift).', 'Type the customer\'s mobile number; pick them if they are listed, or add the name.', 'Type the product name or its composition in the product box and press Enter on the one you want. The batch to sell first is marked.', 'Type the units. The rate, GST and amount fill in.', 'Choose how they pay: cash, card or UPI, or a split.', 'Press Complete. The bill opens; press Print.'],

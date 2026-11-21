@@ -7,7 +7,7 @@ import { grants, permsOf } from 'src/core/role-rules';
 import { formRelation } from '../dictionary/dosage-form';
 import { compositionKey } from '../sales/composition-match';
 import { SaleSuggestionService } from '../sales/sale-suggestion.service';
-import { advise, Answers, AUDIENCES, CardInput, DURATION_LABELS, DURATIONS, GuideCard, ISSUE_ICONS, ISSUE_LABELS, ISSUES, validateCard, WHO, Who, Duration, Issue, Audience } from './counter-guide-rules';
+import { advise, Answers, AUDIENCES, CardInput, doseSlots, DURATION_LABELS, DURATIONS, GuideCard, ISSUE_ICONS, ISSUE_LABELS, ISSUES, validateCard, WHO, Who, Duration, Issue, Audience } from './counter-guide-rules';
 import { STARTER_CARDS } from './counter-guide-seed';
 
 /** how many products are shown under one option at the counter */
@@ -45,13 +45,13 @@ export class CounterGuideService {
     const ids = cards.map((c: any) => c.id);
     const warnings = await this.manager.query(`select id, card_id, text, text_ta, icon from guide_warning where card_id = any($1::int[]) order by sort_order, id`, [ids]);
     const options = await this.manager.query(
-      `select id, card_id, composition, composition_key, form, audiences, excludes, guidance, guidance_ta, sort_order from guide_option where card_id = any($1::int[]) order by sort_order, id`, [ids]);
+      `select id, card_id, composition, composition_key, form, audiences, excludes, dose, days, guidance, guidance_ta, sort_order from guide_option where card_id = any($1::int[]) order by sort_order, id`, [ids]);
     return cards.map((c: any) => ({
       id: c.id, key: c.key, name: c.name, nameTa: c.name_ta, icon: c.icon, asksDuration: c.asks_duration, durationLimitDays: c.duration_limit_days, referralText: c.referral_text, referralTextTa: c.referral_text_ta,
       status: c.status, version: c.version, approvedName: c.approved_name, approvedOn: c.approved_on, sortOrder: c.sort_order,
       warnings: warnings.filter((w: any) => w.card_id === c.id).map((w: any) => ({ id: w.id, text: w.text, textTa: w.text_ta, icon: w.icon })),
       options: options.filter((o: any) => o.card_id === c.id).map((o: any) => ({
-        id: o.id, composition: o.composition, compositionKey: o.composition_key, form: o.form, audiences: o.audiences as Audience[], excludes: o.excludes as Issue[], guidance: o.guidance, guidanceTa: o.guidance_ta, sortOrder: o.sort_order,
+        id: o.id, composition: o.composition, compositionKey: o.composition_key, form: o.form, audiences: o.audiences as Audience[], excludes: o.excludes as Issue[], dose: o.dose, days: o.days, guidance: o.guidance, guidanceTa: o.guidance_ta, sortOrder: o.sort_order,
       })),
     }));
   }
@@ -88,7 +88,7 @@ export class CounterGuideService {
 
     const storeId = Number(b?.storeid) || null;
     let withheld = 0;
-    const options: { id: number; composition: string; form: string | null; guidance: string | null; guidanceTa: string | null; inStock: boolean; products: any[]; notStocked: { title: string }[] }[] = [];
+    const options: { id: number; composition: string; form: string | null; dose: string | null; doseSlots: { amount: string; when: 'bf' | 'af' | null }[] | null; days: number | null; guidance: string | null; guidanceTa: string | null; inStock: boolean; products: any[]; notStocked: { title: string }[] }[] = [];
     for (const o of result.options) {
       const mk = compositionKey(o.composition);
       let products: any[] = [], notStocked: { title: string }[] = [];
@@ -102,7 +102,7 @@ export class CounterGuideService {
           .slice(0, PRODUCTS_PER_OPTION);
         notStocked = products.length ? [] : m.notStocked.slice(0, 3).map((n: any) => ({ title: n.title }));
       }
-      options.push({ id: o.id, composition: o.composition, form: o.form, guidance: o.guidance ?? null, guidanceTa: o.guidanceTa ?? null, inStock: products.length > 0, products, notStocked });
+      options.push({ id: o.id, composition: o.composition, form: o.form, dose: o.dose ?? null, doseSlots: doseSlots(o.dose), days: o.days ?? null, guidance: o.guidance ?? null, guidanceTa: o.guidanceTa ?? null, inStock: products.length > 0, products, notStocked });
     }
     return {
       ...head, refer: false, options, caution: result.caution, prescriptionOnlyWithheld: withheld, stockChecked: !!storeId,
@@ -151,8 +151,8 @@ export class CounterGuideService {
     n = 0;
     for (const o of c.options) {
       await tm.query(
-        `insert into guide_option (card_id, composition, composition_key, form, audiences, excludes, guidance, guidance_ta, sort_order) values ($1,$2,$3,$4,$5::text[],$6::text[],$7,$8,$9)`,
-        [cardId, o.composition, compositionKey(o.composition)?.key ?? null, o.form ?? null, o.audiences, o.excludes ?? [], o.guidance ?? null, o.guidanceTa ?? null, ++n * 10]);
+        `insert into guide_option (card_id, composition, composition_key, form, audiences, excludes, guidance, guidance_ta, sort_order, dose, days) values ($1,$2,$3,$4,$5::text[],$6::text[],$7,$8,$9,$10,$11)`,
+        [cardId, o.composition, compositionKey(o.composition)?.key ?? null, o.form ?? null, o.audiences, o.excludes ?? [], o.guidance ?? null, o.guidanceTa ?? null, ++n * 10, o.dose ?? null, o.days ?? null]);
     }
     return cardId as number;
   }
@@ -203,10 +203,17 @@ export class CounterGuideService {
   async seedStarter(user: any) {
     await this.need(user, 'manage');
     const have = new Set((await this.manager.query(`select lower(key) as key from guide_card`)).map((r: any) => r.key));
-    let added = 0, pictures = 0;
+    let added = 0, pictures = 0, upgraded = 0;
     await this.manager.transaction(async (tm) => {
       for (const c of STARTER_CARDS) {
         if (have.has(c.key)) {
+          // a starter card from before doses existed (none of its options has a dose) gets the starter's options with doses and days. The doses are clinical content, so
+          // the card becomes a new draft that the pharmacist approves again. A card whose options already carry a dose has been looked at by a person: it is left alone.
+          const [cur] = await tm.query(`select c.id, count(o.id)::int as options, count(o.dose)::int as with_dose from guide_card c left join guide_option o on o.card_id = c.id where lower(c.key) = $1 group by c.id`, [c.key]);
+          if (cur && cur.options > 0 && cur.with_dose === 0) {
+            await this.replaceOptions(tm, cur.id, c, user.id);
+            upgraded++;
+          }
           // a starter card already there that has no picture gets the starter's: a picture is not clinical content, so the card's approval and version are left as they are
           const card = await tm.query(`update guide_card set icon = $2 where lower(key) = $1 and icon is null returning id`, [c.key, c.icon ?? null]);
           if (card.length && c.icon) pictures++;
@@ -217,7 +224,19 @@ export class CounterGuideService {
         added++;
       }
     });
-    if (added) await this.audit.record({ userId: user.id, action: 'counterguide.starter_added', entityType: 'guide_card', entityId: 0, summary: `${added} starter counter guide cards added as drafts`, details: { added } });
-    return { added, pictures, ...(await this.adminList(user)) };
+    if (added || upgraded) await this.audit.record({ userId: user.id, action: 'counterguide.starter_added', entityType: 'guide_card', entityId: 0, summary: `${added} starter counter guide cards added as drafts, ${upgraded} given doses and days (drafts again)`, details: { added, upgraded } });
+    return { added, pictures, upgraded, ...(await this.adminList(user)) };
+  }
+
+  /** the options of a card replaced by a starter's, and the card made a new draft (its warnings and wording are left as they are) */
+  private async replaceOptions(tm: EntityManager, cardId: number, c: CardInput, userId: number) {
+    await tm.query(`delete from guide_option where card_id = $1`, [cardId]);
+    let n = 0;
+    for (const o of c.options) {
+      await tm.query(
+        `insert into guide_option (card_id, composition, composition_key, form, audiences, excludes, guidance, guidance_ta, sort_order, dose, days) values ($1,$2,$3,$4,$5::text[],$6::text[],$7,$8,$9,$10,$11)`,
+        [cardId, o.composition, compositionKey(o.composition)?.key ?? null, o.form ?? null, o.audiences, o.excludes ?? [], o.guidance ?? null, o.guidanceTa ?? null, ++n * 10, o.dose ?? null, o.days ?? null]);
+    }
+    await tm.query(`update guide_card set status = 'DRAFT', version = version + 1, approved_by = null, approved_name = null, approved_on = null, updated_by = $2, updated_on = now() where id = $1`, [cardId, userId]);
   }
 }

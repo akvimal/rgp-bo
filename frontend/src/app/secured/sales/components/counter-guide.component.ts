@@ -1,5 +1,6 @@
 import { Component, OnInit } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
+import { Router } from "@angular/router";
 import { environment } from "src/environments/environment";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { BrandCheckBus } from "./brand-check.bus";
@@ -7,11 +8,12 @@ import { BrandCheckBus } from "./brand-check.bus";
 type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
 
 /**
- * The Counter guide in the Sales header: pick the problem, who it is for, how long, the card's warning signs, and anything else; then either "see a doctor"
- * (no medicines shown) or the card's options with what is in stock at the store. Built for speed: every choice is a large picture tile, the answers so far stay
- * in view as chips, and any chip can be tapped to change that answer (the advice is then worked out again from the answers already given).
- * Only cards a pharmacist has approved are offered, and prescription-only products are never shown. It helps the person at the counter and the pharmacist:
- * whether to give anything is the pharmacist's decision.
+ * The Counter guide in the Sales header. Picking the problem goes straight to the medicines in stock, on the usual answers: an adult, 2 to 3 days, no warning
+ * sign, nothing else. Those answers stay in view as chips (marked "assumed" until someone has confirmed them) and any chip can be tapped to change that answer:
+ * the advice is then worked out again from the answers already given. A warning sign, a child under 2, pregnancy or a long duration ends in "see a doctor"
+ * with no medicines shown. Only cards a pharmacist has approved are offered, and prescription-only products are never shown. The products are real stock at the
+ * store (batch, expiry, price) and can be added to the sale invoice: to the bill that is open, or to a new bill when none is. It helps the person at the counter
+ * and the pharmacist: whether to give anything is the pharmacist's decision.
  */
 @Component({
   selector: "app-counter-guide",
@@ -20,16 +22,15 @@ type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
       <i class="bi bi-clipboard2-pulse"></i> Counter guide
     </button>
     <p-dialog header="Counter guide" [(visible)]="show" [modal]="true" [style]="{width:'46rem', maxWidth:'96vw'}" [contentStyle]="{'min-height':'24rem'}" [draggable]="false" (onHide)="reset()">
-      <!-- what has been answered so far: tap one to change it -->
+      <!-- the answers in use: tap one to change it -->
       <div class="mb-2" *ngIf="chips.length" data-testid="guide-chips">
         <div class="d-flex flex-wrap gap-1">
-          <button type="button" class="btn btn-sm rounded-pill" *ngFor="let c of chips" [ngClass]="c.step === step ? 'btn-primary' : 'btn-outline-secondary'" (click)="goto(c.step)" [attr.data-testid]="'guide-chip-' + c.step" [title]="'Change: ' + c.text">
-            <span class="me-1">{{c.icon}}</span>{{c.text}}
+          <button type="button" class="btn btn-sm rounded-pill" *ngFor="let c of chips" [ngClass]="c.step === step ? 'btn-primary' : (c.assumed ? 'btn-outline-secondary' : 'btn-outline-dark')" (click)="goto(c.step)" [attr.data-testid]="'guide-chip-' + c.step" [title]="'Change: ' + c.text">
+            <span class="me-1">{{c.icon}}</span>{{c.text}}<small class="ms-1 opacity-75" *ngIf="c.assumed">assumed</small>
           </button>
         </div>
-        <div class="small text-muted mt-1" *ngIf="step === 'result'">Tap an answer above to change it.</div>
+        <div class="small text-muted mt-1" *ngIf="step === 'result'" data-testid="guide-assumed-note">Ask the customer, and tap an answer above if it is not right: the usual answers are used until you do.</div>
       </div>
-      <div class="small text-muted mb-2" *ngIf="step !== 'result'" data-testid="guide-progress">{{progress}}</div>
       <div class="alert alert-danger py-1 small" *ngIf="error" data-testid="guide-error">{{error}}</div>
 
       <!-- 1: the problem -->
@@ -42,7 +43,7 @@ type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
         </div>
       </div>
 
-      <!-- 2: who -->
+      <!-- who -->
       <div *ngIf="step === 'who'" data-testid="guide-step-who">
         <h6>Who is it for?</h6>
         <div class="d-flex flex-wrap gap-2">
@@ -52,7 +53,7 @@ type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
         </div>
       </div>
 
-      <!-- 3: how long -->
+      <!-- how long -->
       <div *ngIf="step === 'duration'" data-testid="guide-step-duration">
         <h6>How long has it been going on?</h6>
         <div class="d-flex flex-wrap gap-2">
@@ -62,7 +63,7 @@ type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
         </div>
       </div>
 
-      <!-- 4: the card's warning signs -->
+      <!-- the card's warning signs -->
       <div *ngIf="step === 'warnings'" data-testid="guide-step-warnings">
         <h6>Is there any of these? <span class="text-muted fw-normal">(tap what applies)</span></h6>
         <div class="d-flex flex-wrap gap-2">
@@ -70,10 +71,10 @@ type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
             <div class="fs-2 lh-1">{{w.icon || '⚠️'}}</div><div class="small mt-1">{{w.text}}</div><div class="small" *ngIf="w.textTa">{{w.textTa}}</div>
           </button>
         </div>
-        <button type="button" class="btn btn-primary mt-3" (click)="afterWarnings()" data-testid="guide-next-warnings">{{anyWarned ? 'Next' : 'None of these: next'}}</button>
+        <button type="button" class="btn btn-primary mt-3" (click)="afterWarnings()" data-testid="guide-next-warnings">{{anyWarned ? 'Show the advice' : 'None of these: show the medicines'}}</button>
       </div>
 
-      <!-- 5: anything else -->
+      <!-- anything else -->
       <div *ngIf="step === 'issues'" data-testid="guide-step-issues">
         <h6>Anything else? <span class="text-muted fw-normal">(tap what applies)</span></h6>
         <div class="d-flex flex-wrap gap-2">
@@ -81,8 +82,10 @@ type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
             <div class="fs-2 lh-1">{{i.icon}}</div><div class="small mt-1">{{i.label}}</div>
           </button>
         </div>
-        <button type="button" class="btn btn-primary mt-3" (click)="finishIssues()" [disabled]="busy" data-testid="guide-advise">{{anyIssued ? 'Show what we can give' : 'None of these: show what we can give'}}</button>
+        <button type="button" class="btn btn-primary mt-3" (click)="finishIssues()" [disabled]="busy" data-testid="guide-advise">{{anyIssued ? 'Show what we can give' : 'None of these: show the medicines'}}</button>
       </div>
+
+      <div class="small text-muted" *ngIf="busy && step !== 'result'" data-testid="guide-busy">Looking at what is in stock...</div>
 
       <!-- the answer -->
       <div *ngIf="step === 'result' && result" data-testid="guide-result">
@@ -90,7 +93,7 @@ type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
           <div class="fw-bold fs-5"><span class="me-1">&#129657;</span>See a doctor</div>
           <ul class="mb-2 mt-1"><li *ngFor="let r of result.reasons">{{r.text}}</li></ul>
           <div>{{result.text}}</div><div class="small" *ngIf="result.textTa">{{result.textTa}}</div>
-          <div class="small mt-2">No medicine is shown for this.</div>
+          <div class="small mt-2">No medicine is shown for this. If an answer above is not right, tap it to change it.</div>
         </div>
 
         <ng-container *ngIf="!result.refer">
@@ -98,15 +101,33 @@ type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
           <div class="alert alert-info py-2 small" *ngIf="!result.anyInStock" data-testid="guide-nostock">{{result.stockChecked ? 'Nothing for this is in stock here. Ask the pharmacist what to do.' : 'Choose a store to see what is in stock.'}}</div>
           <div class="border rounded p-2 mb-2" *ngFor="let o of result.options" data-testid="guide-option">
             <div class="fw-semibold">{{o.composition}}<span class="text-muted fw-normal small" *ngIf="o.form"> &middot; {{formLabel(o.form)}}</span></div>
-            <div class="small" *ngIf="o.guidance">{{o.guidance}}</div><div class="small text-muted" *ngIf="o.guidanceTa">{{o.guidanceTa}}</div>
-            <table class="table table-sm small mt-1 mb-0" *ngIf="o.products.length" data-testid="guide-products">
-              <tbody><tr *ngFor="let p of o.products" data-testid="guide-product">
-                <td>{{p.title}}<span class="text-muted" *ngIf="p.mfr"> &middot; {{p.mfr}}</span><span class="badge bg-warning text-dark ms-1" *ngIf="p.formRelation === 'unknown'" title="Its dosage form is not recorded: check the pack">form not recorded</span>
-                  <div class="text-muted">Batch {{p.batch}}<span *ngIf="p.exp_date"> / {{p.exp_date | date:'MMM-yy'}}</span> &middot; {{p.available}} in stock</div></td>
-                <td class="text-end text-nowrap">&#8377;{{p.price | number:'1.2-2'}}<div class="text-muted">MRP &#8377;{{p.mrp | number:'1.2-2'}}</div></td>
-                <td class="text-end"><button type="button" class="btn btn-sm btn-primary" *ngIf="bus.billOpen" (click)="add(p)" data-testid="guide-add">Add to bill</button></td>
-              </tr></tbody>
-            </table>
+            <!-- how much, when, and for how many days -->
+            <div class="mt-2" *ngIf="o.dose" data-testid="guide-dose">
+              <div class="d-flex align-items-stretch gap-1" *ngIf="o.doseSlots; else doseWords" data-testid="guide-dose-slots">
+                <div class="text-center border rounded px-2 py-1 flex-fill" *ngFor="let s of o.doseSlots; let i = index" [class.text-muted]="isNone(s.amount)" [class.bg-light]="isNone(s.amount)">
+                  <div class="small text-muted">{{slotNames[i]}}</div>
+                  <div class="fs-4 fw-bold lh-1">{{s.amount}}</div>
+                  <div class="small" *ngIf="s.when"><span class="badge" [ngClass]="s.when === 'bf' ? 'bg-info text-dark' : 'bg-secondary'">{{s.when === 'bf' ? 'before food' : 'after food'}}</span></div>
+                </div>
+                <div class="text-center border rounded px-2 py-1 bg-light" *ngIf="o.days"><div class="small text-muted">For</div><div class="fs-4 fw-bold lh-1">{{o.days}}</div><div class="small">{{o.days === 1 ? 'day' : 'days'}}</div></div>
+              </div>
+              <ng-template #doseWords><div class="fw-semibold" data-testid="guide-dose-words">{{o.dose}}<span class="fw-normal text-muted" *ngIf="o.days"> &middot; for {{o.days}} {{o.days === 1 ? 'day' : 'days'}}</span></div></ng-template>
+              <div class="small text-muted mt-1" *ngIf="o.doseSlots">bf = before food, af = after food</div>
+            </div>
+            <div class="small mt-1" *ngIf="o.guidance">{{o.guidance}}</div><div class="small text-muted" *ngIf="o.guidanceTa">{{o.guidanceTa}}</div>
+            <!-- the real products in stock, to put on the bill -->
+            <div class="mt-2" *ngIf="o.products.length" data-testid="guide-products">
+              <div class="d-flex align-items-center gap-2 border rounded p-2 mb-1" *ngFor="let p of o.products" data-testid="guide-product">
+                <div class="flex-grow-1">
+                  <div class="fw-semibold">{{p.title}}</div>
+                  <div class="small text-muted"><span *ngIf="p.mfr">{{p.mfr}} &middot; </span>Batch {{p.batch}}<span *ngIf="p.exp_date"> / {{p.exp_date | date:'MMM-yy'}}</span> &middot; {{p.available}} in stock<span class="badge bg-warning text-dark ms-1" *ngIf="p.formRelation === 'unknown'" title="Its dosage form is not recorded: check the pack">form not recorded</span></div>
+                </div>
+                <div class="text-end text-nowrap"><div class="fw-semibold">&#8377;{{p.price | number:'1.2-2'}}</div><div class="small text-muted">MRP &#8377;{{p.mrp | number:'1.2-2'}}</div></div>
+                <button type="button" class="btn btn-sm" [ngClass]="added[p.productid] ? 'btn-success' : 'btn-primary'" [disabled]="!!added[p.productid]" (click)="add(p)" data-testid="guide-add">
+                  <span *ngIf="added[p.productid]">&#10003; Added</span><span *ngIf="!added[p.productid]">{{bus.billOpen ? 'Add to bill' : 'Add to a new bill'}}</span>
+                </button>
+              </div>
+            </div>
             <div class="small text-muted mt-1" *ngIf="!o.products.length && result.stockChecked" data-testid="guide-option-nostock">Not in stock<span *ngIf="o.notStocked.length">: we know {{names(o.notStocked)}}</span>.</div>
           </div>
           <details class="small mb-2" *ngIf="result.dropped.length"><summary>Left out for these answers ({{result.dropped.length}})</summary>
@@ -115,12 +136,13 @@ type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
         </ng-container>
 
         <div class="d-flex gap-2 mt-3 align-items-center">
-          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="reset()" data-testid="guide-again">Start again</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="reset()" data-testid="guide-again">Another problem</button>
+          <button type="button" class="btn btn-success btn-sm" *ngIf="anyAdded" (click)="show = false" data-testid="guide-done">Done: back to the bill</button>
           <span class="small text-muted ms-auto">Card: {{result.card.name}}, version {{result.card.version}}. Not medical advice: the pharmacist decides what to give.</span>
         </div>
       </div>
 
-      <div class="mt-3" *ngIf="step !== 'card' && step !== 'result'"><button type="button" class="btn btn-link btn-sm px-0" (click)="back()" data-testid="guide-back">&larr; Back</button></div>
+      <div class="mt-3" *ngIf="step !== 'card' && step !== 'result'"><button type="button" class="btn btn-link btn-sm px-0" (click)="advise()" data-testid="guide-back">&larr; Back to the medicines</button></div>
     </p-dialog>`,
   styles: [`
     .guide-tile { width: 8.5rem; padding: .75rem .4rem; white-space: normal; }
@@ -137,12 +159,17 @@ export class CounterGuideComponent implements OnInit {
   duration = "";
   warned: { [id: number]: boolean } = {};
   issued: { [k: string]: boolean } = {};
-  /** the two steps with a "none of these" answer: answered once the person has moved on from them */
-  warningsDone = false;
-  issuesDone = false;
+  /** the usual answers are in use until a person has looked at the step: the chip says "assumed" */
+  touched = { who: false, duration: false, warnings: false, issues: false };
   result: any = null;
   busy = false;
   error = "";
+  /** the products put on the bill from this answer */
+  added: { [productid: number]: boolean } = {};
+
+  /** the answers used until someone changes them: an adult, 2 to 3 days, no warning sign, nothing else */
+  static readonly DEFAULT_WHO = "adult";
+  static readonly DEFAULT_DURATION = "d2_3";
 
   readonly whoChoices = [
     { key: "under2", label: "Child under 2", icon: "\u{1F476}" }, { key: "child", label: "Child 2 to 12", icon: "\u{1F9D2}" }, { key: "adult", label: "Adult", icon: "\u{1F9D1}" },
@@ -154,7 +181,7 @@ export class CounterGuideComponent implements OnInit {
   ];
   private readonly forms: { [k: string]: string } = { tablet: "Tablet", tablet_sr: "Tablet (sustained release)", tablet_dt: "Tablet (dispersible or chewable)", capsule: "Capsule", capsule_sr: "Capsule (sustained release)", syrup: "Syrup or suspension", drops: "Drops", injection: "Injection", topical: "Cream, ointment or gel", powder: "Powder or sachet", inhaler: "Inhaler or spray", other: "Other" };
 
-  constructor(private http: HttpClient, private storeContext: StoreContextService, public bus: BrandCheckBus) {}
+  constructor(private http: HttpClient, private storeContext: StoreContextService, public bus: BrandCheckBus, private router: Router) {}
 
   /** the guide is offered only when a pharmacist has approved at least one card */
   ngOnInit() {
@@ -166,84 +193,56 @@ export class CounterGuideComponent implements OnInit {
 
   get anyWarned(): boolean { return Object.values(this.warned).some(Boolean); }
   get anyIssued(): boolean { return Object.values(this.issued).some(Boolean); }
+  get anyAdded(): boolean { return Object.values(this.added).some(Boolean); }
   formLabel(k: string) { return this.forms[k] || k; }
+  readonly slotNames = ["Morning", "Noon", "Night"];
+  /** a part of the day with nothing to take ("0") */
+  isNone(amount: string): boolean { return /^0+(\.0+)?(\s|$)/.test(String(amount)); }
   names(list: { title: string }[]) { return list.map(x => x.title).join(", "); }
 
-  private get steps(): Step[] { return this.card?.asksDuration === false ? ["who", "warnings", "issues"] : ["who", "duration", "warnings", "issues"]; }
-  get progress(): string {
-    if (this.step === "card") return "Step 1";
-    const i = this.steps.indexOf(this.step);
-    return `Step ${i + 2} of ${this.steps.length + 1}`;
-  }
-
-  /** the answers so far, one chip each, in the order they are asked */
-  get chips(): { step: Step; icon: string; text: string }[] {
+  /** the answers in use, one chip each, in the order they are asked */
+  get chips(): { step: Step; icon: string; text: string; assumed: boolean }[] {
     if (!this.card) return [];
-    const out: { step: Step; icon: string; text: string }[] = [{ step: "card", icon: this.card.icon || "\u{1F48A}", text: this.card.name }];
+    const out: { step: Step; icon: string; text: string; assumed: boolean }[] = [{ step: "card", icon: this.card.icon || "\u{1F48A}", text: this.card.name, assumed: false }];
     const w = this.whoChoices.find(x => x.key === this.who);
-    if (w) out.push({ step: "who", icon: w.icon, text: w.label });
+    if (w) out.push({ step: "who", icon: w.icon, text: w.label, assumed: !this.touched.who });
     const d = this.durationChoices.find(x => x.key === this.duration);
-    if (d && this.card.asksDuration !== false) out.push({ step: "duration", icon: d.icon, text: d.label });
-    if (this.warningsDone) {
-      const n = Object.keys(this.warned).filter(k => this.warned[+k]).length;
-      out.push({ step: "warnings", icon: n ? "⚠️" : "✅", text: n ? `${n} warning sign${n > 1 ? "s" : ""}` : "No warning signs" });
-    }
-    if (this.issuesDone) {
-      const picked = (this.meta.issues || []).filter((i: any) => this.issued[i.key]);
-      out.push({ step: "issues", icon: picked.length ? "\u{1F48A}" : "✅", text: picked.length ? (picked.length > 2 ? `${picked.length} other things` : picked.map((i: any) => i.label.split(" (")[0]).join(", ")) : "Nothing else" });
-    }
+    if (d && this.card.asksDuration !== false) out.push({ step: "duration", icon: d.icon, text: d.label, assumed: !this.touched.duration });
+    const n = Object.keys(this.warned).filter(k => this.warned[+k]).length;
+    out.push({ step: "warnings", icon: n ? "⚠️" : "✅", text: n ? `${n} warning sign${n > 1 ? "s" : ""}` : "No warning signs", assumed: !this.touched.warnings });
+    const picked = (this.meta.issues || []).filter((i: any) => this.issued[i.key]);
+    out.push({ step: "issues", icon: picked.length ? "\u{1F48A}" : "✅", text: picked.length ? (picked.length > 2 ? `${picked.length} other things` : picked.map((i: any) => i.label.split(" (")[0]).join(", ")) : "Nothing else", assumed: !this.touched.issues });
     return out;
   }
 
   open() { this.reset(); this.show = true; }
 
   reset() {
-    this.step = "card"; this.card = null; this.who = ""; this.duration = ""; this.warned = {}; this.issued = {}; this.warningsDone = false; this.issuesDone = false;
-    this.result = null; this.error = ""; this.busy = false;
-  }
-
-  /** the next question not yet answered, or the advice when everything is: so changing one answer asks only what is still missing */
-  private nextStep() {
-    this.error = "";
-    if (!this.who) { this.step = "who"; return; }
-    if (this.card.asksDuration !== false && !this.duration) { this.step = "duration"; return; }
-    if (!this.warningsDone) { this.step = "warnings"; return; }
-    if (!this.issuesDone) { this.step = "issues"; return; }
-    this.advise();
+    this.step = "card"; this.card = null; this.who = ""; this.duration = ""; this.warned = {}; this.issued = {};
+    this.touched = { who: false, duration: false, warnings: false, issues: false };
+    this.result = null; this.error = ""; this.busy = false; this.added = {};
   }
 
   /** a chip tapped: back to that question, with the other answers kept */
-  goto(step: Step) { this.error = ""; this.result = null; this.step = step; }
+  goto(step: Step) { this.error = ""; this.step = step; }
 
+  /**
+   * The problem is chosen and the medicines come at once, on the usual answers (an adult, 2 to 3 days, no warning sign, nothing else) for whatever has not
+   * been answered yet. Changing the problem keeps the person and how long, but the warning signs belong to the card, so those start again.
+   */
   pickCard(c: any) {
-    if (this.card?.id !== c.id) { this.card = c; this.warned = {}; this.warningsDone = false; if (c.asksDuration === false) this.duration = ""; }
-    this.result = null;
-    this.nextStep();
+    if (this.card?.id !== c.id) { this.card = c; this.warned = {}; this.touched.warnings = false; }
+    if (!this.who) this.who = CounterGuideComponent.DEFAULT_WHO;
+    if (c.asksDuration === false) this.duration = "";
+    else if (!this.duration) this.duration = CounterGuideComponent.DEFAULT_DURATION;
+    this.added = {};
+    this.advise();
   }
 
-  pickWho(w: string) {
-    this.who = w;
-    this.result = null;
-    // a child under 2 or a pregnant woman is always sent to a doctor: no more questions
-    if (w === "under2" || w === "pregnant") { this.advise(); return; }
-    this.nextStep();
-  }
-
-  pickDuration(d: string) { this.duration = d; this.result = null; this.nextStep(); }
-
-  afterWarnings() {
-    this.warningsDone = true; this.result = null;
-    if (this.anyWarned) { this.advise(); return; }
-    this.nextStep();
-  }
-
-  finishIssues() { this.issuesDone = true; this.advise(); }
-
-  back() {
-    const order: Step[] = ["card", ...this.steps];
-    const i = order.indexOf(this.step);
-    if (i > 0) this.step = order[i - 1];
-  }
+  pickWho(w: string) { this.who = w; this.touched.who = true; this.added = {}; this.advise(); }
+  pickDuration(d: string) { this.duration = d; this.touched.duration = true; this.added = {}; this.advise(); }
+  afterWarnings() { this.touched.warnings = true; this.added = {}; this.advise(); }
+  finishIssues() { this.touched.issues = true; this.added = {}; this.advise(); }
 
   advise() {
     this.error = ""; this.busy = true;
@@ -257,9 +256,18 @@ export class CounterGuideComponent implements OnInit {
     });
   }
 
-  /** a product chosen for the bill: added to the bill that is open, the same way as from Check brand */
+  /**
+   * A product chosen for the sale invoice. With a bill open it is added there at once and the guide stays open, so more can be added; with no bill open it is
+   * queued and a new bill is opened, which takes it as it appears. The batch added is the soonest to expire that is still in date, as for any suggestion.
+   */
   add(p: any) {
-    this.bus.pick$.next({ productid: p.productid });
+    if (this.bus.billOpen) {
+      this.bus.pick$.next({ productid: p.productid });
+      this.added[p.productid] = true;
+      return;
+    }
+    this.bus.queue(p.productid);
     this.show = false;
+    this.router.navigate(["/secure/sales/pos/new"]);
   }
 }

@@ -23,6 +23,9 @@ export class SaleFormItemsComponent{
   ngOnInit() {
     this.brandBus.billOpen = true;
     this.brandPick = this.brandBus.pick$.subscribe((s) => this.addSuggested(s));
+    // products a dialog queued before this bill opened (Counter guide on a page with no bill): added once the bill is ready
+    const waiting = this.brandBus.takePending();
+    if (waiting.length) setTimeout(() => waiting.forEach((id) => this.addSuggested({ productid: id })), 400);
   }
   ngOnDestroy() {
     this.brandBus.billOpen = false;
@@ -278,6 +281,6 @@ export class SaleFormItemsComponent{
       }
 
       getItemsInForm(){
-        return this.items.map(i => i.item_id);;
+        return (this.items || []).map(i => i.item_id);
       }
 }

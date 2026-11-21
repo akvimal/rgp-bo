@@ -70,7 +70,7 @@ describe('a card fit to save', () => {
   const good = {
     key: 'Headache', name: 'Headache', durationLimitDays: 3, referralText: 'See a doctor today.',
     warnings: [{ text: 'Sudden severe headache' }, { text: 'Stiff neck with fever' }],
-    options: [{ composition: 'Paracetamol 500mg', form: 'tablet', audiences: ['adult', 'over60'], excludes: ['kidney_liver'] }],
+    options: [{ composition: 'Paracetamol 500mg', form: 'tablet', audiences: ['adult', 'over60'], excludes: ['kidney_liver'], dose: '1 - 1 - 1 (af)', days: 3 }],
   };
   it('accepts a complete card and tidies it', () => {
     const r: any = validateCard(good);
@@ -95,5 +95,37 @@ describe('a card fit to save', () => {
   });
   it('wants at least one option', () => {
     expect((validateCard({ ...good, options: [] }) as any).errors.join(' ')).toMatch(/at least one option/);
+  });
+});
+
+describe('the dose, as the counter reads it', () => {
+  const { doseSlots, looksLikeSlots } = require('./counter-guide-rules');
+  it('reads morning - noon - night with before and after food', () => {
+    expect(doseSlots('1 (bf) - 0 - 1 (af)')).toEqual([{ amount: '1', when: 'bf' }, { amount: '0', when: null }, { amount: '1', when: 'af' }]);
+    expect(doseSlots('1 - 1 - 1 (af)')).toEqual([{ amount: '1', when: null }, { amount: '1', when: null }, { amount: '1', when: 'af' }]);
+  });
+  it('reads units and fractions', () => {
+    expect(doseSlots('5 ml - 5 ml - 5 ml (af)')?.map((s: any) => s.amount)).toEqual(['5 ml', '5 ml', '5 ml']);
+    expect(doseSlots('1/2 - 0 - 1/2 (bf)')?.length).toBe(3);
+    expect(doseSlots('0 - 0 - 1 sachet')?.[2].amount).toBe('1 sachet');
+  });
+  it('is not slots for a dose in words, or for a dose written wrongly', () => {
+    expect(doseSlots('A thin layer on the burn, 2 times a day')).toBeNull();
+    expect(doseSlots('1 - 1')).toBeNull();
+    expect(doseSlots('1 (before) - 0 - 1')).toBeNull();
+    expect(looksLikeSlots('1 - 1')).toBe(true);
+    expect(looksLikeSlots('A thin layer, 2 times a day')).toBe(false);
+  });
+  it('needs a dose and days on every option, and a dose written as slots to read properly', () => {
+    const base = { key: 'headache', name: 'Headache', durationLimitDays: 3, referralText: 'See a doctor.', warnings: [{ text: 'Sign one' }, { text: 'Sign two' }] };
+    const opt = { composition: 'Paracetamol 500 mg', audiences: ['adult'] };
+    const miss: any = validateCard({ ...base, options: [{ ...opt }] });
+    expect(miss.errors.join(' | ')).toMatch(/write the dose/);
+    expect(miss.errors.join(' | ')).toMatch(/for how many days/);
+    const wrong: any = validateCard({ ...base, options: [{ ...opt, dose: '1 - 1', days: 3 }] });
+    expect(wrong.errors.join(' | ')).toMatch(/morning - noon - night/);
+    const ok: any = validateCard({ ...base, options: [{ ...opt, dose: '1 (bf) - 0 - 1 (af)', days: 3 }, { ...opt, dose: 'Apply twice a day', days: 5 }] });
+    expect(ok.ok).toBe(true);
+    expect(ok.card.options[0]).toMatchObject({ dose: '1 (bf) - 0 - 1 (af)', days: 3 });
   });
 });

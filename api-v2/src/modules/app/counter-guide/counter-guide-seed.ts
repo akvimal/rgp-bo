@@ -3,26 +3,28 @@ import { CardInput } from './counter-guide-rules';
 /**
  * The starter cards: twelve everyday problems, written as a starting point for the pharmacist and added as DRAFTS only. A draft never reaches the counter;
  * a registered pharmacist reads each card, edits it to the shop's practice, and approves it. They are not medical advice and nothing in them has been
- * checked by a clinician. No doses are given: the guidance says "as directed on the pack or by the pharmacist". Tamil wording is left for the pharmacist to add.
+ * checked by a clinician: every dose and number of days below is a proposal for the pharmacist to confirm or change.
+ *
+ * A dose is written the way the counter reads it: "1 (bf) - 0 - 1 (af)" is one in the morning before food, none at noon, one at night after food
+ * (bf = before food, af = after food). A dose that is not morning / noon / night is written in words. Tamil wording is left for the pharmacist to add.
  *
  * Options are listed by composition and form the way the brand dictionary writes them, so they match the shop's products. Where the shop writes a
- * composition differently a card option finds no stock: the card screen shows how many products each option matches, so the pharmacist can correct it.
+ * composition differently an option finds no stock: the card screen shows how many products each option matches, so the pharmacist can correct it.
  * Prescription-only products are never offered whatever a card says: the product's schedule decides at the counter.
  */
 
 const SEE_DOCTOR = 'Please see a doctor, or the pharmacist on duty, for this. Medicines are not given from the counter for it.';
-const ASDIRECTED = 'Use as directed on the pack or by the pharmacist. Do not give more than the pack says.';
 
 const ADULT = ['adult', 'over60'];
 const ALL = ['child', 'adult', 'over60'];
 
-const PARA_ADULT = { composition: 'Paracetamol 500 mg', form: 'tablet', audiences: ADULT, excludes: ['kidney_liver'], guidance: 'Take after food. ' + ASDIRECTED };
-const PARA_CHILD = { composition: 'Paracetamol 125 mg/5 ml', form: 'syrup', audiences: ['child'], excludes: [], guidance: 'The dose depends on the child\'s weight: the pharmacist gives it. ' + ASDIRECTED };
-const IBU = { composition: 'Ibuprofen 400 mg', form: 'tablet', audiences: ['adult'], excludes: ['allergy_painkiller', 'ulcer_acidity', 'kidney_liver', 'asthma', 'blood_thinner', 'high_bp'], guidance: 'Take after food. ' + ASDIRECTED };
-const ORS = { composition: 'Glucose 13.5 g + Sodium chloride 2.6 g + Potassium chloride 1.5 g + Sodium citrate 2.9 g', form: 'powder', audiences: ALL, excludes: [], guidance: 'Mix with clean water as on the pack and sip often. Throw away what is left after 24 hours.' };
-const ANTACID = { composition: 'Aluminium hydroxide 250 mg + Magnesium hydroxide 250 mg', form: 'syrup', audiences: ADULT, excludes: ['kidney_liver'], guidance: 'Take between meals or at bedtime. ' + ASDIRECTED };
+const PARA_ADULT = { composition: 'Paracetamol 500 mg', form: 'tablet', audiences: ADULT, excludes: ['kidney_liver'], dose: '1 - 1 - 1 (af)', days: 3, guidance: 'Not more than 4 tablets in a day. Stop when the pain or fever is gone.' };
+const PARA_CHILD = { composition: 'Paracetamol 125 mg/5 ml', form: 'syrup', audiences: ['child'], excludes: [], dose: '5 ml - 5 ml - 5 ml (af)', days: 3, guidance: 'This is for a child of 2 to 5 years. For 6 to 12 years give 10 ml each time. Check the child\'s weight with the pharmacist before giving.' };
+const IBU = { composition: 'Ibuprofen 400 mg', form: 'tablet', audiences: ['adult'], excludes: ['allergy_painkiller', 'ulcer_acidity', 'kidney_liver', 'asthma', 'blood_thinner', 'high_bp'], dose: '1 (af) - 0 - 1 (af)', days: 3, guidance: 'Always after food. Stop and see a doctor if there is stomach pain.' };
+const ORS = { composition: 'Glucose 13.5 g + Sodium chloride 2.6 g + Potassium chloride 1.5 g + Sodium citrate 2.9 g', form: 'powder', audiences: ALL, excludes: [], dose: '1 glass after every loose motion or vomit, in small sips', days: 2, guidance: 'Mix one sachet in the amount of clean water printed on the pack. Throw away what is left after 24 hours.' };
+const ANTACID = { composition: 'Aluminium hydroxide 250 mg + Magnesium hydroxide 250 mg', form: 'syrup', audiences: ADULT, excludes: ['kidney_liver'], dose: '10 ml (af) - 10 ml (af) - 10 ml (af)', days: 3, guidance: 'Take about an hour after food. Shake the bottle well.' };
 
-const RAW: CardInput[] = [
+export const RAW: CardInput[] = [
   {
     key: 'headache', name: 'Headache', durationLimitDays: 3, referralText: SEE_DOCTOR, sortOrder: 10,
     warnings: [
@@ -68,8 +70,9 @@ const RAW: CardInput[] = [
       { text: 'Coughing up thick yellow or green phlegm with fever' },
     ],
     options: [
-      { composition: 'Cetirizine 10 mg', form: 'tablet', audiences: ADULT, excludes: ['kidney_liver'], guidance: 'It can cause drowsiness: do not drive afterwards. ' + ASDIRECTED },
-      PARA_ADULT, PARA_CHILD,
+      { composition: 'Cetirizine 10 mg', form: 'tablet', audiences: ADULT, excludes: ['kidney_liver'], dose: '0 - 0 - 1', days: 3, guidance: 'It can cause drowsiness: take it at night and do not drive afterwards.' },
+      { ...PARA_ADULT, dose: '1 - 0 - 1 (af)', guidance: 'Only if there is fever or body ache. Not more than 4 tablets in a day.' },
+      { ...PARA_CHILD, guidance: 'Only if there is fever. ' + PARA_CHILD.guidance },
     ],
   },
   {
@@ -80,7 +83,7 @@ const RAW: CardInput[] = [
       { text: 'A high fever for more than 2 days' },
       { text: 'A rash' },
     ],
-    options: [PARA_ADULT, PARA_CHILD],
+    options: [{ ...PARA_ADULT, dose: '1 - 0 - 1 (af)', guidance: 'For the pain or fever. Warm salt-water gargles also help.' }, PARA_CHILD],
   },
   {
     key: 'stomach-pain', name: 'Stomach pain', durationLimitDays: 2, referralText: SEE_DOCTOR, sortOrder: 60,
@@ -102,7 +105,7 @@ const RAW: CardInput[] = [
       { text: 'Losing weight without trying' },
       { text: 'Acidity for the first time after the age of 50' },
     ],
-    options: [ANTACID, { composition: 'Calcium carbonate 500 mg', form: 'tablet', audiences: ADULT, excludes: ['kidney_liver'], guidance: 'Chew after meals. ' + ASDIRECTED }],
+    options: [ANTACID, { composition: 'Calcium carbonate 500 mg', form: 'tablet', audiences: ADULT, excludes: ['kidney_liver'], dose: '1 (af) - 1 (af) - 1 (af)', days: 3, guidance: 'Chew it well. Not more than 4 tablets in a day.' }],
   },
   {
     key: 'loose-motions', name: 'Loose motions', durationLimitDays: 2, referralText: SEE_DOCTOR, sortOrder: 80,
@@ -113,7 +116,7 @@ const RAW: CardInput[] = [
       { text: 'Vomiting so that fluids cannot be kept down' },
       { text: 'Severe tummy pain, or a child who is drowsy or will not drink' },
     ],
-    options: [ORS, { composition: 'Zinc 20 mg', form: 'tablet_dt', audiences: ['child'], excludes: [], guidance: 'The pharmacist gives the dose and the number of days.' }],
+    options: [ORS, { composition: 'Zinc 20 mg', form: 'tablet_dt', audiences: ['child'], excludes: [], dose: '1 - 0 - 0', days: 14, guidance: 'Dissolve the tablet in a little water or breast milk. Give the full 14 days even when the loose motions stop.' }],
   },
   {
     key: 'vomiting', name: 'Vomiting', durationLimitDays: 2, referralText: SEE_DOCTOR, sortOrder: 90,
@@ -124,7 +127,7 @@ const RAW: CardInput[] = [
       { text: 'Drowsy or confused' },
       { text: 'Signs of dehydration, or unable to keep fluids down for 12 hours' },
     ],
-    options: [ORS],
+    options: [{ ...ORS, dose: 'A small sip every 5 minutes, then a glass every hour', guidance: 'Mix one sachet in the amount of clean water printed on the pack. Wait 10 minutes after a vomit before starting again.' }],
   },
   {
     key: 'constipation', name: 'Constipation', durationLimitDays: 7, referralText: SEE_DOCTOR, sortOrder: 100,
@@ -135,8 +138,8 @@ const RAW: CardInput[] = [
       { text: 'A new change in bowels after the age of 50' },
     ],
     options: [
-      { composition: 'Ispaghula husk 3.5 g', form: 'powder', audiences: ADULT, excludes: [], guidance: 'Mix in a full glass of water and drink plenty of water through the day. ' + ASDIRECTED },
-      { composition: 'Lactulose 3.35 g/5 ml', form: 'syrup', audiences: ADULT, excludes: ['kidney_liver'], guidance: ASDIRECTED },
+      { composition: 'Ispaghula husk 3.5 g', form: 'powder', audiences: ADULT, excludes: [], dose: '0 - 0 - 1 sachet', days: 5, guidance: 'Mix in a full glass of water and drink it at once. Drink plenty of water through the day.' },
+      { composition: 'Lactulose 3.35 g/5 ml', form: 'syrup', audiences: ADULT, excludes: ['kidney_liver'], dose: '15 ml - 0 - 15 ml', days: 3, guidance: 'It can take a day or two to work.' },
     ],
   },
   {
@@ -148,7 +151,7 @@ const RAW: CardInput[] = [
       { text: 'A chemical or electrical burn' },
       { text: 'Signs of infection: pus, spreading redness, or fever' },
     ],
-    options: [{ composition: 'Povidone iodine 5 %', form: 'topical', audiences: ALL, excludes: ['kidney_liver'], guidance: 'First cool the burn under running water for 20 minutes. Do not burst blisters or put toothpaste, oil or butter on it.' }],
+    options: [{ composition: 'Povidone iodine 5 %', form: 'topical', audiences: ALL, excludes: ['kidney_liver'], dose: 'A thin layer on the burn, 2 times a day', days: 3, guidance: 'First cool the burn under running water for 20 minutes. Do not burst blisters or put toothpaste, oil or butter on it.' }],
   },
   {
     key: 'minor-cut', name: 'Minor cut or scrape', asksDuration: false, durationLimitDays: 3, referralText: SEE_DOCTOR, sortOrder: 120,
@@ -159,7 +162,7 @@ const RAW: CardInput[] = [
       { text: 'A dirty or rusty object, and no tetanus injection in the last 5 years' },
       { text: 'Signs of infection: pus, spreading redness, or fever' },
     ],
-    options: [{ composition: 'Povidone iodine 5 %', form: 'topical', audiences: ALL, excludes: ['kidney_liver'], guidance: 'Wash with clean running water first and press with a clean cloth to stop bleeding. Keep it clean and covered.' }],
+    options: [{ composition: 'Povidone iodine 5 %', form: 'topical', audiences: ALL, excludes: ['kidney_liver'], dose: 'A thin layer on the clean wound, 2 times a day', days: 3, guidance: 'Wash with clean running water first and press with a clean cloth to stop bleeding. Keep it clean and covered.' }],
   },
 ];
 

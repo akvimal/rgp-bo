@@ -14,6 +14,60 @@ import { DOSAGE_FORMS } from "../../products/dosage-forms";
   template: `
     <div class="page-head"><h1>Counter guide cards</h1></div>
     <p class="text-muted small">Each card is one everyday problem: its warning signs, how long is too long, and the medicines that may be offered. Only <strong>approved</strong> cards are shown at the counter; prescription-only products are never offered whatever a card says. Content here is not medical advice until a pharmacist has approved it.</p>
+    <!-- how to write and approve a card: open the first time (no card approved yet), then kept out of the way -->
+    <div class="hist-card mb-3" data-testid="cg-help">
+      <div class="hist-card-head d-flex align-items-center">
+        <span><i class="bi bi-life-preserver me-1"></i>How this works</span>
+        <button type="button" class="btn btn-sm btn-link ms-auto py-0" (click)="helpOpen = !helpOpen" [attr.aria-expanded]="helpOpen" data-testid="cg-help-toggle">{{helpOpen ? 'Hide' : 'Show'}}</button>
+      </div>
+      <div class="hist-card-body small" *ngIf="helpOpen" data-testid="cg-help-body">
+        <div class="row g-3">
+          <div class="col-lg-6">
+            <div class="fw-semibold">1. What a card is</div>
+            <p class="mb-2">One everyday problem (a headache, a burn). At the counter, staff pick the problem and answer a few taps: who it is for, how long, any warning signs, anything else. The card decides whether to say <strong>see a doctor</strong> or to show what is in stock that the card allows.</p>
+
+            <div class="fw-semibold">2. Writing a card</div>
+            <ul class="mb-2 ps-3">
+              <li><strong>Problem and picture.</strong> Plain words the staff use. The picture is an emoji on the tile (paste one; on Windows press Win + .).</li>
+              <li><strong>Doctor after (days).</strong> The counter asks "less than 2 days, 2 to 3, 4 to 7, more than a week". If the problem has lasted at least this many days, the guide says see a doctor. With 3: "4 to 7 days" and "more than a week" are sent to a doctor, "2 to 3 days" is not. Turn off <em>Ask how long</em> for a burn or a cut.</li>
+              <li><strong>What to say when a doctor is advised.</strong> Shown with the reasons. Keep it short and kind.</li>
+              <li><strong>Warning signs.</strong> Any one ticked means a doctor and no medicine is shown. Write each as the customer would say it. At least two.</li>
+              <li><strong>Options.</strong> Write the composition with its strength the way the brand dictionary does: <em>Paracetamol 500 mg</em>, or for a combination <em>Amoxicillin 500 mg + Clavulanic acid 125 mg</em>. Pick the form, who it is for (child 2 to 12, adult, over 60) and what it must <em>not</em> be given with. Options are shown in the order listed.</li>
+              <li><strong>Dose and days.</strong> Every option needs both. Write the dose as <em>morning - noon - night</em>: <em>1 (bf) - 0 - 1 (af)</em> is one in the morning before food, none at noon, one at night after food (<em>bf</em> before food, <em>af</em> after food). Add a unit where it is not a tablet: <em>5 ml - 5 ml - 5 ml (af)</em>. A dose that is not three times a day is written in words, for example <em>A thin layer 2 times a day</em>. The counter shows it as three boxes with the number of days.</li>
+              <li><strong>Guidance.</strong> What to watch for and how to take it, in your words (for example "not more than 4 tablets in a day").</li>
+              <li><strong>The product count</strong> beside an option is how many products in the catalogue carry that composition and form. <span class="text-warning-emphasis">Zero</span> means the shop writes it differently or does not carry it: fix the option, or fill the product's composition (Products &gt; Compositions).</li>
+            </ul>
+          </div>
+          <div class="col-lg-6">
+            <div class="fw-semibold">3. Draft, approve, retire</div>
+            <ul class="mb-2 ps-3">
+              <li>A new or edited card is a <span class="badge bg-warning text-dark">Draft</span>: the counter does not see it.</li>
+              <li>The <strong>pharmacist</strong> reads the whole card, ticks that they have, and presses <strong>Approve</strong>. It then shows at the counter with their name and the date.</li>
+              <li>Changing an approved card makes a new draft that must be approved again; the card leaves the counter until then.</li>
+              <li><strong>Retire</strong> takes a card off the counter and keeps it. <strong>Delete</strong> works on drafts and retired cards only.</li>
+            </ul>
+
+            <div class="fw-semibold">4. Before you approve: check that</div>
+            <ul class="mb-2 ps-3">
+              <li>every warning sign you would send to a doctor for is there;</li>
+              <li>each option is right for each group ticked, and its "do not give with" list is complete;</li>
+              <li>no option is something that needs a prescription (these are never shown, but the card should not rely on that);</li>
+              <li>the "doctor after" days are right for this problem;</li>
+              <li>the wording is clear, and the Tamil text is added where staff need it.</li>
+            </ul>
+
+            <div class="fw-semibold">5. What the guide always does</div>
+            <ul class="mb-0 ps-3">
+              <li>A child under 2, or a pregnant or breastfeeding woman, is always sent to a doctor or the pharmacist.</li>
+              <li>Prescription-only products (Schedule H, H1, X) are never offered, whatever a card says.</li>
+              <li>It never decides alone: it is not medical advice, and the pharmacist decides what is given.</li>
+              <li>The starter cards were written without a clinician. Read and edit each one before approving it.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div *ngIf="error" class="alert alert-danger py-2" data-testid="cg-error"><div *ngFor="let e of errors">{{e}}</div><div *ngIf="!errors.length">{{error}}</div></div>
     <div *ngIf="message" class="alert alert-success py-2" data-testid="cg-message">{{message}}</div>
 
@@ -76,7 +130,10 @@ import { DOSAGE_FORMS } from "../../products/dosage-forms";
                   <label class="me-3 small" *ngFor="let a of audiences"><input type="checkbox" [checked]="has(o.audiences, a)" (change)="toggle(o.audiences, a)" [disabled]="!canManage"> {{audienceLabel(a)}}</label></div>
                 <div class="col-12"><span class="small me-2">Do not give with:</span>
                   <label class="me-3 small d-inline-block" *ngFor="let x of issues"><input type="checkbox" [checked]="has(o.excludes, x.key)" (change)="toggle(o.excludes, x.key)" [disabled]="!canManage"> {{x.label}}</label></div>
-                <div class="col-md-6"><label class="form-label small mb-0">Guidance (how to take it, what to watch for; no doses unless the pharmacist writes them)</label><textarea rows="2" class="form-control form-control-sm" maxlength="600" [(ngModel)]="o.guidance" [disabled]="!canManage"></textarea></div>
+                <div class="col-md-5"><label class="form-label small mb-0">Dose: morning - noon - night</label><input class="form-control form-control-sm" maxlength="120" [(ngModel)]="o.dose" [disabled]="!canManage" placeholder="1 (bf) - 0 - 1 (af)" data-testid="cg-opt-dose"></div>
+                <div class="col-md-2"><label class="form-label small mb-0">For (days)</label><input type="number" min="1" max="30" class="form-control form-control-sm" [(ngModel)]="o.days" [disabled]="!canManage" data-testid="cg-opt-days"></div>
+                <div class="col-md-5 small text-muted align-self-end">bf = before food, af = after food. A dose that is not three times of day is written in words: "A thin layer 2 times a day".</div>
+                <div class="col-md-6"><label class="form-label small mb-0">Guidance (what to watch for, how to take it)</label><textarea rows="2" class="form-control form-control-sm" maxlength="600" [(ngModel)]="o.guidance" [disabled]="!canManage"></textarea></div>
                 <div class="col-md-6"><label class="form-label small mb-0">Guidance in Tamil (optional)</label><textarea rows="2" class="form-control form-control-sm" maxlength="800" [(ngModel)]="o.guidanceTa" [disabled]="!canManage"></textarea></div>
               </div>
               <button type="button" class="btn btn-sm btn-link text-danger px-0" (click)="form.options.splice(i, 1)" *ngIf="canManage">Remove this option</button>
@@ -149,7 +206,12 @@ export class CounterGuideAdminComponent implements OnInit {
   }
   private clear() { this.error = ""; this.errors = []; this.message = ""; }
 
-  private take(d: any) { this.cards = d.cards || []; this.meta = d.meta || this.meta; this.loaded = true; }
+  /** the helper is open the first time (nothing approved yet) and kept out of the way once cards are in use */
+  helpOpen = false;
+
+  private take(d: any) {
+    if (!this.loaded) this.helpOpen = !(d.cards || []).some((c: any) => c.status === "APPROVED");
+    this.cards = d.cards || []; this.meta = d.meta || this.meta; this.loaded = true; }
 
   load() {
     this.http.get<any>(`${this.api}/cards`).subscribe(d => this.take(d), e => { this.loaded = true; this.fail(e, "Could not load the cards."); });
@@ -161,7 +223,7 @@ export class CounterGuideAdminComponent implements OnInit {
       id: c.id, key: c.key, name: c.name, nameTa: c.nameTa || "", icon: c.icon || "", asksDuration: c.asksDuration !== false, durationLimitDays: c.durationLimitDays, sortOrder: c.sortOrder,
       referralText: c.referralText, referralTextTa: c.referralTextTa || "",
       warnings: (c.warnings || []).map((w: any) => ({ text: w.text, textTa: w.textTa || "", icon: w.icon || "" })),
-      options: (c.options || []).map((o: any) => ({ composition: o.composition, form: o.form || null, audiences: [...o.audiences], excludes: [...o.excludes], guidance: o.guidance || "", guidanceTa: o.guidanceTa || "", products: o.products })),
+      options: (c.options || []).map((o: any) => ({ composition: o.composition, form: o.form || null, audiences: [...o.audiences], excludes: [...o.excludes], dose: o.dose || "", days: o.days || null, guidance: o.guidance || "", guidanceTa: o.guidanceTa || "", products: o.products })),
     };
   }
   private show(f: any) { this.form = f; this.snapshot = JSON.stringify(f); this.confirmApprove = false; }
@@ -174,7 +236,7 @@ export class CounterGuideAdminComponent implements OnInit {
       warnings: [{ text: "", textTa: "", icon: "" }, { text: "", textTa: "", icon: "" }], options: [] });
   }
 
-  addOption() { this.form.options.push({ composition: "", form: null, audiences: ["adult"], excludes: [], guidance: "", guidanceTa: "", products: 0 }); }
+  addOption() { this.form.options.push({ composition: "", form: null, audiences: ["adult"], excludes: [], dose: "", days: 3, guidance: "", guidanceTa: "", products: 0 }); }
 
   private body() { const { id, ...rest } = this.form; return { ...rest, options: rest.options.map((o: any) => ({ ...o, products: undefined })) }; }
 
