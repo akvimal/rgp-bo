@@ -137,6 +137,23 @@
           <tr><td colspan="9" class="text-center text-muted py-3">No bills for this date.</td></tr>
         </ng-template>
       </p-table>
+
+      <div class="hist-card mt-4" *ngIf="dues?.rows?.length" data-testid="dues-collected">
+        <div class="hist-card-head d-flex flex-wrap gap-3 align-items-baseline">
+          <span>Dues collected on {{dues.date | date:'dd MMM yyyy'}} <span class="small text-muted fw-normal">(pay later bills paid now; not part of the sales totals above)</span></span>
+          <span class="ms-auto small">Cash <strong data-testid="dues-cash">{{dues.cash | number:'1.2-2'}}</strong> &middot; Digital <strong data-testid="dues-digital">{{dues.digital | number:'1.2-2'}}</strong> &middot; Total <strong data-testid="dues-total">{{dues.total | number:'1.2-2'}}</strong></span>
+        </div>
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Time</th><th>Customer</th><th>How</th><th>Reference / note</th><th>Collected by</th><th>Shift</th><th class="text-end">Amount</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let d of dues.rows" data-testid="dues-collected-row">
+              <td>{{d.at}}</td><td>{{d.customer}}</td><td>{{d.mode === 'CASH' ? 'Cash' : 'Digital'}}</td>
+              <td>{{d.ref_no}}<span *ngIf="d.ref_no && d.note"> &middot; </span>{{d.note}}</td><td>{{d.by_name}}</td><td>{{d.shift}}</td>
+              <td class="text-end">{{d.amount | number:'1.2-2'}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 </div>
 <!-- <div class="col-7">
   View

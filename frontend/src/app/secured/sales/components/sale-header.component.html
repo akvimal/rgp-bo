@@ -17,6 +17,7 @@
       </ul>
   </nav>
   <div class="page-head-actions">
+    <a class="btn btn-sm btn-outline-secondary" routerLink="/secure/sales/pos/pay-later" data-testid="pay-later-link"><i class="bi bi-hourglass-split"></i> Pay later bills</a>
     <label class="small text-muted mb-0" for="sale-staff">Serving</label>
     <strong class="small" *ngIf="selfOnly" data-testid="sale-self-operator">{{ selectedOperatorName || 'You' }}</strong>
     <select id="sale-staff" class="form-select form-select-sm" style="width:auto" *ngIf="!selfOnly"

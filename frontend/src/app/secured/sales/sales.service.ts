@@ -120,6 +120,13 @@ export class SaleService {
         return this.http.get(`${this.apiurl}`,{params:criteria});
     }
 
+    /** what was collected against pay later dues on a day (kept apart from the sales figures) */
+    duesCollected(date:string, storeid:number|null){
+        const params:any = { date };
+        if (storeid !== null && storeid !== undefined) params.storeid = storeid;
+        return this.http.get<any>(`${environment.apiHost}/customer-dues/collected/day`, { params });
+    }
+
     getStaffSummary(params:any){
         return this.http.get(`${this.apiurl}/staff-summary`, {params});
     }

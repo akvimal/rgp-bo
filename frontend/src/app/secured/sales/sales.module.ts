@@ -23,6 +23,7 @@ import { TableModule } from "primeng/table";
 import { SaleDashboardComponent } from "./components/sale-dashboard.component";
 import { SaleHeaderComponent } from "./components/sale-header.component";
 import { SalePosComponent } from "./components/sale-pos.component";
+import { SalePayLaterComponent } from "./components/sale-pay-later.component";
 import { SaleProductRequestComponent } from "./components/sale-product-request.component";
 import { SaleReturnsComponent } from "./components/sale-returns.component";
 import { SaleDeliveryComponent } from "./components/sale-delivery.component";
@@ -48,6 +49,7 @@ const routes: Routes = [
     {path: '', redirectTo: 'new' },
     {path: 'new', component: SaleFormComponent },
     {path: 'edit/:id', component: SaleFormComponent },
+    {path: 'pay-later', component: SalePayLaterComponent },
     {path: 'view/:id', component: SaleViewComponent }
   ], canActivate:[AuthGuard]},
   {path: 'reminders', redirectTo: '/secure/quality/refills', pathMatch: 'full'},   // the old Customers tab: the refill list is the one place
@@ -58,6 +60,7 @@ const routes: Routes = [
     declarations: [
       SalesComponent,
       SalePosComponent,
+      SalePayLaterComponent,
       SaleProductRequestComponent,
       SaleHeaderComponent,
       SaleDashboardComponent,

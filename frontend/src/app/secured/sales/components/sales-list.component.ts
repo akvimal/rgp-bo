@@ -146,7 +146,14 @@ export class SalesListComponent implements OnDestroy {
       return criteria;
     }
 
+    /** pay later dues collected on the day: shown under the bills, not part of the sales totals */
+    dues:any = null;
+    private loadDues(day:string){
+      this.service.duesCollected(day, this.selectedStoreId).subscribe((d:any) => this.dues = d, () => this.dues = null);
+    }
+
     fetchSales(filter:any = {}){
+        this.loadDues(filter?.date || this.date);
         // every bill of the day, however many pages the server gives them in: the footer totals add up what is loaded, so a first page alone would leave out the rest
         this.fetchAllPages({...this.buildCriteria(filter),status:'COMPLETE'}, 1, []).subscribe((data:any[]) => {
           data.forEach((sale:any) => {

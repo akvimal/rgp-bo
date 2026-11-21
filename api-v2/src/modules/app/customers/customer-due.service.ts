@@ -117,6 +117,57 @@ export class CustomerDueService {
     return this.get(customerId);
   }
 
+  /**
+   * The bills still to be paid, one row each (what is left of it after the money collected, set against the oldest first), the overdue first.
+   * A raise made by hand has no bill and shows as an adjustment.
+   */
+  async pendingBills() {
+    const entries = await this.manager.query(
+      `select e.kind, e.amount::float8 as amount, e.sale_id, to_char(e.due_date, 'YYYY-MM-DD') as due_date, to_char(e.entry_date, 'YYYY-MM-DD') as entry_date,
+              c.id as customer_id, c.name, c.mobile, c.locality, coalesce(e.household_id, -c.id) as gkey,
+              s.bill_no, to_char(s.bill_date, 'YYYY-MM-DD') as bill_date, s.total::float8 as bill_total, s.due_amount::float8 as bill_due
+         from customer_due_entry e join customer c on c.id = e.customer_id left join sale s on s.id = e.sale_id
+        where coalesce(e.household_id, -c.id) in (
+                select coalesce(e2.household_id, -c2.id) from customer_due_entry e2 join customer c2 on c2.id = e2.customer_id
+                 group by coalesce(e2.household_id, -c2.id) having sum(e2.amount) > 0.004)
+        order by e.entry_date, e.id`);
+    const groups = new Map<string, any[]>();
+    for (const e of entries) { const k = String(e.gkey); (groups.get(k) || groups.set(k, []).get(k)!).push(e); }
+    const today = isoToday();
+    const out: any[] = [];
+    groups.forEach(rows => {
+      const rep = rows.reduce((a, b) => (b.customer_id < a.customer_id ? b : a));
+      const total = money(rows.reduce((s, r) => s + Number(r.amount), 0));
+      const bills = new Map<number, any>();
+      rows.forEach(r => { if (r.sale_id) bills.set(Number(r.sale_id), r); });
+      for (const o of openDues(rows)) {
+        const b = o.sale_id ? bills.get(Number(o.sale_id)) : null;
+        const late = !!o.due_date && o.due_date < today;
+        out.push({
+          customer_id: rep.customer_id, name: rep.name, mobile: rep.mobile, locality: rep.locality, owes: total,
+          sale_id: o.sale_id, bill_no: b?.bill_no ?? null, bill_date: b?.bill_date ?? null, bill_total: b?.bill_total ?? null,
+          left: o.remaining, due_date: o.due_date, overdue: late,
+          days_late: late ? Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(o.due_date + 'T00:00:00Z')) / 86400000) : 0,
+        });
+      }
+    });
+    return out.sort((a, b) => (b.overdue ? 1 : 0) - (a.overdue ? 1 : 0) || a.due_date.localeCompare(b.due_date) || String(a.name).localeCompare(String(b.name)));
+  }
+
+  /** the money collected against dues on a day (one store, or all), for the sale report: kept apart from the sales figures */
+  async collectedOn(date: string, storeId?: any) {
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '')) ? String(date) : isoToday();
+    const sid = Number(storeId) || null;
+    const rows = await this.manager.query(
+      `select e.id, to_char(e.created_on, 'HH24:MI') as at, -e.amount::float8 as amount, e.pay_mode as mode, e.ref_no, e.note, c.name as customer, c.mobile,
+              u.full_name as by_name, e.shift_id, sh.name as shift
+         from customer_due_entry e join customer c on c.id = e.customer_id
+         left join app_user u on u.id = e.created_by left join store_shifts sh on sh.id = e.shift_id
+        where e.kind = 'PAYMENT' and e.entry_date = $1::date and ($2::int is null or e.store_id = $2::int) order by e.created_on, e.id`, [day, sid]);
+    const sum = (mode: string) => money(rows.filter((r: any) => r.mode === mode).reduce((s: number, r: any) => s + Number(r.amount), 0));
+    return { date: day, cash: sum('CASH'), digital: sum('DIGITAL'), total: money(rows.reduce((s: number, r: any) => s + Number(r.amount), 0)), rows };
+  }
+
   /** everyone who owes, the overdue first: for following up */
   async list() {
     const rows = await this.manager.query(

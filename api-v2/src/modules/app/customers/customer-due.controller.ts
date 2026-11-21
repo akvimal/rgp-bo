@@ -1,5 +1,5 @@
 import { CustomerActionGuard, NeedsCustomers } from './customer-action.guard';
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { User } from 'src/core/decorator/user.decorator';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
@@ -17,6 +17,16 @@ export class CustomerDueController {
   @NeedsCustomers('dues.view')
   @Get('owing/all')
   list() { return this.dues.list(); }
+
+  /** what was collected against dues on a day, for the sale report */
+  @NeedsCustomers('dues.view', { orTill: true })
+  @Get('collected/day')
+  collected(@Query('date') date: string, @Query('storeid') storeid: string) { return this.dues.collectedOn(date, storeid); }
+
+  /** the bills still to be paid, one row each, for the till's Pay later page */
+  @NeedsCustomers('dues.view', { orTill: true })
+  @Get('owing/bills')
+  bills() { return this.dues.pendingBills(); }
 
   /** the figures the till needs for a customer: limit, balance, what is left to use, anything overdue */
   @NeedsCustomers('dues.view', { orTill: true })
