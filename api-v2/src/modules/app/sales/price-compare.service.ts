@@ -6,7 +6,7 @@ import { resolveModel } from '../alerts/ai-models';
 import { classifyForm, dosageFormLabel } from '../dictionary/dosage-form';
 import { compositionKey } from './composition-match';
 import { isFresh, marketInstruction, MarketAnswer, MARKET_SYSTEM, parseMarketAnswer } from './market-price-rules';
-import { customerPrice, gapPct, RefItem, summarise, SourceSummary, worstGap } from './price-compare-rules';
+import { customerPrice, gapPct, packMismatch, RefItem, summarise, SourceSummary, worstGap } from './price-compare-rules';
 
 export const MARKET_TASK = 'look_up_market_price';
 
@@ -49,6 +49,19 @@ export class PriceCompareService {
     return { known: true, lists: lists.length, sources: summarise(byKey.get(key.key) || [], form, null) };
   }
 
+  /**
+   * A product whose stored pack disagrees with the pack its title states (a bottle of 120 stored as a pack of 1): the pack the title states and what the gap
+   * would be if that were right, so the screen can say "check the pack" instead of presenting a gap that is probably wrong. None when they agree.
+   */
+  private packCheck(title: string, pack: number, price: number | null, form: string | null, items: RefItem[], source: number | null) {
+    const tp = packMismatch(pack, title);
+    if (!tp) return null;
+    const unit = price === null ? null : price / tp;
+    let sources = summarise(items, form, unit);
+    if (source) sources = sources.filter((s) => s.sourceId === source);
+    return { titlePack: tp, storedPack: pack, unitPrice: unit === null ? null : Math.round(unit * 100) / 100, gap: worstGap(sources) };
+  }
+
   // ------------------------------------------------------------------ one product
 
   private async productRow(productId: number) {
@@ -80,6 +93,7 @@ export class PriceCompareService {
     const items = byKey.get(key.key) || [];
     const shown = base.candidateUnit ?? base.unitPrice;
     const sources = summarise(items, form, shown);
+    base.packCheck = this.packCheck(p.title, pack, now, form, items, null);
     return { ...base, sources, gap: worstGap(sources), details: items.filter((i) => sources.some((s) => s.sourceId === i.sourceId)).slice(0, 40) };
   }
 
@@ -137,7 +151,7 @@ export class PriceCompareService {
       const gap = worstGap(sources);
       if (opts.onlyMatched && !sources.some((s) => s.unitSell || s.unitMrp)) continue;
       if (opts.minGap !== null && opts.minGap !== undefined && (gap === null || gap < opts.minGap)) continue;
-      out.push({ productid: p.id, title: p.title, composition: String(p.composition).trim(), form, pack, available: onShelf.get(Number(p.id)) ?? 0, mrp: mrp || null, price, unitPrice: unitPrice === null ? null : Math.round(unitPrice * 100) / 100, sources, gap });
+      out.push({ productid: p.id, title: p.title, composition: String(p.composition).trim(), form, pack, available: onShelf.get(Number(p.id)) ?? 0, mrp: mrp || null, price, unitPrice: unitPrice === null ? null : Math.round(unitPrice * 100) / 100, sources, gap, packCheck: this.packCheck(p.title, pack, price, form, byKey.get(key.key) || [], opts.source ?? null) });
     }
     out.sort((a, b) => (b.gap ?? -1e9) - (a.gap ?? -1e9) || String(a.title).localeCompare(String(b.title)));
     return { lists, products: out.slice(0, 1500), total: out.length, noComposition };

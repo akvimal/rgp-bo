@@ -25,6 +25,11 @@ import { environment } from "src/environments/environment";
             <div><div class="small text-muted">MRP</div><div><span *ngIf="data.mrp !== null">&#8377;{{data.mrp | number:'1.2-2'}}</span><span *ngIf="data.mrp === null">-</span><span class="text-muted" *ngIf="data.unitMrp !== null"> &middot; &#8377;{{data.unitMrp | number:'1.2-2'}} per unit</span></div></div>
           </div>
 
+          <div class="alert alert-warning py-1 small mt-2 mb-0" *ngIf="data.packCheck" data-testid="cmp-pack-check">
+            <strong>Check the pack.</strong> The title says a pack of {{data.packCheck.titlePack}}, but the pack stored is {{data.packCheck.storedPack}}, so the per-unit price and the gap below are probably wrong.
+            <span *ngIf="data.packCheck.gap !== null">With a pack of {{data.packCheck.titlePack}} the gap would be {{data.packCheck.gap > 0 ? '+' : ''}}{{data.packCheck.gap | number:'1.0-1'}}%.</span>
+            <a routerLink="/secure/products/pack-check" class="ms-1">Fix the pack</a>
+          </div>
           <div class="small text-muted mt-2" *ngIf="!data.lists" data-testid="cmp-nolists">No price lists are loaded yet (Settings &gt; Reference data).</div>
           <div class="small text-muted mt-2" *ngIf="data.lists && !data.sources.length" data-testid="cmp-nomatch">None of the loaded lists has this composition and form.</div>
           <table class="table table-sm small mt-2 mb-1" *ngIf="data.sources.length" data-testid="cmp-sources">

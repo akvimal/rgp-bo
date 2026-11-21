@@ -1,4 +1,4 @@
-import { customerPrice, gapPct, refUnit, RefItem, summarise, worstGap } from './price-compare-rules';
+import { customerPrice, gapPct, packInTitle, packMismatch, refUnit, RefItem, summarise, worstGap } from './price-compare-rules';
 
 const item = (o: Partial<RefItem>): RefItem => ({ sourceId: 1, sourceName: 'PMBI Jan Aushadhi', kind: 'PMBI', name: 'Telmisartan 40 mg tablets', unitSize: "10's", packQty: 10, packKind: 'units', mrp: 30, sellPrice: null, composition: 'Telmisartan 40 mg', form: 'tablet', ...o });
 
@@ -55,5 +55,33 @@ describe('summary by list', () => {
   it('takes the worst gap across lists', () => {
     expect(worstGap(summarise(items, 'tablet', 5))).toBe(66.7);
     expect(worstGap([])).toBeNull();
+  });
+});
+
+describe('the pack a title states', () => {
+  it('reads the count from common title styles', () => {
+    expect(packInTitle("THYROXINOL 125MCG TAB 120'S")).toBe(120);
+    expect(packInTitle("FINABATE 160MG TAB 10'S")).toBe(10);
+    expect(packInTitle('ROSUHEM GOLD 10MG CAPS 15’S')).toBe(15);
+    expect(packInTitle('PARACIP 500MG 10 TABLETS')).toBe(10);
+  });
+  it('does not take a strength or a volume for a count', () => {
+    expect(packInTitle('PARACIP 500MG TAB')).toBeNull();
+    expect(packInTitle('COUGH SYRUP 100ML')).toBeNull();
+    expect(packInTitle('')).toBeNull();
+    expect(packInTitle(null)).toBeNull();
+  });
+});
+
+describe('a title that disagrees with the stored pack', () => {
+  it('flags a pack of 1 on a title that says 120', () => {
+    expect(packMismatch(1, "THYROXINOL 125MCG TAB 120'S")).toBe(120);
+    expect(packMismatch(null, "FINABATE 160MG TAB 10'S")).toBe(10);
+    expect(packMismatch(10, "ULTRACET TAB 15'S")).toBe(15);
+  });
+  it('raises nothing when they agree, or the title states no count or one', () => {
+    expect(packMismatch(15, "ULTRACET TAB 15'S")).toBeNull();
+    expect(packMismatch(1, 'PARACIP 500MG TAB')).toBeNull();
+    expect(packMismatch(1, "SYRUP 1'S")).toBeNull();
   });
 });

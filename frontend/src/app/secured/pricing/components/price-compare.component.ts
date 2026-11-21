@@ -41,7 +41,12 @@ import { StoreContextService } from "src/app/@core/store-context.service";
           <ng-container *ngFor="let r of rows">
             <tr data-testid="cmp-row" [class.table-active]="open === r.productid">
               <td><button type="button" class="btn btn-sm btn-link py-0" (click)="toggle(r)" [attr.aria-expanded]="open === r.productid" data-testid="cmp-open"><i class="bi" [ngClass]="open === r.productid ? 'bi-chevron-down' : 'bi-chevron-right'"></i></button></td>
-              <td class="fw-semibold">{{r.title}}</td>
+              <td class="fw-semibold">{{r.title}}
+                <div *ngIf="r.packCheck" class="small fw-normal" data-testid="cmp-pack-check">
+                  <span class="badge bg-warning text-dark">Check pack</span>
+                  <span class="text-muted"> title says {{r.packCheck.titlePack}}, pack is {{r.packCheck.storedPack}}</span>
+                  <a routerLink="/secure/products/pack-check" class="ms-1">fix</a>
+                </div></td>
               <td class="small">{{r.composition}}<span class="text-muted" *ngIf="r.form"> &middot; {{r.form}}</span></td>
               <td class="text-end" data-testid="cmp-stock">{{r.available | number}}</td>
               <td class="text-end">{{r.pack}}</td>
@@ -54,7 +59,15 @@ import { StoreContextService } from "src/app/@core/store-context.service";
                   <span *ngIf="!s.cheapest && !s.perPackOnly.length && s.unitMrp" class="text-muted">MRP only</span></td>
                 <td class="text-end" data-testid="cmp-list-unit"><span *ngIf="s.unitSell">{{s.unitSell.min | number:'1.2-2'}}<span *ngIf="s.unitSell.max !== s.unitSell.min"> to {{s.unitSell.max | number:'1.2-2'}}</span></span>
                   <span *ngIf="!s.unitSell && s.unitMrp" class="text-muted">MRP {{s.unitMrp.min | number:'1.2-2'}}</span></td>
-                <td class="text-end"><span *ngIf="s.gap !== null" class="badge" [ngClass]="s.gap > 0 ? 'bg-danger' : 'bg-success'" data-testid="cmp-gap">{{s.gap > 0 ? '+' : ''}}{{s.gap | number:'1.0-1'}}%</span></td>
+                <td class="text-end">
+                  <ng-container *ngIf="!r.packCheck">
+                    <span *ngIf="s.gap !== null" class="badge" [ngClass]="s.gap > 0 ? 'bg-danger' : 'bg-success'" data-testid="cmp-gap">{{s.gap > 0 ? '+' : ''}}{{s.gap | number:'1.0-1'}}%</span>
+                  </ng-container>
+                  <ng-container *ngIf="r.packCheck">
+                    <span *ngIf="s.gap !== null" class="badge bg-secondary text-decoration-line-through" title="Not reliable: the pack looks wrong" data-testid="cmp-gap">{{s.gap > 0 ? '+' : ''}}{{s.gap | number:'1.0-1'}}%</span>
+                    <div *ngIf="r.packCheck.gap !== null" class="small text-muted" data-testid="cmp-gap-if-right">if pack {{r.packCheck.titlePack}}: {{r.packCheck.gap > 0 ? '+' : ''}}{{r.packCheck.gap | number:'1.0-1'}}%</div>
+                  </ng-container>
+                </td>
               </ng-container>
               <ng-template #notListed><td colspan="3" class="small text-muted" data-testid="cmp-not-listed">not in {{listName}}</td></ng-template>
             </tr>

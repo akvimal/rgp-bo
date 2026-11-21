@@ -31,6 +31,28 @@ export function customerPrice(priceExGst: number | null | undefined, saleTax: nu
   return r2(mrp > 0 ? Math.min(withGst, mrp) : withGst);
 }
 
+/**
+ * The pack size a product's title states: "TAB 10'S", "CAPS 15's", "120’S", or "10 TABLETS". None when the title states no count. A title with a volume or weight
+ * after the count ("100 ML", "15 GM") is not read as a count of units.
+ */
+export function packInTitle(title: string | null | undefined): number | null {
+  const t = String(title || '');
+  const a = /(?:^|[\s(])(\d{1,4})\s*['’`]\s*s\b/i.exec(t);
+  const b = a ? null : /(?:^|[\s(])(\d{1,4})\s*(?:tabs?|tablets?|caps?|capsules?)\b/i.exec(t);
+  const n = Number((a || b)?.[1]);
+  return n > 0 ? n : null;
+}
+
+/**
+ * The pack the title states when it does not agree with the pack stored on the product (a bottle of 120 stored as a pack of 1 makes every per-unit comparison
+ * 120 times too high), else none. A title that states no count, or the same count, or 1, raises nothing.
+ */
+export function packMismatch(storedPack: number | null | undefined, title: string | null | undefined): number | null {
+  const tp = packInTitle(title);
+  if (!tp || tp <= 1) return null;
+  return tp !== Math.max(Number(storedPack) || 1, 1) ? tp : null;
+}
+
 /** how much dearer (+) or cheaper (-) the shop is than a reference price, in percent; none when either price is missing */
 export function gapPct(ours: number | null, theirs: number | null): number | null {
   if (ours === null || theirs === null || !(theirs > 0)) return null;
