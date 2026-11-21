@@ -134,7 +134,7 @@ export class ReferenceDataService {
     const name = String(body?.name || '').trim().slice(0, 200);
     return {
       name, headers: table.headers, mapping, detected, fields: FIELDS.map((f) => ({ key: f, label: FIELD_LABELS[f] })),
-      lines: table.records.length, fromDictionary: sheet.fromDictionary, problems: sheet.problems.slice(0, 30), moreProblems: Math.max(0, sheet.problems.length - 30),
+      lines: table.records.length, fromDictionary: sheet.fromDictionary, fromName: sheet.fromName, notes: sheet.notes, problems: sheet.problems.slice(0, 30), moreProblems: Math.max(0, sheet.problems.length - 30),
       ...this.summary(sheet.rows), canApply: sheet.rows.length > 0 && name.length >= 2, replaces: name ? await this.sameName(name) : null,
     };
   }

@@ -68,6 +68,26 @@ import { DOSAGE_FORMS } from "../../products/dosage-forms";
       </div>
     </div>
 
+    <!-- the answers the counter assumes -->
+    <div class="hist-card mb-3" data-testid="cg-defaults">
+      <div class="hist-card-head">What the counter assumes</div>
+      <div class="hist-card-body">
+        <div class="small text-muted mb-2">When staff pick a problem, the guide goes straight to the medicines using these answers. They can tap any answer to change it for that customer. Warning signs and "anything else" always start as none. The same for every counter.</div>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3"><label class="form-label small mb-0">Who it is for</label>
+            <select class="form-select form-select-sm" [(ngModel)]="defaultsForm.who" [disabled]="!canManage" data-testid="cg-default-who"><option *ngFor="let w of whoChoices" [value]="w.key">{{w.label}}</option></select></div>
+          <div class="col-md-3"><label class="form-label small mb-0">How long</label>
+            <select class="form-select form-select-sm" [(ngModel)]="defaultsForm.duration" [disabled]="!canManage" data-testid="cg-default-duration"><option *ngFor="let d of durationChoices" [value]="d.key">{{d.label}}</option></select></div>
+          <div class="col-md-6 d-flex flex-wrap gap-2 align-items-center">
+            <button type="button" class="btn btn-sm btn-primary" (click)="saveDefaults()" [disabled]="busy || !defaultsDirty" *ngIf="canManage" data-testid="cg-default-save">Save</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="resetDefaults()" *ngIf="canManage && usualDiffers" data-testid="cg-default-reset">Back to the usual ({{usualLabel}})</button>
+            <span class="small text-muted" *ngIf="defaultsDirty">Not saved yet.</span>
+          </div>
+        </div>
+        <div class="small text-muted mt-2">A card whose "doctor after" days are no more than the days assumed here will send everyone straight to a doctor, so keep the assumed time shorter than that.</div>
+      </div>
+    </div>
+
     <div *ngIf="error" class="alert alert-danger py-2" data-testid="cg-error"><div *ngFor="let e of errors">{{e}}</div><div *ngIf="!errors.length">{{error}}</div></div>
     <div *ngIf="message" class="alert alert-success py-2" data-testid="cg-message">{{message}}</div>
 
@@ -209,8 +229,33 @@ export class CounterGuideAdminComponent implements OnInit {
   /** the helper is open the first time (nothing approved yet) and kept out of the way once cards are in use */
   helpOpen = false;
 
+  // ---- the answers the counter assumes
+  readonly whoChoices = [{ key: "child", label: "Child 2 to 12" }, { key: "adult", label: "Adult" }, { key: "over60", label: "Over 60" }];
+  readonly durationChoices = [{ key: "lt2", label: "Less than 2 days" }, { key: "d2_3", label: "2 to 3 days" }, { key: "d4_7", label: "4 to 7 days" }, { key: "gt7", label: "More than a week" }];
+  /** the saved ones, the form being edited, and the built-in ones */
+  defaults: { who: string; duration: string } = { who: "adult", duration: "lt2" };
+  defaultsForm: { who: string; duration: string } = { who: "adult", duration: "lt2" };
+  builtIn: { who: string; duration: string } = { who: "adult", duration: "lt2" };
+  get defaultsDirty(): boolean { return this.defaultsForm.who !== this.defaults.who || this.defaultsForm.duration !== this.defaults.duration; }
+  get usualDiffers(): boolean { return this.defaultsForm.who !== this.builtIn.who || this.defaultsForm.duration !== this.builtIn.duration; }
+  get usualLabel(): string { return `${this.whoChoices.find(w => w.key === this.builtIn.who)?.label}, ${this.durationChoices.find(d => d.key === this.builtIn.duration)?.label.toLowerCase()}`; }
+  resetDefaults() { this.defaultsForm = { ...this.builtIn }; }
+
+  saveDefaults() {
+    this.clear(); this.busy = true;
+    this.http.put<any>(`${this.api}/defaults`, this.defaultsForm).subscribe(d => {
+      this.busy = false; this.take(d); this.message = "Saved. Every counter now starts from these answers.";
+    }, e => this.fail(e, "Could not save the usual answers."));
+  }
+
   private take(d: any) {
     if (!this.loaded) this.helpOpen = !(d.cards || []).some((c: any) => c.status === "APPROVED");
+    if (d.defaults) {
+      // an edit of the usual answers that is not saved yet is not thrown away when another part of the page reloads
+      const editing = this.defaultsDirty;
+      this.defaults = d.defaults; if (d.builtInDefaults) this.builtIn = d.builtInDefaults;
+      if (!editing || !this.loaded) this.defaultsForm = { ...d.defaults };
+    }
     this.cards = d.cards || []; this.meta = d.meta || this.meta; this.loaded = true; }
 
   load() {

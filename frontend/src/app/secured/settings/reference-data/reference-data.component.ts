@@ -44,7 +44,7 @@ const blank = (name = ""): Section => ({ files: [], name, version: "", preview: 
     <div class="hist-card mb-4" data-testid="ref-sheet">
       <div class="hist-card-head">Another seller's price list (CSV or Excel)</div>
       <div class="hist-card-body">
-        <div class="small text-muted mb-2">One list per seller. The file needs a heading row with at least a product name and a price (MRP, selling price, or both). A composition column lets the list be matched with your products; without one, the brand dictionary is used where the product name is one of its brands.</div>
+        <div class="small text-muted mb-2">One list per seller. The file needs a heading row with at least a product name and a price (MRP, selling price, or both). A composition column lets the list be matched with your products; without one, the product name is read as the composition when it is a generic name ("Telmisartan 40 mg + Cilnidipine 10 mg Tabs"), else the brand dictionary is used where the name is one of its brands. A product column can also be chosen for the composition by hand.</div>
         <div class="row g-2 align-items-end">
           <div class="col-md-3"><label class="form-label">List name</label><input class="form-control" maxlength="200" [(ngModel)]="sheet.name" placeholder="e.g. Apollo Pharmacy" data-testid="ref-sheet-name"></div>
           <div class="col-md-3"><label class="form-label">Version / date (optional)</label><input class="form-control" maxlength="60" [(ngModel)]="sheet.version"></div>
@@ -58,14 +58,14 @@ const blank = (name = ""): Section => ({ files: [], name, version: "", preview: 
             <div class="col-6 col-md-3" *ngFor="let f of sheet.preview.fields">
               <label class="form-label small mb-0">{{f.label}}</label>
               <select class="form-select form-select-sm" [(ngModel)]="sheet.mapping[f.key]" (ngModelChange)="previewSheet(true)" [attr.data-testid]="'ref-map-' + f.key">
-                <option [ngValue]="null">(none)</option>
+                <option [ngValue]="null">{{f.key === 'composition' ? '(none: read it from the product name)' : '(none)'}}</option>
                 <option *ngFor="let h of sheet.preview.headers" [ngValue]="h">{{h}}</option>
               </select>
             </div>
           </div>
           <div class="mt-2 small">
             <strong>{{sheet.preview.rows | number}}</strong> product(s) of {{sheet.preview.lines | number}} line(s) can be loaded:
-            {{sheet.preview.matchable | number}} with a composition and strength to match on<span *ngIf="sheet.preview.fromDictionary"> ({{sheet.preview.fromDictionary | number}} from the brand dictionary)</span>,
+            {{sheet.preview.matchable | number}} with a composition and strength to match on<span *ngIf="sheet.preview.fromName || sheet.preview.fromDictionary"> ({{sheet.preview.fromName | number}} read from the product name<span *ngIf="sheet.preview.fromDictionary">, {{sheet.preview.fromDictionary | number}} from the brand dictionary</span>)</span>,
             {{sheet.preview.withSellingPrice | number}} with a selling price.
             <span *ngIf="sheet.preview.replaces" class="text-danger"> This replaces the list "{{sheet.preview.replaces.name}}" ({{sheet.preview.replaces.rows | number}} items).</span>
           </div>
@@ -73,6 +73,7 @@ const blank = (name = ""): Section => ({ files: [], name, version: "", preview: 
             <thead><tr><th>Product</th><th>Composition read</th><th>Pack</th><th class="text-end">MRP</th><th class="text-end">Sells at</th></tr></thead>
             <tbody><tr *ngFor="let r of sheet.preview.sample"><td>{{r.name}}</td><td>{{r.composition || 'none found'}}</td><td>{{r.unitSize}}</td><td class="text-end">{{r.mrp | number:'1.2-2'}}</td><td class="text-end">{{r.sellPrice | number:'1.2-2'}}</td></tr></tbody>
           </table>
+          <div class="small text-muted mt-1" *ngFor="let t of sheet.preview.notes" data-testid="ref-sheet-note"><i class="bi bi-info-circle me-1"></i>{{t}}</div>
           <ng-container *ngTemplateOutlet="problems; context: {p: sheet.preview}"></ng-container>
           <button type="button" class="btn btn-primary mt-2" (click)="applySheet()" [disabled]="sheet.busy || !sheet.preview.canApply" data-testid="ref-sheet-apply">{{sheet.preview.replaces ? 'Replace the list' : 'Load the list'}}</button>
         </div>

@@ -8,7 +8,7 @@ import { BrandCheckBus } from "./brand-check.bus";
 type Step = "card" | "who" | "duration" | "warnings" | "issues" | "result";
 
 /**
- * The Counter guide in the Sales header. Picking the problem goes straight to the medicines in stock, on the usual answers: an adult, 2 to 3 days, no warning
+ * The Counter guide in the Sales header. Picking the problem goes straight to the medicines in stock, on the usual answers (set under Settings > Counter guide cards: an adult and less than 2 days to begin with), no warning
  * sign, nothing else. Those answers stay in view as chips (marked "assumed" until someone has confirmed them) and any chip can be tapped to change that answer:
  * the advice is then worked out again from the answers already given. A warning sign, a child under 2, pregnancy or a long duration ends in "see a doctor"
  * with no medicines shown. Only cards a pharmacist has approved are offered, and prescription-only products are never shown. The products are real stock at the
@@ -167,9 +167,8 @@ export class CounterGuideComponent implements OnInit {
   /** the products put on the bill from this answer */
   added: { [productid: number]: boolean } = {};
 
-  /** the answers used until someone changes them: an adult, 2 to 3 days, no warning sign, nothing else */
-  static readonly DEFAULT_WHO = "adult";
-  static readonly DEFAULT_DURATION = "d2_3";
+  /** the answers used until someone changes them: the saved ones (an adult and less than 2 days to begin with) for who and how long, no warning sign, nothing else */
+  defaults: { who: string; duration: string } = { who: "adult", duration: "lt2" };
 
   readonly whoChoices = [
     { key: "under2", label: "Child under 2", icon: "\u{1F476}" }, { key: "child", label: "Child 2 to 12", icon: "\u{1F9D2}" }, { key: "adult", label: "Adult", icon: "\u{1F9D1}" },
@@ -186,7 +185,7 @@ export class CounterGuideComponent implements OnInit {
   /** the guide is offered only when a pharmacist has approved at least one card */
   ngOnInit() {
     this.http.get<any>(`${environment.apiHost}/counter-guide/cards`).subscribe({
-      next: d => { this.cards = d?.cards || []; this.meta = d?.meta || this.meta; },
+      next: d => { this.cards = d?.cards || []; this.meta = d?.meta || this.meta; if (d?.defaults) this.defaults = d.defaults; },
       error: () => this.cards = [],
     });
   }
@@ -227,14 +226,14 @@ export class CounterGuideComponent implements OnInit {
   goto(step: Step) { this.error = ""; this.step = step; }
 
   /**
-   * The problem is chosen and the medicines come at once, on the usual answers (an adult, 2 to 3 days, no warning sign, nothing else) for whatever has not
+   * The problem is chosen and the medicines come at once, on the usual answers (the saved who and how long, no warning sign, nothing else) for whatever has not
    * been answered yet. Changing the problem keeps the person and how long, but the warning signs belong to the card, so those start again.
    */
   pickCard(c: any) {
     if (this.card?.id !== c.id) { this.card = c; this.warned = {}; this.touched.warnings = false; }
-    if (!this.who) this.who = CounterGuideComponent.DEFAULT_WHO;
+    if (!this.who) this.who = this.defaults.who;
     if (c.asksDuration === false) this.duration = "";
-    else if (!this.duration) this.duration = CounterGuideComponent.DEFAULT_DURATION;
+    else if (!this.duration) this.duration = this.defaults.duration;
     this.added = {};
     this.advise();
   }

@@ -105,6 +105,30 @@ export function advise(card: GuideCard, a: Answers): Advice {
   return { refer: false, options, dropped, caution: issues.has('other_medicines') };
 }
 
+// ------------------------------------------------------------------ the usual answers
+
+/** the answers the counter assumes until someone changes them: who it is for, and how long. Warning signs and "anything else" always start as none. */
+export interface GuideDefaults { who: Audience; duration: Duration }
+export const BUILT_IN_DEFAULTS: GuideDefaults = { who: 'adult', duration: 'lt2' };
+
+/**
+ * The defaults from what was saved: a value that is not allowed falls back to the built-in one. Only a child, an adult or someone over 60 can be the usual
+ * person: a child under 2 and pregnancy are always sent to a doctor, which is no way to start.
+ */
+export function cleanDefaults(raw: { who?: unknown; duration?: unknown } | null | undefined): GuideDefaults {
+  const who = (AUDIENCES as readonly string[]).includes(String(raw?.who)) ? (String(raw?.who) as Audience) : BUILT_IN_DEFAULTS.who;
+  const duration = (DURATIONS as readonly string[]).includes(String(raw?.duration)) ? (String(raw?.duration) as Duration) : BUILT_IN_DEFAULTS.duration;
+  return { who, duration };
+}
+
+/** a new setting as typed, or what is wrong with it */
+export function checkDefaults(raw: any): { ok: true; defaults: GuideDefaults } | { ok: false; errors: string[] } {
+  const errors: string[] = [];
+  if (!(AUDIENCES as readonly string[]).includes(String(raw?.who))) errors.push('Choose who the counter assumes: a child (2 to 12), an adult, or someone over 60.');
+  if (!(DURATIONS as readonly string[]).includes(String(raw?.duration))) errors.push('Choose how long the counter assumes.');
+  return errors.length ? { ok: false, errors } : { ok: true, defaults: { who: raw.who, duration: raw.duration } };
+}
+
 // ------------------------------------------------------------------ the dose, as the counter reads it
 
 /** one part of a day: an amount (a number or a fraction, with an optional unit) and, in brackets, before food (bf) or after food (af) */

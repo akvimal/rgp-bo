@@ -20,6 +20,8 @@ export class CounterGuideController {
   @Post('advise') advise(@Body() body: any) { return this.service.advise(body); }
 
   @Get('admin/cards') adminList(@User() user: any) { return this.service.adminList(user); }
+  /** the answers the counter assumes (who, how long); the same for every counter */
+  @Put('admin/defaults') defaults(@User() user: any, @Body() body: any) { return this.service.saveDefaults(user, body); }
   @Post('admin/cards') add(@User() user: any, @Body() body: any) { return this.service.save(user, null, body); }
   @Put('admin/cards/:id') edit(@User() user: any, @Param('id', ParseIntPipe) id: number, @Body() body: any) { return this.service.save(user, id, body); }
   @Post('admin/cards/:id/approve') approve(@User() user: any, @Param('id', ParseIntPipe) id: number, @Body() body: any) { return this.service.approve(user, id, body?.version); }

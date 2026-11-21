@@ -129,3 +129,22 @@ describe('the dose, as the counter reads it', () => {
     expect(ok.card.options[0]).toMatchObject({ dose: '1 (bf) - 0 - 1 (af)', days: 3 });
   });
 });
+
+describe('the usual answers', () => {
+  const { BUILT_IN_DEFAULTS, cleanDefaults, checkDefaults } = require('./counter-guide-rules');
+  it('begin as an adult and less than 2 days', () => {
+    expect(BUILT_IN_DEFAULTS).toEqual({ who: 'adult', duration: 'lt2' });
+    expect(cleanDefaults(undefined)).toEqual(BUILT_IN_DEFAULTS);
+  });
+  it('keep what was saved, and fall back for a value that is not allowed', () => {
+    expect(cleanDefaults({ who: 'over60', duration: 'd2_3' })).toEqual({ who: 'over60', duration: 'd2_3' });
+    expect(cleanDefaults({ who: 'under2', duration: 'forever' })).toEqual(BUILT_IN_DEFAULTS);       // a child under 2 is always sent to a doctor: not a way to start
+  });
+  it('checks a new setting', () => {
+    expect(checkDefaults({ who: 'child', duration: 'lt2' }).ok).toBe(true);
+    const bad = checkDefaults({ who: 'pregnant', duration: 'd2_3' });
+    expect(bad.ok).toBe(false);
+    expect(bad.errors.join(' ')).toMatch(/a child \(2 to 12\), an adult, or someone over 60/);
+    expect(checkDefaults({ who: 'adult', duration: 'x' }).ok).toBe(false);
+  });
+});

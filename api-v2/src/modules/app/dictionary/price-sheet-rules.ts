@@ -54,6 +54,9 @@ export function packFromCell(raw: unknown): { unitSize: string; qty: number | nu
   const text = String(raw ?? '').replace(/\s+/g, ' ').trim();
   if (!text) return { unitSize: '', qty: null, kind: 'other' };
   if (/^\d+(\.0+)?$/.test(text)) return { unitSize: `${parseInt(text, 10)}'s`, qty: parseInt(text, 10), kind: 'units' };
+  // "10 x 10" is 10 strips of 10: 100 in the pack
+  const times = /^(\d+)\s*x\s*(\d+)$/i.exec(text);
+  if (times) return { unitSize: text, qty: Number(times[1]) * Number(times[2]), kind: 'units' };
   const direct = packOf(text);
   if (direct.qty !== null) return { unitSize: text, ...direct };
   const m = /(\d+)\s*(?:'?s\b|tabs?\b|tablets?\b|caps?\b|capsules?\b|pcs?\b|units?\b)/i.exec(text) || /\b(?:of|x)\s*(\d+)\b/i.exec(text);
@@ -84,16 +87,18 @@ export function makeBrandIndex(brands: { brand_key: string; composition: string;
   };
 }
 
-export interface SheetRead { rows: PriceListRow[]; problems: string[]; total: number; fromDictionary: number }
+/** `problems` are rows left out; `notes` are things worth knowing about rows that were kept */
+export interface SheetRead { rows: PriceListRow[]; problems: string[]; notes: string[]; total: number; fromDictionary: number; fromName: number }
 
 /** the table's rows (heading -> text) as price list items; `mapping` says which heading is which field */
 export function rowsFromTable(records: Record<string, any>[], mapping: Mapping, brands: BrandIndex | null): SheetRead {
   const problems: string[] = [];
   const rows: PriceListRow[] = [];
-  let fromDictionary = 0;
+  const notes: string[] = [];
+  let fromDictionary = 0, fromName = 0, aboveMrp = 0;
   if (!mapping.name) problems.push('No column was chosen for the product name.');
   if (!mapping.mrp && !mapping.price) problems.push('No column was chosen for the MRP or the selling price.');
-  if (problems.length) return { rows, problems, total: records.length, fromDictionary };
+  if (problems.length) return { rows, problems, notes, total: records.length, fromDictionary, fromName };
   const get = (r: Record<string, any>, f: Field) => (mapping[f] ? r[mapping[f] as string] : undefined);
   let n = 0;
   for (const r of records) {
@@ -103,7 +108,8 @@ export function rowsFromTable(records: Record<string, any>[], mapping: Mapping, 
     const mrpRaw = num(get(r, 'mrp')), sell = num(get(r, 'price'));
     const mrp = mrpRaw && mrpRaw > 0 ? mrpRaw : sell && sell > 0 ? sell : null;     // a list with only one price: it is both
     if (mrp === null) { problems.push(`line ${n + 1} (${name}): no price, left out`); continue; }
-    if (sell !== null && sell > mrp + 0.005) { problems.push(`line ${n + 1} (${name}): the selling price is above the MRP, left out`); continue; }
+    // a seller can list a price a little above the MRP it shows (an old MRP): the selling price is what is compared, so the row is kept and counted
+    if (sell !== null && sell > mrp + 0.005) aboveMrp++;
     const pack = packFromCell(get(r, 'pack'));
     let composition: string | null = String(get(r, 'composition') ?? '').replace(/\s+/g, ' ').trim().slice(0, 400) || null;
     let form: string | null = classifyForm(get(r, 'form')) ?? null;
@@ -113,8 +119,13 @@ export function rowsFromTable(records: Record<string, any>[], mapping: Mapping, 
       composition = read.composition ?? composition;
       form = form ?? read.form;
     } else {
-      const found = brands?.find(name) ?? null;
-      if (found) { composition = found.composition; form = form ?? found.form; fromDictionary++; }
+      // no composition in the file: a generic name ("Telmisartan 40 mg + Cilnidipine 10 mg Tabs") is read the same way as the PMBI names, else the brand dictionary
+      const read = compositionOfListName(name);
+      if (read.composition) { composition = read.composition; form = form ?? read.form; fromName++; }
+      else {
+        const found = brands?.find(name) ?? null;
+        if (found) { composition = found.composition; form = form ?? found.form; fromDictionary++; }
+      }
     }
     form = form ?? classifyForm(name);
     const key = composition ? compositionKey(composition) : null;
@@ -124,5 +135,11 @@ export function rowsFromTable(records: Record<string, any>[], mapping: Mapping, 
       composition, compositionKey: key?.key ?? null, saltsKey: key?.salts ?? null, hasStrength: !!key?.hasStrength, form,
     });
   }
-  return { rows, problems, total: records.length, fromDictionary };
+  // most rows selling above their MRP means the two columns are probably the wrong way round: nothing is loaded on a guess
+  if (rows.length && aboveMrp * 2 > rows.length) {
+    problems.push(`Most selling prices (${aboveMrp} of ${rows.length}) are above the MRP: check that the MRP and selling price columns are the right way round.`);
+    return { rows: [], problems, notes, total: records.length, fromDictionary, fromName };
+  }
+  if (aboveMrp) notes.push(`${aboveMrp} product(s) sell above the MRP shown in the file: kept as listed.`);
+  return { rows, problems, notes, total: records.length, fromDictionary, fromName };
 }

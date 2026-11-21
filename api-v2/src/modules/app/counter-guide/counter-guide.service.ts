@@ -7,7 +7,7 @@ import { grants, permsOf } from 'src/core/role-rules';
 import { formRelation } from '../dictionary/dosage-form';
 import { compositionKey } from '../sales/composition-match';
 import { SaleSuggestionService } from '../sales/sale-suggestion.service';
-import { advise, Answers, AUDIENCES, CardInput, doseSlots, DURATION_LABELS, DURATIONS, GuideCard, ISSUE_ICONS, ISSUE_LABELS, ISSUES, validateCard, WHO, Who, Duration, Issue, Audience } from './counter-guide-rules';
+import { advise, Answers, AUDIENCES, BUILT_IN_DEFAULTS, cleanDefaults, checkDefaults, CardInput, doseSlots, DURATION_LABELS, DURATIONS, GuideCard, ISSUE_ICONS, ISSUE_LABELS, ISSUES, validateCard, WHO, Who, Duration, Issue, Audience } from './counter-guide-rules';
 import { STARTER_CARDS } from './counter-guide-seed';
 
 /** how many products are shown under one option at the counter */
@@ -57,9 +57,31 @@ export class CounterGuideService {
   }
 
   /** the approved cards for the counter: the problem, how long is too long, and its warning signs. The options are not sent: they come only with the advice. */
+  /** the answers the counter assumes (who, how long): what the business saved, else the built-in ones */
+  async defaults() {
+    const rows = await this.manager.query(`select setting_key, setting_value from app_setting where setting_key in ('counterguide.default_who', 'counterguide.default_duration') and active and not archive`);
+    const get = (k: string) => rows.find((r: any) => r.setting_key === k)?.setting_value;
+    return cleanDefaults({ who: get('counterguide.default_who'), duration: get('counterguide.default_duration') });
+  }
+
+  /** the new usual answers, saved for the whole business (the same for every counter) */
+  async saveDefaults(user: any, body: any) {
+    await this.need(user, 'manage');
+    const v = checkDefaults(body);
+    if (!v.ok) throw new BadRequestException(v.errors);
+    for (const [key, value] of [['counterguide.default_who', v.defaults.who], ['counterguide.default_duration', v.defaults.duration]]) {
+      await this.manager.query(
+        `insert into app_setting (category, setting_key, setting_value, created_by, updated_by) values ('counterguide', $1, $2, $3, $3)
+         on conflict (setting_key) do update set setting_value = excluded.setting_value, active = true, archive = false, updated_on = now(), updated_by = excluded.updated_by`, [key, value, user.id]);
+    }
+    await this.audit.record({ userId: user.id, action: 'counterguide.defaults_set', entityType: 'app_setting', entityId: 0, summary: `counter guide usual answers: ${v.defaults.who}, ${v.defaults.duration}`, details: v.defaults });
+    return this.adminList(user);
+  }
+
   async cards() {
     const cards = await this.load(`status = 'APPROVED'`, []);
     return {
+      defaults: await this.defaults(),
       cards: cards.map((c) => ({ id: c.id, key: c.key, name: c.name, nameTa: c.nameTa, icon: c.icon, asksDuration: c.asksDuration, version: c.version, warnings: c.warnings })),
       meta: {
         durations: DURATIONS.map((d) => ({ key: d, label: DURATION_LABELS[d] })),
@@ -119,6 +141,8 @@ export class CounterGuideService {
     const cards = await this.load(`true`, []);
     const catalogue = await this.suggestions.compositions();
     return {
+      defaults: await this.defaults(),
+      builtInDefaults: BUILT_IN_DEFAULTS,
       cards: cards.map((c) => ({
         ...c,
         options: c.options.map((o) => {
