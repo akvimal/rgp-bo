@@ -17,6 +17,8 @@ import { SaleSuggestionService } from "./sale-suggestion.service";
 import { DrugRefService } from "./drug-ref.service";
 import { BrandPriceService } from "./brand-price.service";
 import { PriceCompareController } from "./price-compare.controller";
+import { CounterGuideController } from "../counter-guide/counter-guide.controller";
+import { CounterGuideService } from "../counter-guide/counter-guide.service";
 import { PriceCompareService } from "./price-compare.service";
 import { PermissionService } from "../roles/permission.service";
 import { ReferenceDataController } from "../dictionary/reference-data.controller";
@@ -39,8 +41,8 @@ import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 
 @Module({
     imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange,Setting,StockCount]),AuthModule,StoreModule,ExpenseModule,WhatsAppModule],
-    controllers: [SaleController,SaleDeliveryController,SaleSuggestionController, SaleAlternativesController, ReferenceDataController, PriceCompareController],
-    providers: [ReferenceDataService,PriceCompareService,PermissionService,SaleService,SaleSuggestionService,DrugRefService,BrandPriceService,AiProvider,SaleDeliveryService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,StockService,JwtService],
+    controllers: [SaleController,SaleDeliveryController,SaleSuggestionController, SaleAlternativesController, ReferenceDataController, PriceCompareController, CounterGuideController],
+    providers: [ReferenceDataService,PriceCompareService,CounterGuideService,PermissionService,SaleService,SaleSuggestionService,DrugRefService,BrandPriceService,AiProvider,SaleDeliveryService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,StockService,JwtService],
     exports: [SaleService,SaleDeliveryService],
   })
   export class SaleModule {}

@@ -367,6 +367,11 @@
                 <i class="bi bi-circle"></i><span>Reference data</span>
               </a>
             </li>
+            <li *isAuth="'counterguide.view'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/counter-guide" data-testid="nav-settings-counter-guide">
+                <i class="bi bi-circle"></i><span>Counter guide cards</span>
+              </a>
+            </li>
             <!-- People and access: who can sign in and what each role may do -->
             <li class="nav-subheading" *ngIf="has('users','roles')" data-testid="nav-settings-group-access">People and access</li>
             <li *isAuth="'users'">

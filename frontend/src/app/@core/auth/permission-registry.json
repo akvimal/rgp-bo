@@ -1203,6 +1203,19 @@
       ]
     },
     {
+      "key": "counterguide",
+      "label": "Counter guide cards",
+      "description": "The cards behind the Counter guide: everyday problems with their warning signs and the medicines that may be offered. A card reaches the counter only after a pharmacist approves it.",
+      "group": "Setup",
+      "path": "/secure/settings/counter-guide",
+      "settingsPath": true,
+      "actions": [
+        { "key": "view", "label": "See the cards, drafts and approved" },
+        { "key": "manage", "label": "Write, edit, retire and delete cards (an edit makes a new draft)" },
+        { "key": "approve", "label": "Approve a card for the counter (the pharmacist's sign-off)" }
+      ]
+    },
+    {
       "key": "dashsetup",
       "label": "Dashboards and compliance setup",
       "description": "What each role sees on its dashboard, the compliance ladder and the recognition settings. The server decides who may save; others read.",

@@ -17,6 +17,7 @@
       </ul>
   </nav>
   <div class="page-head-actions">
+    <app-counter-guide *ngIf="auth.packOn('pharmacy')"></app-counter-guide>
     <app-brand-check-box *ngIf="auth.packOn('pharmacy')"></app-brand-check-box>
     <a class="btn btn-sm btn-outline-secondary" routerLink="/secure/sales/pos/pay-later" data-testid="pay-later-link"><i class="bi bi-hourglass-split"></i> Pay later bills</a>
     <label class="small text-muted mb-0" for="sale-staff">Serving</label>
