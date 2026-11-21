@@ -46,7 +46,7 @@ export class SaleSuggestionService {
   /** every product's cleaned composition and dosage form, kept for a minute so a lookup at the counter does not rescan the catalogue */
   private compCache: { at: number; rows: { id: number; title: string; comp: string; key: string; salts: string; hasStrength: boolean; form: string | null }[] } | null = null;
 
-  private async compositions() {
+  async compositions() {
     if (this.compCache && Date.now() - this.compCache.at < 60_000) return this.compCache.rows;
     const rows = await this.manager.query(`select id, title, more_props->>'composition' as comp, dosage_form as form from product where active and not archive and nullif(btrim(more_props->>'composition'), '') is not null`);
     const out: { id: number; title: string; comp: string; key: string; salts: string; hasStrength: boolean; form: string | null }[] = [];
@@ -92,6 +92,30 @@ export class SaleSuggestionService {
     return { mine, same, otherForms, otherStrengths, notStocked };
   }
 
+  /**
+   * An indicative price range for a composition, from the shop's own purchases (the brand dictionary carries no prices): the latest verified batch of every product
+   * with the same composition, strength and form (in stock or not), MRP and the rate it is sold at, each per unit so packs of different sizes compare. Nothing
+   * is invented: a composition the shop has never bought has no range.
+   */
+  async priceRange(mk: CompositionKey, askedForm: string | null) {
+    const all = await this.compositions();
+    const ids = all.filter((c) => c.key === mk.key && formRelation(askedForm, c.form) !== 'different').map((c) => c.id);
+    if (!ids.length) return { count: 0, products: [], mrp: null, sale: null };
+    const rows = await this.manager.query(
+      `select distinct on (pii.product_id) pii.product_id, p.title, p.mfr, coalesce(p.pack, 1) as pack, pii.mrp_cost::float as mrp, coalesce(pii.sale_price, pii.mrp_cost)::float as price,
+              to_char(i.invoice_date, 'YYYY-MM-DD') as bought
+         from purchase_invoice_item pii join purchase_invoice i on i.id = pii.invoice_id join product p on p.id = pii.product_id
+        where pii.product_id = any($1::int[]) and pii.status = 'VERIFIED' and pii.active = true and pii.archive = false and coalesce(pii.mrp_cost, 0) > 0
+        order by pii.product_id, i.invoice_date desc nulls last, pii.id desc`, [ids]);
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const products = rows.map((r: any) => {
+      const pack = Math.max(Number(r.pack) || 1, 1);
+      return { productid: Number(r.product_id), title: r.title, mfr: (r.mfr || '').trim() || null, pack, mrp: r.mrp, price: r.price, unitMrp: r2(r.mrp / pack), unitPrice: r2(r.price / pack), bought: r.bought };
+    });
+    const range = (key: 'unitMrp' | 'unitPrice') => products.length ? { min: Math.min(...products.map((x: any) => x[key])), max: Math.max(...products.map((x: any) => x[key])) } : null;
+    return { count: products.length, products: products.sort((a: any, b: any) => a.unitPrice - b.unitPrice), mrp: range('unitMrp'), sale: range('unitPrice') };
+  }
+
   async alternatives(productId: number, storeId: number | null) {
     const [asked] = await this.manager.query(`select id, title, mfr, more_props, dosage_form from product where id = $1 and active and not archive`, [productId]);
     if (!asked) throw new BadRequestException('Product not found.');
@@ -100,7 +124,8 @@ export class SaleSuggestionService {
     if (!mk) return { ...base, status: 'NO_COMPOSITION', same: [], otherStrengths: [], otherForms: [], notStocked: [] };
     if (!mk.hasStrength) return { ...base, status: 'NO_STRENGTH', same: [], otherStrengths: [], otherForms: [], notStocked: [] };
     const m = await this.matches(mk, asked.dosage_form || null, storeId, productId);
-    return { ...base, status: 'OK', askedInStock: !!m.mine, askedAvailable: m.mine?.available ?? 0, same: m.same, otherStrengths: m.otherStrengths, otherForms: m.otherForms, notStocked: m.notStocked };
+    return { ...base, status: 'OK', askedInStock: !!m.mine, askedAvailable: m.mine?.available ?? 0, same: m.same, otherStrengths: m.otherStrengths, otherForms: m.otherForms, notStocked: m.notStocked,
+             priceRange: await this.priceRange(mk, asked.dosage_form || null) };
   }
 
   private marginPct(price: number, cost: number, pack: number) {

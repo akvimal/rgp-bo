@@ -362,6 +362,11 @@
                 <i class="bi bi-circle"></i><span>AI assistant</span>
               </a>
             </li>
+            <li *isAuth="'businessprofile'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/business-profile/reference-data" data-testid="nav-settings-reference">
+                <i class="bi bi-circle"></i><span>Reference data</span>
+              </a>
+            </li>
             <!-- People and access: who can sign in and what each role may do -->
             <li class="nav-subheading" *ngIf="has('users','roles')" data-testid="nav-settings-group-access">People and access</li>
             <li *isAuth="'users'">

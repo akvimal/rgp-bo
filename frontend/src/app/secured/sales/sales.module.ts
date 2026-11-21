@@ -11,6 +11,7 @@ import { SaleFormComponent } from "./components/sale-form.component";
 import { SaleFormItemsComponent } from "./components/sale-form-items.component";
 import { SaleSuggestionsComponent } from "./components/sale-suggestions.component";
 import { SaleAlternativesComponent } from "./components/sale-alternatives.component";
+import { BrandCheckBoxComponent } from "./components/brand-check-box.component";
 import { SaleViewComponent } from "./components/sale-view.component";
 import { BillCorrectionComponent } from "./components/bill-correction.component";
 import { SalesListComponent } from "./components/sales-list.component";
@@ -73,6 +74,7 @@ const routes: Routes = [
       SaleFormItemsComponent,
       SaleSuggestionsComponent,
       SaleAlternativesComponent,
+      BrandCheckBoxComponent,
       SaleHistoryCustomerComponent,
       SaleReturnsComponent,
       SaleReturnAdjustFormComponent,

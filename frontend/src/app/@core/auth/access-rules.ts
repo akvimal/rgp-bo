@@ -64,6 +64,8 @@ const PAGE_RULES: Array<{ path: string; exact?: boolean; allow: (c: PageContext)
   { path: '/secure/store/shifts', allow: (c) => cashSide(c) },
   { path: '/secure/store/cash', allow: (c) => cashSide(c) },
   { path: '/secure/store/vault', allow: (c) => cashSide(c) },
+  // Pricing > Price comparison: for whoever may set prices; no role carries this path (the products resource lists its pricing pages one by one)
+  { path: '/secure/pricing/compare', exact: true, allow: (c) => c.has('products.price') },
   // the pharmacy guide is for everyone who works in a pharmacy business, whatever their role
   { path: '/secure/pharmacy-guide', exact: true, allow: (c) => c.packOn('pharmacy') },
 ];

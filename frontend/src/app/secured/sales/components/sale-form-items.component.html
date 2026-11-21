@@ -41,12 +41,9 @@
             <tr data-testid="sale-add-item" class="table-light">
                 <td class="text-center text-muted"><i class="bi bi-plus-lg"></i></td>
                 <td>
+                    <!-- an unfamiliar brand the customer names is checked from the Check brand box in the Sales header -->
                     <div class="d-flex align-items-center gap-2">
-                        <div class="flex-grow-1"><app-stock-select (stockSelected)="selectProduct($event)" (typed)="typedText = $event" [excludeItems]="getItemsInForm()"></app-stock-select></div>
-                        <!-- a brand the customer names that is new to the counter: its generic composition, and what we stock that matches -->
-                        <button type="button" *ngIf="auth.packOn('pharmacy')" class="btn btn-sm btn-outline-primary text-nowrap" (click)="openBrandCheck()" title="Unfamiliar brand? See its generic composition and the matching stock" data-testid="brand-check">
-                            <i class="bi bi-capsule"></i> Check brand
-                        </button>
+                        <div class="flex-grow-1"><app-stock-select (stockSelected)="selectProduct($event)" [excludeItems]="getItemsInForm()"></app-stock-select></div>
                     </div>
                 </td>
                 <td colspan="6"></td>
@@ -57,7 +54,6 @@
                 <td colspan="7" class="small">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <span data-testid="sale-add-item-links"><ng-content></ng-content></span>
-                        <app-sale-alternatives *ngIf="auth.packOn('pharmacy')" [showTrigger]="false" (pick)="addSuggested($event)"></app-sale-alternatives>
                         <app-sale-suggestions *ngIf="auth.moduleOn('refills')" [items]="items" (add)="addSuggested($event)" (swap)="swapSuggested($event)" (supply)="setSupplyFor($event)"></app-sale-suggestions>
                     </div>
                 </td>

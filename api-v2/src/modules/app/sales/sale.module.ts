@@ -15,6 +15,13 @@ import { SaleSuggestionController } from "./sale-suggestion.controller";
 import { SaleAlternativesController } from "./sale-alternatives.controller";
 import { SaleSuggestionService } from "./sale-suggestion.service";
 import { DrugRefService } from "./drug-ref.service";
+import { BrandPriceService } from "./brand-price.service";
+import { PriceCompareController } from "./price-compare.controller";
+import { PriceCompareService } from "./price-compare.service";
+import { PermissionService } from "../roles/permission.service";
+import { ReferenceDataController } from "../dictionary/reference-data.controller";
+import { ReferenceDataService } from "../dictionary/reference-data.service";
+import { AiProvider } from "../alerts/ai-provider";
 import { SaleItem } from "src/entities/sale-item.entity";
 import { Sale } from "src/entities/sale.entity";
 import { SaleDelivery } from "src/entities/sale-delivery.entity";
@@ -32,8 +39,8 @@ import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 
 @Module({
     imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange,Setting,StockCount]),AuthModule,StoreModule,ExpenseModule,WhatsAppModule],
-    controllers: [SaleController,SaleDeliveryController,SaleSuggestionController, SaleAlternativesController],
-    providers: [SaleService,SaleSuggestionService,DrugRefService,SaleDeliveryService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,StockService,JwtService],
+    controllers: [SaleController,SaleDeliveryController,SaleSuggestionController, SaleAlternativesController, ReferenceDataController, PriceCompareController],
+    providers: [ReferenceDataService,PriceCompareService,PermissionService,SaleService,SaleSuggestionService,DrugRefService,BrandPriceService,AiProvider,SaleDeliveryService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,StockService,JwtService],
     exports: [SaleService,SaleDeliveryService],
   })
   export class SaleModule {}

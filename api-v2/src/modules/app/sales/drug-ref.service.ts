@@ -96,6 +96,7 @@ export class DrugRefService {
           `select id, brand, manufacturer, dosage_form, form_text, composition, discontinued from drug_ref_brand
             where source_id = $1 and composition_key = $2 and id <> $3 and not discontinued and ($4::text is null or dosage_form is null or dosage_form = $4)
             order by (brand_key ~ '^[0-9]'), brand_key limit 8`, [st.source!.id, mk.key, b.id, b.dosage_form || null])).map((r: any) => this.shape(r));
-    return { ...base, status: 'OK', same: m.same, otherStrengths: m.otherStrengths, otherForms: m.otherForms, notStocked: m.notStocked, orderIdeas };
+    return { ...base, status: 'OK', same: m.same, otherStrengths: m.otherStrengths, otherForms: m.otherForms, notStocked: m.notStocked, orderIdeas,
+             priceRange: await this.suggestions.priceRange(mk, b.dosage_form || null) };
   }
 }

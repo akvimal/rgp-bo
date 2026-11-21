@@ -18,10 +18,10 @@ import { dosageFormLabel } from "../../products/dosage-forms";
       <i class="bi bi-arrow-left-right"></i> Find alternatives
     </button>
     <p-dialog header="Check brand / find alternatives" [(visible)]="show" [modal]="true" [style]="{width:'46rem', maxWidth:'96vw'}" [contentStyle]="{'min-height':'26rem'}" [draggable]="false" (onHide)="clear()">
-      <div class="small text-muted mb-2">Type the brand the customer asked for to see its generic composition, and what we stock with the same composition, strength and form.</div>
+      <div class="small text-muted mb-2" *ngIf="!brandMode">Type the brand the customer asked for to see its generic composition, and what we stock with the same composition, strength and form.</div>
 
-      <!-- any brand: the brand dictionary gives its composition -->
-      <div *ngIf="dictionary" data-testid="alt-dict">
+      <!-- any brand: the brand dictionary gives its composition (not offered when the brand was picked outside the dialog) -->
+      <div *ngIf="dictionary && !brandMode" data-testid="alt-dict">
         <label class="form-label small mb-0" for="alt-brand">Brand the customer asked for</label>
         <input id="alt-brand" class="form-control form-control-sm" [(ngModel)]="brandText" (ngModelChange)="brandTyped()" placeholder="e.g. Augmentin, Telma, Glycomet" autocomplete="off" data-testid="alt-brand">
         <div class="small text-muted mt-1" *ngIf="brandText.trim().length > 0 && brandText.trim().length < 3">Type at least three letters.</div>
@@ -35,7 +35,7 @@ import { dosageFormLabel } from "../../products/dosage-forms";
         </div>
       </div>
 
-      <div class="mt-3">
+      <div class="mt-3" *ngIf="!brandMode">
         <label class="form-label small mb-0" *ngIf="dictionary">Or pick a medicine from our own list</label>
         <app-product-select (selected)="pickAsked($event)" [reset]="resetBox"></app-product-select>
       </div>
@@ -49,8 +49,14 @@ import { dosageFormLabel } from "../../products/dosage-forms";
           <span *ngIf="r.asked.fromDictionary" class="badge bg-secondary ms-2" data-testid="alt-from-dict">From the brand dictionary</span>
           <span *ngIf="r.askedInStock" class="badge bg-success ms-2">In stock ({{r.askedAvailable}})</span>
           <span *ngIf="r.status === 'OK' && !r.asked.fromDictionary && !r.askedInStock" class="badge bg-warning text-dark ms-2">Not in stock</span>
-          <div class="small text-muted fst-italic">{{r.asked.composition || 'No composition recorded'}}</div>
           <div class="small text-muted" *ngIf="askedFormLabel" data-testid="alt-asked-form">{{askedFormLabel}}<span *ngIf="r.asked.manufacturer"> &middot; {{r.asked.manufacturer}}</span></div>
+          <div class="border rounded p-2 mt-2" data-testid="alt-composition">
+            <div class="small text-muted mb-1">Composition</div>
+            <div *ngIf="!ingredients.length" class="text-muted small">No composition recorded</div>
+            <table class="table table-sm mb-0" *ngIf="ingredients.length">
+              <tbody><tr *ngFor="let i of ingredients" data-testid="alt-ingredient"><td class="fw-semibold">{{i.name}}</td><td class="text-end text-nowrap">{{i.strength}}</td></tr></tbody>
+            </table>
+          </div>
         </div>
 
         <div *ngIf="r.status === 'NO_COMPOSITION'" class="alert alert-warning small mt-2" data-testid="alt-no-composition">
@@ -60,7 +66,70 @@ import { dosageFormLabel } from "../../products/dosage-forms";
           The composition has no strength (for example 500 mg), so a match would not be safe. Add the strength in the product, then try again.
         </div>
 
+        <!-- what the PMBI Jan Aushadhi and other sellers' lists charge for this composition, and the market price on request -->
+        <app-price-compare-panel class="d-block mt-2" *ngIf="r.asked.composition" [composition]="r.asked.composition" [form]="r.asked.form || null"></app-price-compare-panel>
+
+        <!-- the price of a dictionary brand from the web (the dictionary has no prices) -->
+        <div class="border rounded p-2 mt-2" *ngIf="r.asked.fromDictionary && brandId" data-testid="alt-web">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fw-semibold small">Price online</span>
+            <span class="badge bg-warning text-dark">Indicative &middot; AI, check before use</span>
+            <button type="button" class="btn btn-sm btn-outline-primary ms-auto" *ngIf="webAvailable && !webBusy" (click)="lookupWeb(!!web)" data-testid="alt-web-lookup">
+              <i class="bi bi-search"></i> {{web ? 'Look again' : 'Look up price online'}}
+            </button>
+          </div>
+          <div class="small text-muted mt-1" *ngIf="!webAvailable" data-testid="alt-web-off">The online lookup needs the assistant, which the Business Head switches on under Settings &gt; AI assistant.</div>
+          <div class="small text-muted mt-1" *ngIf="webBusy" data-testid="alt-web-busy">Searching the web... this takes up to a minute.</div>
+          <div class="alert alert-danger py-1 small mt-2 mb-0" *ngIf="webError" data-testid="alt-web-error">{{webError}}</div>
+          <ng-container *ngIf="web">
+            <div *ngIf="web.found" class="mt-2" data-testid="alt-web-result">
+              <div class="d-flex flex-wrap gap-4">
+                <div><div class="small text-muted">MRP<span *ngIf="web.packText"> ({{web.packText}})</span></div><div class="fw-semibold" data-testid="alt-web-mrp">&#8377;{{web.mrp | number:'1.2-2'}}</div></div>
+                <div *ngIf="web.sellMin !== null"><div class="small text-muted">Selling price online</div>
+                  <div data-testid="alt-web-sell">&#8377;{{web.sellMin | number:'1.2-2'}}<span *ngIf="web.sellMax !== web.sellMin"> to &#8377;{{web.sellMax | number:'1.2-2'}}</span></div></div>
+                <div><div class="small text-muted">Per unit (pack of {{web.packUnits}})</div>
+                  <div data-testid="alt-web-unit">MRP &#8377;{{web.unitMrp | number:'1.2-2'}}<span *ngIf="web.unitSellMin !== null"> &middot; sells &#8377;{{web.unitSellMin | number:'1.2-2'}}<span *ngIf="web.unitSellMax !== web.unitSellMin"> to &#8377;{{web.unitSellMax | number:'1.2-2'}}</span></span></div></div>
+              </div>
+              <div class="small mt-1" *ngIf="web.note">{{web.note}}</div>
+              <div class="small mt-1" data-testid="alt-web-sources">Sources:
+                <span *ngFor="let s of web.sources; let last = last"><a [href]="s.url" target="_blank" rel="noopener noreferrer">{{s.title || host(s.url)}}</a><span *ngIf="!last">, </span></span></div>
+            </div>
+            <div *ngIf="!web.found" class="small text-muted mt-2" data-testid="alt-web-notfound">No price found online: {{web.note}}</div>
+            <!-- what each site said: the figures above use the sites that agree -->
+            <table class="table table-sm small mt-2 mb-0" *ngIf="web.listings?.length" data-testid="alt-web-sites">
+              <thead><tr><th>Site</th><th>Pack</th><th class="text-end">MRP</th><th class="text-end">Sells at</th><th class="text-end">MRP per unit</th><th></th></tr></thead>
+              <tbody>
+                <tr *ngFor="let l of web.listings" [class.text-muted]="l.status !== 'used'" data-testid="alt-web-site">
+                  <td><a *ngIf="l.url" [href]="l.url" target="_blank" rel="noopener noreferrer">{{l.site}}</a><span *ngIf="!l.url">{{l.site}}</span></td>
+                  <td>{{l.packText || (l.packUnits ? 'pack of ' + l.packUnits : '')}}</td>
+                  <td class="text-end"><span *ngIf="l.mrp !== null">&#8377;{{l.mrp | number:'1.2-2'}}</span></td>
+                  <td class="text-end"><span *ngIf="l.sell !== null">&#8377;{{l.sell | number:'1.2-2'}}</span></td>
+                  <td class="text-end"><span *ngIf="l.unitMrp !== null">&#8377;{{l.unitMrp | number:'1.2-2'}}</span></td>
+                  <td><span class="badge" [ngClass]="l.status === 'used' ? 'bg-success' : l.status === 'differs' ? 'bg-warning text-dark' : 'bg-danger'" [title]="l.problem || ''">{{l.status === 'used' ? 'used' : l.status === 'differs' ? 'differs' : 'not valid'}}</span><span class="d-block" *ngIf="l.problem">{{l.problem}}</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="small text-muted mt-1" data-testid="alt-web-asof">As at {{web.asOf | date:'dd MMM yyyy'}}<span *ngIf="web.cached"> (kept from an earlier look)</span><span *ngIf="!web.fresh" class="text-danger"> &middot; more than a month old, look again</span><span *ngIf="web.retryNote"> &middot; the new look found nothing usable, so the earlier answer is kept</span></div>
+          </ng-container>
+        </div>
+
         <ng-container *ngIf="r.status === 'OK'">
+          <div class="border rounded p-2 mt-2" data-testid="alt-price-range" *ngIf="r.priceRange?.count">
+            <div class="fw-semibold small">Indicative price, per unit <span class="text-muted fw-normal">(from our own purchases of this composition, not from the dictionary)</span></div>
+            <div class="d-flex flex-wrap gap-4 mt-1">
+              <div><div class="small text-muted">MRP</div><div data-testid="alt-mrp">&#8377;{{r.priceRange.mrp.min | number:'1.2-2'}}<span *ngIf="r.priceRange.mrp.max !== r.priceRange.mrp.min"> to &#8377;{{r.priceRange.mrp.max | number:'1.2-2'}}</span></div></div>
+              <div><div class="small text-muted">Sale price (min to max)</div><div data-testid="alt-sale">&#8377;{{r.priceRange.sale.min | number:'1.2-2'}}<span *ngIf="r.priceRange.sale.max !== r.priceRange.sale.min"> to &#8377;{{r.priceRange.sale.max | number:'1.2-2'}}</span></div></div>
+              <div class="small text-muted align-self-end">from {{r.priceRange.count}} product(s)</div>
+            </div>
+            <details class="small mt-1">
+              <summary>Which products</summary>
+              <div *ngFor="let p of r.priceRange.products" class="d-flex gap-2 py-1 border-top">
+                <span class="flex-grow-1">{{p.title}}<span *ngIf="p.mfr" class="text-muted"> &middot; {{p.mfr}}</span> <span class="text-muted">(pack {{p.pack}}, bought {{p.bought | date:'dd MMM yyyy'}})</span></span>
+                <span class="text-nowrap">MRP &#8377;{{p.mrp | number:'1.2-2'}} &middot; Rate &#8377;{{p.price | number:'1.2-2'}} per pack</span>
+              </div>
+            </details>
+          </div>
+
           <h6 class="mt-3 mb-1">Same composition and strength, in stock</h6>
           <div *ngIf="!r.same.length" class="text-muted small" data-testid="alt-none">None in stock{{r.askedInStock ? ' other than the one asked for' : ''}}.</div>
           <div *ngFor="let a of r.same" class="d-flex align-items-center gap-2 py-1 border-top" data-testid="alt-same" [attr.data-product]="a.productid">
@@ -77,7 +146,7 @@ import { dosageFormLabel } from "../../products/dosage-forms";
                 {{a.cheaperPct > 0 ? a.cheaperPct + '% cheaper' : (a.cheaperPct < 0 ? (-a.cheaperPct) + '% dearer' : 'same price')}} per unit
               </div>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary" (click)="add(a)" data-testid="alt-add">Add to bill</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" *ngIf="canAdd" (click)="add(a)" data-testid="alt-add">Add to bill</button>
           </div>
 
           <ng-container *ngIf="r.otherForms?.length">
@@ -87,7 +156,7 @@ import { dosageFormLabel } from "../../products/dosage-forms";
               <span class="flex-grow-1">{{a.title}} <span class="badge bg-secondary ms-1">{{formLabel(a.form)}}</span>
                 <span *ngIf="a.prescription" class="badge bg-danger ms-1">Prescription</span></span>
               <span class="text-nowrap">&#8377;{{a.price | number:'1.2-2'}} &middot; {{a.available}} in stock</span>
-              <button type="button" class="btn btn-sm btn-outline-secondary py-0" (click)="add(a)">Add to bill</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0" *ngIf="canAdd" (click)="add(a)">Add to bill</button>
             </div>
           </ng-container>
 
@@ -98,7 +167,7 @@ import { dosageFormLabel } from "../../products/dosage-forms";
               <span class="flex-grow-1">{{a.title}} <span class="text-muted fst-italic">{{a.composition}}</span>
                 <span *ngIf="a.prescription" class="badge bg-danger ms-1">Prescription</span></span>
               <span class="text-nowrap">&#8377;{{a.price | number:'1.2-2'}} &middot; {{a.available}} in stock</span>
-              <button type="button" class="btn btn-sm btn-outline-secondary py-0" (click)="add(a)">Add to bill</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0" *ngIf="canAdd" (click)="add(a)">Add to bill</button>
             </div>
           </ng-container>
 
@@ -125,6 +194,10 @@ import { dosageFormLabel } from "../../products/dosage-forms";
 export class SaleAlternativesComponent {
   /** the link that opens the dialog; a screen with its own button (the POS "Check brand") turns it off and calls open() itself */
   @Input() showTrigger = true;
+  /** the brand is picked outside the dialog (the Check brand box in the Sales header): the dialog has no brand input and no own-list picker */
+  @Input() brandMode = false;
+  /** "Add to bill" is offered (a bill is open to add to) */
+  @Input() canAdd = true;
   @Output() pick = new EventEmitter<any>();
   show = false;
   loading = false;
@@ -141,6 +214,17 @@ export class SaleAlternativesComponent {
   private seq = 0;
 
   constructor(private http: HttpClient, private storeContext: StoreContextService) {}
+
+  /** the composition as ingredient and strength ("Hydrochlorothiazide 12.5 mg + telmisartan 40 mg" -> two rows); a part with no readable strength keeps its whole text as the name */
+  get ingredients(): { name: string; strength: string }[] {
+    const text = String(this.r?.asked?.composition || "").trim();
+    if (!text) return [];
+    return text.split(/\s\+\s/).map(part => {
+      const m = /^(.*?)\s+(\d[\d.,]*\s*(?:mg|mcg|g|ml|iu|%|million\s+unit|unit)\b.*)$/i.exec(part.trim());
+      const name = (m ? m[1] : part.trim());
+      return { name: name.charAt(0).toUpperCase() + name.slice(1), strength: m ? m[2] : "" };
+    });
+  }
 
   get notStockedNames(): string {
     return (this.r?.notStocked || []).map((n: any) => n.title).join(", ");
@@ -167,10 +251,17 @@ export class SaleAlternativesComponent {
     });
   }
 
+  /** opens the dialog straight on a brand picked from the dictionary elsewhere */
+  openBrand(b: any) {
+    this.show = true;
+    this.dictionary = true;
+    this.pickBrand(b);
+  }
+
   pickAsked(p: any) {
     const id = +(p?.id || 0);
     if (!id) return;
-    this.loading = true; this.error = ""; this.r = null;
+    this.loading = true; this.error = ""; this.r = null; this.brandId = 0; this.web = null;
     this.http.get<any>(`${environment.apiHost}/sale-alternatives`, { params: { productid: String(id), storeid: String(this.storeContext.selectedStoreId || "") } }).subscribe({
       next: d => { this.r = d; this.loading = false; this.keep({ kind: "PRODUCT", productid: id }); },
       error: e => { this.loading = false; this.error = e?.error?.message || "Could not look up alternatives."; },
@@ -192,11 +283,40 @@ export class SaleAlternativesComponent {
     }, 300);
   }
 
+  /** the dictionary brand shown now, and what the online price lookup gave for it */
+  brandId = 0;
+  web: any = null;
+  webAvailable = false;
+  webBusy = false;
+  webError = "";
+
+  host(url: string): string { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } }
+
   pickBrand(b: any) {
     this.loading = true; this.error = ""; this.r = null; this.brandResults = []; this.brandSearched = false;
+    this.brandId = 0; this.web = null; this.webError = ""; this.webBusy = false;
     this.http.get<any>(`${environment.apiHost}/sale-alternatives/brand`, { params: { brandid: String(b.id), storeid: String(this.storeContext.selectedStoreId || "") } }).subscribe({
-      next: d => { this.r = d; this.loading = false; this.keep({ kind: "BRAND", brandid: b.id }); },
+      next: d => { this.r = d; this.loading = false; this.brandId = +b.id; this.keep({ kind: "BRAND", brandid: b.id }); this.loadWeb(+b.id); },
       error: e => { this.loading = false; this.error = e?.error?.message || "Could not look up that brand."; },
+    });
+  }
+
+  /** an earlier online lookup of this brand (free) and whether the assistant is on */
+  private loadWeb(id: number) {
+    this.http.get<any>(`${environment.apiHost}/sale-alternatives/brand-price`, { params: { brandid: String(id) } }).subscribe({
+      next: d => { if (id !== this.brandId) return; this.webAvailable = !!d?.available; this.web = d?.kept || null; },
+      error: () => { if (id === this.brandId) { this.webAvailable = false; this.web = null; } },
+    });
+  }
+
+  /** searches the web for this brand's price (it uses the assistant, so it is only done when asked) */
+  lookupWeb(refresh: boolean) {
+    const id = this.brandId;
+    if (!id || this.webBusy) return;
+    this.webBusy = true; this.webError = "";
+    this.http.post<any>(`${environment.apiHost}/sale-alternatives/brand-price`, { brandid: id, refresh }).subscribe({
+      next: d => { if (id !== this.brandId) return; this.web = d; this.webBusy = false; },
+      error: e => { if (id !== this.brandId) return; this.webBusy = false; const m = e?.error?.message; this.webError = Array.isArray(m) ? m.join(" ") : (m || "Could not look up the price online."); },
     });
   }
 
@@ -217,6 +337,7 @@ export class SaleAlternativesComponent {
     // a brand typed that nothing matched, and the dialog closed without choosing anything else: that is a request we could not meet
     if (this.dictionary && this.brandSearched && !this.brandResults.length && !this.r && this.brandText.trim().length >= 3) this.keep({ kind: "TYPED", text: this.brandText.trim() });
     this.r = null; this.error = ""; this.loading = false;
+    this.brandId = 0; this.web = null; this.webError = ""; this.webBusy = false;
     this.brandText = ""; this.brandResults = []; this.brandSearched = false; clearTimeout(this.timer);
     this.resetBox = true; setTimeout(() => this.resetBox = false);
   }

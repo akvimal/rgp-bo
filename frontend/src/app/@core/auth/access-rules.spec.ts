@@ -86,6 +86,11 @@ describe('the pages that are a rule, not a path some role carries', () => {
     expect(pageRuleDecides('/secure/pharmacy-guide', ctx([], ['pharmacy']))).toBeTrue();
   });
 
+  it('opens Price comparison to whoever may set prices', () => {
+    expect(pageRuleDecides('/secure/pricing/compare', ctx(['products.price']))).toBeTrue();
+    expect(pageRuleDecides('/secure/pricing/compare', ctx(['sales']))).toBeFalse();
+  });
+
   it('leave every other page to the role\'s own paths (Customer orders is one of them now)', () => {
     expect(pageRuleDecides('/secure/commitments', ctx(['sales']))).toBeNull();
     expect(pageRuleDecides('/secure/sales/pos', ctx())).toBeNull();

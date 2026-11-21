@@ -21,6 +21,7 @@ import { ProductPriceComponent } from "./components/product-price.component";
 import { ProductPriceChangeComponent } from "./components/product-price-change.component";
 import { PricingPolicyComponent } from "./components/pricing-policy.component";
 import { PricingRulesComponent } from "./components/pricing-rules.component";
+import { PriceCompareComponent } from "./components/price-compare.component";
 
 const routes: Routes = [
   { path: '', component: PricingComponent, children: [
@@ -28,12 +29,13 @@ const routes: Routes = [
     { path: 'changes', canActivate: [AuthGuard], loadChildren: () => import('../price-changes/price-changes.module').then(m => m.PriceChangesModule) },
     { path: 'policy', component: PricingPolicyComponent, canActivate: [AuthGuard] },
     { path: 'rules', component: PricingRulesComponent, canActivate: [AuthGuard] },
+    { path: 'compare', component: PriceCompareComponent, canActivate: [AuthGuard] },
   ]},
 ];
 
 /** Pricing: prices, the price changes sheet, the pricing policy and the pricing rules. */
 @NgModule({
-  declarations: [PricingComponent, ProductPriceComponent, ProductPriceChangeComponent, PricingPolicyComponent, PricingRulesComponent],
+  declarations: [PricingComponent, ProductPriceComponent, ProductPriceChangeComponent, PricingPolicyComponent, PricingRulesComponent, PriceCompareComponent],
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule, TableModule, ToastModule, CalendarModule, SliderModule, MultiSelectModule, ContextMenuModule,
     DialogModule, ConfirmDialogModule, ButtonModule, DropdownModule, ProgressBarModule, InputTextModule,

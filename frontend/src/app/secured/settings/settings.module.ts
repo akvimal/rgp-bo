@@ -29,6 +29,7 @@ import { BusinessesComponent } from "./businesses/businesses.component";
 import { BusinessProfileComponent } from "./business-profile/business-profile.component";
 import { ShopSetupComponent } from "./shop-setup/shop-setup.component";
 import { ConfigTransferComponent } from "./config-transfer/config-transfer.component";
+import { ReferenceDataComponent } from "./reference-data/reference-data.component";
 import { StaffDetailsFieldsComponent } from "./users/components/staff-details-fields.component";
 import { NotificationsComponent } from "./notifications/notifications.component";
 import { AlertRulesComponent } from "./alerts/alert-rules.component";
@@ -64,6 +65,7 @@ const routes: Routes = [
     { path: 'business-profile/setup', component: ShopSetupComponent },
     { path: 'business-profile/transfer', component: ConfigTransferComponent },
     { path: 'business-profile/ai', component: AiAssistantSettingsComponent },
+    { path: 'business-profile/reference-data', component: ReferenceDataComponent },
     { path: 'business-profile', component: BusinessProfileComponent },
     { path: 'store', component: StoreSettingsComponent },
     { path: 'notifications', component: NotificationsComponent },
@@ -94,6 +96,7 @@ const routes: Routes = [
       BusinessProfileComponent,
       ShopSetupComponent,
       ConfigTransferComponent,
+      ReferenceDataComponent,
       StaffDetailsFieldsComponent,
       NotificationsComponent,
       AlertRulesComponent,

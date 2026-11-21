@@ -1,4 +1,5 @@
 import { PriceUnitsComponent } from './components/price-units.component';
+import { PriceComparePanelComponent } from './components/price-compare-panel.component';
 import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
 import { RouterModule } from "@angular/router";
@@ -31,6 +32,7 @@ import { TermPipe } from "./label.service";
 @NgModule({
     declarations: [
       PriceUnitsComponent,
+      PriceComparePanelComponent,
       ProductSelectComponent,
       StockSelectComponent,
       CustomerSelectComponent,
@@ -63,6 +65,7 @@ import { TermPipe } from "./label.service";
         RouterModule
     ],
     exports: [PriceUnitsComponent,
+      PriceComparePanelComponent,
       IsAuthDirective,
       IsNavAuthDirective,
       TextWrapPipe, 

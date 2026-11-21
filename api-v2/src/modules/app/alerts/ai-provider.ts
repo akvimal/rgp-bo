@@ -50,6 +50,29 @@ export function toolArguments(body: any): any {
   return undefined;
 }
 
+export interface WebAnswer { text: string; sources: { url: string; title: string }[]; }
+
+/** the text and the source links of an OpenRouter chat reply that used web search (links come as url_citation annotations) */
+export function openRouterWebAnswer(body: any): WebAnswer {
+  const message = body?.choices?.[0]?.message;
+  const text = typeof message?.content === 'string' ? message.content : Array.isArray(message?.content) ? message.content.map((c: any) => c?.text || '').join('') : '';
+  const sources = (Array.isArray(message?.annotations) ? message.annotations : [])
+    .filter((a: any) => a?.type === 'url_citation')
+    .map((a: any) => ({ url: String(a.url_citation?.url ?? a.url ?? ''), title: String(a.url_citation?.title ?? a.title ?? '') }));
+  return { text, sources };
+}
+
+/** the text and the source links of an Anthropic reply that used the web search tool (citations on the text, and the results the search returned) */
+export function anthropicWebAnswer(body: any): WebAnswer {
+  const blocks: any[] = Array.isArray(body?.content) ? body.content : [];
+  const text = blocks.filter((b) => b?.type === 'text').map((b) => b.text || '').join('');
+  const cited = blocks.filter((b) => b?.type === 'text').flatMap((b) => (Array.isArray(b.citations) ? b.citations : []))
+    .map((c: any) => ({ url: String(c?.url ?? ''), title: String(c?.title ?? '') }));
+  const found = blocks.filter((b) => b?.type === 'web_search_tool_result').flatMap((b) => (Array.isArray(b.content) ? b.content : []))
+    .map((c: any) => ({ url: String(c?.url ?? ''), title: String(c?.title ?? '') }));
+  return { text, sources: [...cited, ...found] };
+}
+
 /**
  * The one place the app talks to a language model. OpenRouter (any model it offers, chosen in the app) when OPENROUTER_API_KEY is
  * set; otherwise the Anthropic Messages API directly when ANTHROPIC_API_KEY is set (AI_PROVIDER=off switches it off). AI_MODEL is the default model,
@@ -141,6 +164,70 @@ export class AiProvider {
     } finally {
       rec.ms = Date.now() - started;
       try { await HOOKS?.after(rec); } catch { /* the log must never break a request */ }
+    }
+  }
+
+  /**
+   * One request in which the model may search the web, answering in plain text (the caller asks for JSON and checks it) with the pages it used.
+   * OpenRouter: its web search server tool, and when a model or the account rejects that, the older web plugin. Anthropic: its web search tool.
+   * Counted against the monthly limit and logged under `feature`.
+   */
+  async askWeb(system: string, instruction: string, model: string, feature: string, maxTokens = 1500): Promise<WebAnswer> {
+    const p = this.provider;
+    if (!p) throw new ServiceUnavailableException('The assistant is not switched on for this account.');
+    await HOOKS?.before();
+    const started = Date.now();
+    const rec: UsageRecord = { provider: p, model, feature, ok: false, status: null, inputTokens: null, outputTokens: null, ms: 0 };
+    try {
+      const out = await this.sendWeb(p, system, instruction, model, maxTokens, rec);
+      rec.ok = !!out.text;
+      return out;
+    } finally {
+      rec.ms = Date.now() - started;
+      try { await HOOKS?.after(rec); } catch { /* the log must never break a request */ }
+    }
+  }
+
+  private async sendWeb(p: ProviderName, system: string, instruction: string, model: string, maxTokens: number, rec: UsageRecord): Promise<WebAnswer> {
+    const refused = () => new ServiceUnavailableException('The online lookup could not be reached just now. Try again in a little while.');
+    const note = (res: any, body?: any) => {
+      rec.status = res.status ?? null;
+      if (body) { const t = tokensOf(p, body); rec.inputTokens = t.input; rec.outputTokens = t.output; }
+    };
+    const text = `<instruction>${instruction}</instruction>`;
+    try {
+      if (p === 'anthropic') {
+        const res = await fetch(`${this.base(p)}/v1/messages`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-api-key': this.keyOf('anthropic'), 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model, max_tokens: maxTokens, system, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }], messages: [{ role: 'user', content: text }] }),
+          signal: AbortSignal.timeout(120000),
+        });
+        note(res);
+        if (res.status === 401 || res.status === 402) throw new ServiceUnavailableException("The assistant's key was refused or its credit has run out. Tell whoever looks after this account.");
+        if (!res.ok) throw refused();
+        const body: any = await res.json();
+        note(res, body);
+        return anthropicWebAnswer(body);
+      }
+      const send = (extra: any) => fetch(`${this.base(p)}/chat/completions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${this.keyOf('openrouter')}`, 'x-title': 'RGP Back Office' },
+        body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'system', content: system }, { role: 'user', content: text }], ...extra }),
+        signal: AbortSignal.timeout(120000),
+      });
+      let res = await send({ tools: [{ type: 'openrouter:web_search', parameters: { max_results: 5, search_context_size: 'low' } }] });
+      // the server tool is in beta: when it is refused, the older web plugin does the same search
+      if (res.status === 400 || res.status === 404 || res.status === 422) res = await send({ plugins: [{ id: 'web', max_results: 5 }] });
+      note(res);
+      if (res.status === 401 || res.status === 402) throw new ServiceUnavailableException("The assistant's key was refused or its credit has run out. Tell whoever looks after this account.");
+      if (!res.ok) throw refused();
+      const body: any = await res.json();
+      note(res, body);
+      return openRouterWebAnswer(body);
+    } catch (e: any) {
+      if (e?.getStatus) throw e;
+      throw refused();
     }
   }
 

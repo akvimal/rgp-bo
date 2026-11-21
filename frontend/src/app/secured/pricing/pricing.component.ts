@@ -24,6 +24,9 @@ import { AuthService } from "src/app/@core/auth/auth.service";
           <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'products.price'">
             <a class="nav-link" routerLink="/secure/pricing/rules" data-testid="nav-rules">Pricing rules</a>
           </li>
+          <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'products.price'">
+            <a class="nav-link" routerLink="/secure/pricing/compare" data-testid="nav-compare">Price comparison</a>
+          </li>
         </ul>
       </nav>
     </div>

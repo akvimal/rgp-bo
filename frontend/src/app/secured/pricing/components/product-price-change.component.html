@@ -68,6 +68,9 @@
         </div>
         <div class="form-text">A choice only fills the price above: nothing is saved until you save. Prices lower than the greyed ones can still be typed, with the approval the policy asks for.</div>
       </div>
+      <div class="col-12" data-testid="price-compare-slot">
+        <app-price-compare-panel [productId]="productid" [candidate]="typed > 0 ? typed : null"></app-price-compare-panel>
+      </div>
       <div class="col-12 form-text mt-1" *ngIf="lastEffective">A price applies from the date given. The last change started on {{lastEffective | date:'dd MMM yyyy'}}; a new price cannot start before that, and one that starts on the same day replaces it at once.</div>
     </div>
 

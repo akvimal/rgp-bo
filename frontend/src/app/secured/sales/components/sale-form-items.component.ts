@@ -1,6 +1,7 @@
 import { AuthService } from "src/app/@core/auth/auth.service";
-import { Component, ElementRef, EventEmitter, Input, Output, SimpleChanges, ViewChild } from "@angular/core";
-import { SaleAlternativesComponent } from "./sale-alternatives.component";
+import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from "@angular/core";
+import { Subscription } from "rxjs";
+import { BrandCheckBus } from "./brand-check.bus";
 import { StockService } from "../../store/stock/stock.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { Offer } from "../models/offer.model";
@@ -17,10 +18,16 @@ export class SaleFormItemsComponent{
 
   @Input() items:any;
 
-  /** what is typed in the product search, handed to the brand check so the customer's brand need not be typed twice */
-  typedText = '';
-  @ViewChild(SaleAlternativesComponent) alternatives?: SaleAlternativesComponent;
-  openBrandCheck(){ this.alternatives?.open(this.typedText); }
+  /** the product picked in the Check brand dialog (opened from the Sales header) is added here while this bill is on screen */
+  private brandPick?: Subscription;
+  ngOnInit() {
+    this.brandBus.billOpen = true;
+    this.brandPick = this.brandBus.pick$.subscribe((s) => this.addSuggested(s));
+  }
+  ngOnDestroy() {
+    this.brandBus.billOpen = false;
+    this.brandPick?.unsubscribe();
+  }
 
   offers:Offer[] = [];
   offer:Offer = {};
@@ -49,7 +56,8 @@ export class SaleFormItemsComponent{
     private offerService:OfferService,
     private stockService:StockService,
     private storeContext:StoreContextService,
-    private host:ElementRef){}
+    private host:ElementRef,
+    private brandBus: BrandCheckBus){}
 
   selectProduct(selected:any) {
     if(!(+selected?.sale_price > 0)) { return; } // no sale price: not added to the bill

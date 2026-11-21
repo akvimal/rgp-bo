@@ -31,6 +31,8 @@ export const TASKS: TaskInfo[] = [
   { task: 'write_coaching_note', label: 'Staff coaching notes', tier: 'standard' },
   { task: 'propose_kpis', label: 'KPI drafts', tier: 'complex' },
   { task: 'read_invoice', label: 'Invoice reading', tier: 'complex' },
+  { task: 'look_up_brand_price', label: 'Online brand price lookup', tier: 'simple' },
+  { task: 'look_up_market_price', label: 'Online market price lookup', tier: 'simple' },
 ];
 
 export const DEFAULT_KEY = 'ai.model';
