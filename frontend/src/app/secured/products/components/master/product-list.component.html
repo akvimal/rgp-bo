@@ -16,6 +16,7 @@
         </div>
         <div class="page-toolbar-actions">
             <button *isAuth="'products.add'" type="button" class="btn btn-outline-secondary me-2" (click)="openForms()" title="Fill the dosage form of products from their names" data-testid="prod-forms-open">Dosage forms</button>
+            <button *isAuth="'products.add'" type="button" class="btn btn-outline-secondary me-2" (click)="openComp()" title="Fill the composition of products from the brand dictionary" data-testid="prod-comp-open">Compositions</button>
             <a *isAuth="'products.add'" class="btn btn-primary" role="button" [routerLink]="['../new']" data-testid="prod-add">Add New</a>
         </div>
     </div>
@@ -30,6 +31,32 @@
                 <div class="small" data-testid="prod-forms-preview"><strong>{{forms.withoutForm}}</strong> products have no dosage form. <strong>{{forms.wouldFill}}</strong> can be filled from their names; <strong>{{forms.notKnown}}</strong> cannot and stay empty.</div>
                 <div class="small text-muted mt-1" *ngFor="let s of forms.sample">{{s.title}} &rarr; {{s.form}}</div>
                 <button type="button" class="btn btn-primary btn-sm mt-2" [disabled]="formsBusy || !forms.wouldFill" (click)="applyForms()" data-testid="prod-forms-apply">Fill {{forms.wouldFill}} products</button>
+            </ng-container>
+        </div>
+    </div>
+    <div class="card mt-2" *ngIf="compPanel" data-testid="prod-comp-panel">
+        <div class="card-body py-2">
+            <div class="d-flex justify-content-between"><strong>Fill compositions from the brand dictionary</strong><a href="javascript:void(0)" class="small" (click)="compPanel = false" data-testid="prod-comp-close">Close</a></div>
+            <div class="small text-muted mb-1">A product's name is looked up among the brands in the dictionary (Settings &gt; Reference data). Only a sure match is offered: when a brand has more than one composition, or the name does not match, the product is left for you. A composition or dosage form you have already set is never changed. Look through the list, untick any that are wrong, then fill.</div>
+            <div class="alert alert-danger py-1 small" *ngIf="compError">{{compError}}</div>
+            <div class="alert alert-success py-1 small" *ngIf="compMessage" data-testid="prod-comp-message">{{compMessage}}</div>
+            <div class="small text-muted" *ngIf="compBusy">Working...</div>
+            <div class="small text-muted" *ngIf="comp && !comp.dictionary" data-testid="prod-comp-nodict">No brand dictionary is loaded. The Business Head loads it under Settings &gt; Reference data.</div>
+            <ng-container *ngIf="comp?.dictionary">
+                <div class="small" data-testid="prod-comp-preview"><strong>{{comp.withoutComposition | number}}</strong> products have no composition. <strong>{{comp.wouldFill | number}}</strong> can be filled from the dictionary<span *ngIf="comp.wouldFill > comp.shown"> (the first {{comp.shown | number}} are shown: fill these, then open this again for the rest)</span>; <strong>{{comp.notFound | number}}</strong> cannot be matched surely and stay empty.</div>
+                <div class="table-responsive mt-2" style="max-height:22rem; overflow:auto" *ngIf="comp.rows.length">
+                    <table class="table table-sm small mb-0" data-testid="prod-comp-table">
+                        <thead><tr><th><input type="checkbox" [checked]="compChosen.length === comp.rows.length" (change)="compAll($any($event.target).checked)" aria-label="Tick all"></th><th>Product</th><th>Composition</th><th>Form</th><th>Matched brand</th></tr></thead>
+                        <tbody>
+                            <tr *ngFor="let r of comp.rows" data-testid="prod-comp-row">
+                                <td><input type="checkbox" [(ngModel)]="compPicked[r.id]" [attr.aria-label]="'Fill ' + r.title"></td>
+                                <td>{{r.title}}</td><td>{{r.composition}}</td><td>{{r.form}}<span class="text-muted" *ngIf="r.hadForm"> (kept)</span></td>
+                                <td class="text-muted">{{r.brand}}<span *ngIf="r.manufacturer"> &middot; {{r.manufacturer}}</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm mt-2" [disabled]="compBusy || !compChosen.length" (click)="applyComp()" data-testid="prod-comp-apply">Fill {{compChosen.length}} selected product(s)</button>
             </ng-container>
         </div>
     </div>

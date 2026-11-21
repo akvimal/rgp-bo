@@ -1,4 +1,5 @@
 import { classifyForm } from '../dictionary/dosage-form';
+import { makeFillIndex } from '../dictionary/composition-fill-rules';
 import { userError, messageOf } from 'src/core/db-error';
 import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
@@ -357,6 +358,41 @@ export class ProductService {
         }
       }
       return { withoutForm: rows.length, filled: apply ? todo.length : 0, wouldFill: todo.length, notKnown: found.length - todo.length, counts, sample: todo.slice(0, 12).map((f: any) => ({ title: f.title, form: f.form })), applied: apply };
+    }
+
+    /**
+     * Fills the composition of products that have none from the brand dictionary, by their titles ("Telma 40 Tablet" is a brand in the dictionary, with its
+     * composition and form). Only a sure match is proposed: the dictionary brands the title stands for must all give the same composition. Without `apply` it
+     * only proposes; with it, the products in `ids` (the ones shown and ticked) are filled, and only if they still have no composition. A composition or a
+     * dosage form already set is never changed.
+     */
+    async fillCompositions(apply: boolean, ids: number[] | null, userid: number) {
+      const dict = await this.productRepository.query(
+        `select brand_key, brand, manufacturer, composition, composition_key, dosage_form from drug_ref_brand where source_id = (select id from drug_ref_source where active)`);
+      if (!dict.length) return { dictionary: false, withoutComposition: 0, wouldFill: 0, notFound: 0, shown: 0, rows: [], applied: false, filled: 0 };
+      const index = makeFillIndex(dict);
+      const rows = await this.productRepository.query(
+        `select id, title, dosage_form from product where active and not archive and coalesce(btrim(more_props->>'composition'), '') = '' order by title`);
+      const found = rows.map((r: any) => ({ id: Number(r.id), title: String(r.title), current: r.dosage_form as string | null, match: index.find(String(r.title)) }));
+      const todo = found.filter((f: any) => f.match);
+      let filled = 0;
+      if (apply) {
+        const only = new Set((ids || []).map(Number));
+        for (const f of todo) {
+          if (!only.has(f.id)) continue;
+          const done = await this.productRepository.query(
+            `update product set more_props = (coalesce(more_props::jsonb, '{}'::jsonb) || jsonb_build_object('composition', $2::text))::json,
+                    dosage_form = coalesce(dosage_form, $3), updated_by = $4, updated_on = now()
+              where id = $1 and active and not archive and coalesce(btrim(more_props->>'composition'), '') = '' returning id`, [f.id, f.match.composition, f.match.form, userid]);
+          filled += done.length;
+        }
+      }
+      const shown = todo.slice(0, 500);
+      return {
+        dictionary: true, withoutComposition: rows.length, wouldFill: todo.length - (apply ? filled : 0), notFound: found.length - todo.length, shown: shown.length,
+        rows: shown.map((f: any) => ({ id: f.id, title: f.title, composition: f.match.composition, form: f.match.form, brand: f.match.brand, manufacturer: f.match.manufacturer, exact: f.match.exact, hadForm: !!f.current })),
+        applied: apply, filled,
+      };
     }
 
     async update(id:any, values:any, userid){

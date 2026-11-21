@@ -102,6 +102,14 @@ export class ProductController {
       return this.productService.fillDosageForms(apply === '1' || apply === 'true', currentUser.id);
     }
 
+    /** fill the composition of products that have none from the brand dictionary; ?apply=1 with `ids` writes those, otherwise a proposal */
+    @Post('/compositions/fill')
+    async fillCompositions(@Query('apply') apply: string, @Body() body: any, @User() currentUser: any) {
+      await this.assertProductEditAccess(currentUser);
+      const ids = Array.isArray(body?.ids) ? body.ids.map(Number).filter((n: number) => Number.isInteger(n) && n > 0).slice(0, 1000) : [];
+      return this.productService.fillCompositions(apply === '1' || apply === 'true', ids, currentUser.id);
+    }
+
     @Put(':id')
     async update(@Param('id') id: string, @Body() updateDto: UpdateProductDto, @User() currentUser: any) {
       await this.assertProductEditAccess(currentUser);

@@ -33,6 +33,39 @@ export class ProductListComponent {
         });
     }
 
+    /** fill the composition of products that have none from the brand dictionary: a proposal to look through, then the ticked ones are filled */
+    compPanel = false;
+    comp:any = null;
+    compBusy = false;
+    compMessage = '';
+    compError = '';
+    compPicked: { [id:number]: boolean } = {};
+
+    get compChosen(): number[] { return (this.comp?.rows || []).filter((r:any) => this.compPicked[r.id]).map((r:any) => r.id); }
+    compAll(on:boolean){ (this.comp?.rows || []).forEach((r:any) => this.compPicked[r.id] = on); }
+
+    openComp(){
+        this.compPanel = true; this.compMessage = this.compError = ''; this.comp = null; this.compBusy = true; this.compPicked = {};
+        this.service.fillCompositions(false).subscribe({
+            next: r => { this.comp = r; this.compBusy = false; (r.rows || []).forEach((x:any) => this.compPicked[x.id] = true); },
+            error: e => { this.compBusy = false; this.compError = e?.error?.message || 'The proposal could not be made.'; }
+        });
+    }
+    applyComp(){
+        const ids = this.compChosen;
+        if(!ids.length) return;
+        this.compBusy = true; this.compError = '';
+        this.service.fillCompositions(true, ids).subscribe({
+            next: r => {
+                this.compBusy = false; this.fetchList();
+                // the proposal is made again, so the rest (when more were found than were shown) can be done next
+                const message = `Filled the composition of ${r.filled} products.`;
+                this.openComp(); this.compMessage = message;
+            },
+            error: e => { this.compBusy = false; this.compError = e?.error?.message || 'Could not fill the compositions.'; }
+        });
+    }
+
     constructor(
         private service:ProductsService,
         private confirm:ConfirmService){}

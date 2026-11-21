@@ -44,6 +44,8 @@ export class ProductsService {
     /** recent purchases, stock and sales of one product on the pack check list */
     /** fills the dosage form of products that have none from their titles; without apply it is a preview */
     fillDosageForms(apply:boolean){ return this.http.post<any>(`${this.apiurl}/dosage-forms/fill`, {}, { params: apply ? { apply: '1' } : {} }); }
+    /** products with no composition, matched with the brand dictionary by title: a proposal, or (with the ticked ids) the fill */
+    fillCompositions(apply:boolean, ids:number[] = []){ return this.http.post<any>(`${this.apiurl}/compositions/fill`, { ids }, { params: apply ? { apply: '1' } : {} }); }
 
     packEvidence(id:number){ return this.http.get<any>(`${this.apiurl}/pack-check/${id}`); }
 
